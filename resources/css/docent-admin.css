@@ -17,19 +17,6 @@
 @import './shared/tokens.css';
 @import './shared/prose.css';
 
-/* The admin chrome wears its own accent — pink, deliberately distinct from the
-   reader's configurable brand accent, so authors always know which surface they
-   are on. Set on the app root (not :root) so descendants resolve it ahead of
-   the inline theme <style>; the preview pane re-asserts the brand accent
-   inline, keeping previews true to what readers see. */
-#docent-admin {
-    --docent-accent: #db2777;
-}
-
-.dark #docent-admin {
-    --docent-accent: #ec4899;
-}
-
 @layer base {
     html {
         -webkit-text-size-adjust: 100%;

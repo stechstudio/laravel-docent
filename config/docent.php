@@ -72,7 +72,10 @@ return [
     | (`docent.database.enabled`) and is off by default. Every admin route —
     | the panel and its JSON API — is additionally guarded by the `gate`
     | ability, which the host application defines (it denies guests by
-    | default). Image uploads land on `disk`.
+    | default). Image uploads land on `disk` and are served back through the
+    | docs `_uploads` route — any disk works (public, local, private S3), no
+    | storage:link or public bucket required, and images inherit the docs
+    | route middleware.
     |
     */
 

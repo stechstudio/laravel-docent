@@ -6,11 +6,12 @@ namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Stores an uploaded image on the configured admin disk under `docent/`, with a
- * hashed filename, and returns its URL and path for embedding.
+ * hashed filename, and returns its URL and path for embedding. The URL points
+ * at the docs `_uploads` streaming route, not the disk — uploads work on any
+ * disk (public, local, private S3) with no storage:link or bucket policy.
  */
 final class UploadController
 {
@@ -24,7 +25,7 @@ final class UploadController
         $path = $request->file('file')->store('docent', ['disk' => $disk]);
 
         return response()->json([
-            'url' => Storage::disk($disk)->url($path),
+            'url' => route('docent.upload', ['path' => $path]),
             'path' => $path,
         ], 201);
     }

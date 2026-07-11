@@ -23,6 +23,7 @@
                    @keydown.enter="confirmNewPage()">
             <input x-model="newTitle" type="text" placeholder="Title" class="dax-input text-[13px]"
                    @keydown.enter="confirmNewPage()">
+            <p class="px-0.5 text-[11px] leading-snug text-[var(--docent-faint)]">A slash files the page into a group — <span class="font-medium text-[var(--docent-muted)]">billing/refunds</span> lands under <span class="font-medium text-[var(--docent-muted)]">Billing</span>.</p>
             <div class="flex items-center justify-end gap-1.5">
                 <button type="button" @click="newPageOpen = false" class="dax-btn dax-btn-ghost text-xs">Cancel</button>
                 <button type="button" @click="confirmNewPage()" class="dax-btn dax-btn-primary text-xs">Create</button>
@@ -45,9 +46,17 @@
 
         <template x-if="!treeLoading && !treeError">
             <div class="space-y-4">
-                <template x-for="group in groups" :key="group.label || '__root'">
+                <template x-for="group in groups" :key="group.directory || '__root'">
                     <div>
-                        <p x-show="group.label" class="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--docent-faint)]" x-text="group.label"></p>
+                        <div x-show="group.directory" class="group/dax-grp flex items-center gap-1.5 px-2 pb-1">
+                            <span x-show="group.iconSvg" x-html="group.iconSvg" class="inline-flex text-[var(--docent-faint)] [&_svg]:h-3.5 [&_svg]:w-3.5"></span>
+                            <p class="min-w-0 truncate text-[11px] font-semibold uppercase tracking-wider text-[var(--docent-faint)]" x-text="group.label"></p>
+                            <button type="button" @click="openGroupSettings(group)"
+                                    class="ml-auto flex-none rounded p-0.5 text-[var(--docent-faint)] opacity-0 transition hover:text-[var(--docent-fg)] focus:opacity-100 group-hover/dax-grp:opacity-100"
+                                    aria-label="Group settings" title="Group settings">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            </button>
+                        </div>
                         <div class="space-y-px">
                             <template x-for="page in group.pages" :key="page.store + ':' + page.slug">
                                 <button type="button" class="dax-tree-item" :class="{ 'is-active': slug === page.slug, 'is-hidden-page': page.hidden }"

@@ -69,8 +69,16 @@ final class DatabaseRepository implements DocumentationRepository
 
     public function groupMeta(string $directory): ?array
     {
-        // The composite cascades directory metadata to the filesystem in Phase A.
-        return null;
+        // Group metadata lives on a reserved, never-published `_groups/{dir}`
+        // row's front matter, so it takes effect immediately (no publish step).
+        // Read straight from the page row, not its published revision.
+        $meta = DocentPage::on($this->connection)
+            ->where('slug', '_groups/'.$directory)
+            ->value('front_matter');
+
+        $meta = is_string($meta) ? json_decode($meta, true) : $meta;
+
+        return is_array($meta) && $meta !== [] ? $meta : null;
     }
 
     /**

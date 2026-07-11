@@ -1,7 +1,6 @@
 {{-- Preview view: the draft rendered through the real pipeline with the
-     admin's own context. Same width and prose layer as the reader — including
-     the brand accent, re-asserted here because the admin chrome wears its own. --}}
-<div class="mx-auto w-full max-w-[52rem] px-6 pb-24 pt-8 sm:px-10" style="--docent-accent: {{ $docent->accent() }}">
+     admin's own context. Same width and prose layer as the reader. --}}
+<div class="mx-auto w-full max-w-[52rem] px-6 pb-24 pt-8 sm:px-10">
     <div x-show="!previewHtml && !previewLoading" x-cloak class="pt-16 text-center text-sm text-[var(--docent-faint)]">
         Nothing to preview yet.
     </div>

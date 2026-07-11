@@ -36,3 +36,27 @@ it('rejects an image over the size limit', function () {
         'file' => UploadedFile::fake()->create('huge.png', 6000, 'image/png'),
     ])->assertStatus(422)->assertJsonValidationErrors('file');
 });
+
+it('serves the uploaded image through the docs _uploads streaming route', function () {
+    Storage::fake('public');
+
+    $response = $this->postJson('/docs/admin/api/uploads', [
+        'file' => UploadedFile::fake()->image('diagram.png', 400, 300),
+    ])->assertCreated();
+
+    // The URL is the streaming route (works on any disk, no storage:link)...
+    expect($response->json('url'))->toContain('/docs/_uploads/docent/');
+
+    // ...and it streams the file back with long-lived caching.
+    $this->get($response->json('url'))
+        ->assertOk()
+        ->assertHeader('Cache-Control', 'immutable, max-age=31536000, public');
+});
+
+it('404s uploads-route requests outside the docent directory', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('elsewhere/file.png', 'x');
+
+    $this->get('/docs/_uploads/elsewhere/file.png')->assertNotFound();
+    $this->get('/docs/_uploads/docent/missing.png')->assertNotFound();
+});

@@ -5,13 +5,33 @@ declare(strict_types=1);
 namespace STS\Docent\Support;
 
 /**
- * A small, name-keyed set of inline SVG icons for cards. Icons are stroked
- * `currentColor` line art (Feather-style) so they inherit the surrounding text
- * colour and stay crisp in light and dark. Unknown names resolve to null —
- * the card simply renders without an icon and `docent:check` warns.
+ * Inline SVG icons for cards, nav groups, and the admin picker. The primary
+ * source is the bundled Heroicons 24px outline set under `resources/icons`
+ * (~316 files, read on demand); a small legacy Feather-style set is kept as a
+ * fallback so existing content referencing names like `rocket`/`chart` never
+ * breaks. Every icon is stroked `currentColor` line art so it inherits the
+ * surrounding text colour and stays crisp in light and dark. Unknown names
+ * resolve to null — the card simply renders without an icon and `docent:check`
+ * warns.
  */
 final class Icon
 {
+    /**
+     * Per-request cache of normalized Heroicon file contents, keyed by name
+     * (null memoizes a miss so a bad name is only touched once).
+     *
+     * @var array<string, string|null>
+     */
+    private static array $fileCache = [];
+
+    /**
+     * Sorted list of bundled Heroicon names (filename minus `.svg`), scanned
+     * once per request.
+     *
+     * @var list<string>|null
+     */
+    private static ?array $heroiconNames = null;
+
     /**
      * Path/shape markup for each icon, wrapped in a 24×24 stroked <svg> by
      * {@see svg()}.
@@ -39,6 +59,12 @@ final class Icon
 
     public static function svg(string $name): ?string
     {
+        // Path-traversal guard: only ever touch the filesystem for a plain,
+        // lowercase, dash-separated name (heroicons all match this).
+        if (preg_match('/^[a-z0-9-]+$/', $name) === 1 && ($file = self::fileSvg($name)) !== null) {
+            return $file;
+        }
+
         $shapes = self::ICONS[$name] ?? null;
 
         if ($shapes === null) {
@@ -52,16 +78,81 @@ final class Icon
 
     public static function has(string $name): bool
     {
-        return isset(self::ICONS[$name]);
+        return isset(self::ICONS[$name]) || in_array($name, self::heroiconNames(), true);
     }
 
     /**
-     * Every built-in icon name, for the admin icon picker.
+     * Every icon name across both sources (heroicons + legacy), sorted and
+     * de-duplicated, for the admin icon picker.
      *
      * @return list<string>
      */
     public static function names(): array
     {
-        return array_keys(self::ICONS);
+        $merged = array_unique([...self::heroiconNames(), ...array_keys(self::ICONS)]);
+        sort($merged);
+
+        return array_values($merged);
+    }
+
+    /**
+     * The normalized markup for a bundled Heroicon, or null when there is no
+     * such file. The root `<svg>` tag is rewritten so every icon matches the
+     * legacy output: explicit `width`/`height` of 24 and `aria-hidden="true"`
+     * (heroicons already carry `fill="none" stroke="currentColor"
+     * stroke-width="1.5"`, which we keep).
+     */
+    private static function fileSvg(string $name): ?string
+    {
+        if (array_key_exists($name, self::$fileCache)) {
+            return self::$fileCache[$name];
+        }
+
+        $path = self::iconDir().'/'.$name.'.svg';
+
+        return self::$fileCache[$name] = is_file($path)
+            ? self::normalize(trim((string) file_get_contents($path)))
+            : null;
+    }
+
+    private static function normalize(string $svg): string
+    {
+        return (string) preg_replace_callback(
+            '/^<svg\b([^>]*)>/',
+            static function (array $matches): string {
+                // Drop attributes we set canonically (plus the editor-only
+                // `data-slot`), then re-add the canonical ones up front.
+                $attrs = (string) preg_replace('/\s+(?:width|height|aria-hidden|data-slot)="[^"]*"/', '', $matches[1]);
+
+                return '<svg width="24" height="24" aria-hidden="true"'.$attrs.'>';
+            },
+            $svg,
+            1,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function heroiconNames(): array
+    {
+        if (self::$heroiconNames !== null) {
+            return self::$heroiconNames;
+        }
+
+        $names = [];
+
+        foreach (glob(self::iconDir().'/*.svg') ?: [] as $path) {
+            $names[] = basename($path, '.svg');
+        }
+
+        sort($names);
+
+        return self::$heroiconNames = $names;
+    }
+
+    private static function iconDir(): string
+    {
+        return __DIR__.'/../../resources/icons';
     }
 }

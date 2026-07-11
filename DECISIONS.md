@@ -218,3 +218,34 @@ Everything here is open for review/reversal — flag anything you disagree with.
   fixed `reports/_group.yml` icon `chart-bar` → `chart` (not a built-in icon name).
 - Deferred pending Joseph's direction (answered with recommendations, not built): page icons in
   nav, database-side group metadata management, upload-serving strategy for private disks.
+
+## Feedback round 3 (Joseph, July 11 late evening)
+
+- **Pink admin accent reverted** the same evening it shipped — Joseph prefers one brand accent
+  everywhere, so the admin simply inherits `docent.theme.accent` (sky-600 default) and follows
+  any host re-branding automatically.
+- **Image uploads fixed + hardened.** The demo failure: `Storage::url()` on the `public` disk
+  yields `/storage/...`, which 404s without `storage:link` (workbench had none) — so inserted
+  images were invisible. Uploads are now served through a `_uploads/{path}` streaming route
+  inside the docs group: works on ANY disk (public, local, private S3 — no symlink, no public
+  bucket, no unsigned URLs), inherits the docs middleware (private docs keep images private),
+  hashed filenames get `immutable` cache headers. Path constrained to `docent/` + traversal
+  guard. Verified in-browser end-to-end (file input → toast → rendered <img>). S3 optimization
+  (redirect to temporaryUrl instead of streaming) noted as a future nicety.
+- **Icons: bundled Heroicons, rejected CDNs.** Runtime CDN icon loading can't avoid
+  request-per-icon flicker; irrelevant anyway since Docent renders icons server-side as inline
+  SVG (zero client cost). Bundled the full Heroicons 24px outline set (324 files, MIT, license
+  included) under `resources/icons/`; `Icon::svg()` reads+normalizes on demand (traversal-guarded
+  name regex, per-request cache), legacy Feather names kept as fallback so existing content
+  never breaks. New lazy `admin/api/icons` endpoint powers the picker without bloating page load.
+- **Groups management shipped** (built by Opus executor, reviewed + browser-verified by lead):
+  group metadata (label / order / icon) stored as reserved never-published `_groups/{dir}` rows
+  in the existing pages table — no new migration; read from the row's front_matter so changes
+  take effect immediately (no publish step); composite cascade makes the database row override
+  `_group.yml`. Admin: hover pencil on tree group headers → settings modal (label, order,
+  searchable icon picker, provenance note, reset-to-defaults); tree groups now sort by
+  (order, label) like the reader. Reader sidebar renders group icons (finally consuming the
+  `icon:` that `_group.yml` always accepted). Groups are still created implicitly by slugging
+  pages into directories (`billing/refunds`) — the new-page form now hints this.
+- Review findings: none blocking — executor work was clean (soft-delete/unique-slug interplay
+  already handled by `DocentPage::write` `withTrashed()` upsert; verified).

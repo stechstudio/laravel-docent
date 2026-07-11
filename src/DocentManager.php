@@ -456,6 +456,88 @@ final class DocentManager
     }
 
     /**
+     * Every directory that currently holds pages — across the filesystem and the
+     * database, and including each nested ancestor as its own entry — with its
+     * effective group metadata. `source` records where the effective values come
+     * from: 'database' (a `_groups/` override row exists), 'file' (a `_group.yml`
+     * provides it), or null (pure defaults). `''` (root) is never a group.
+     * Effective label/order/icon reflect the composite cascade (database wins).
+     *
+     * @return list<array{directory: string, label: string, order: int|null, icon: string|null, source: string|null}>
+     */
+    public function adminGroups(): array
+    {
+        $pages = DocentPage::on($this->databaseConnection())->get();
+
+        $directories = [];
+        $dbGroups = [];
+
+        foreach ($pages as $page) {
+            if (str_starts_with($page->slug, '_groups/')) {
+                $dbGroups[substr($page->slug, strlen('_groups/'))] = true;
+
+                continue;
+            }
+
+            if ($this->isUnderscored($page->slug)) {
+                continue;
+            }
+
+            $this->collectDirectories($directories, $this->baseDirOf($page->slug));
+        }
+
+        foreach ($this->filesystem->all() as $reference) {
+            $this->collectDirectories($directories, $reference->directory);
+        }
+
+        $groups = [];
+
+        foreach (array_keys($directories) as $directory) {
+            $meta = $this->repository->groupMeta($directory) ?? [];
+            $order = $meta['order'] ?? null;
+            $label = $meta['label'] ?? null;
+            $icon = $meta['icon'] ?? null;
+
+            $groups[] = [
+                'directory' => $directory,
+                'label' => is_scalar($label) && (string) $label !== '' ? (string) $label : Str::headline(Str::afterLast($directory, '/')),
+                'order' => is_numeric($order) ? (int) $order : null,
+                'icon' => is_string($icon) && $icon !== '' ? $icon : null,
+                'source' => isset($dbGroups[$directory])
+                    ? 'database'
+                    : ($this->filesystem->groupMeta($directory) !== null ? 'file' : null),
+            ];
+        }
+
+        usort($groups, static fn (array $a, array $b): int => [$a['order'] ?? PHP_INT_MAX, $a['label']] <=> [$b['order'] ?? PHP_INT_MAX, $b['label']]);
+
+        return $groups;
+    }
+
+    /**
+     * Store (or replace) a directory's group metadata as a reserved, never-published
+     * `_groups/{directory}` row — taking effect immediately, no publish step. The
+     * database override wins over any `_group.yml` of the same directory.
+     *
+     * @param  array<string, mixed>  $meta
+     */
+    public function updateGroupMeta(string $directory, array $meta, ?int $authorId): void
+    {
+        DocentPage::write('_groups/'.$directory, '', $meta, $authorId);
+    }
+
+    /**
+     * Discard a directory's database group override, restoring whatever the
+     * filesystem `_group.yml` (or defaults) provide. False when none existed.
+     */
+    public function removeGroupMeta(string $directory): bool
+    {
+        return (bool) DocentPage::on($this->databaseConnection())
+            ->where('slug', '_groups/'.$directory)
+            ->first()?->delete();
+    }
+
+    /**
      * Copy a filesystem page into a new database draft, so it can be edited
      * without touching the repository. Returns null when no such file exists;
      * the caller rejects an already-overridden slug (409) before calling.
@@ -722,6 +804,27 @@ final class DocentManager
     private function baseDirOf(string $slug): string
     {
         return str_contains($slug, '/') ? substr($slug, 0, (int) strrpos($slug, '/')) : '';
+    }
+
+    /**
+     * Record a directory and every ancestor prefix as its own group entry —
+     * `guides/advanced` contributes both `guides` and `guides/advanced`, mirroring
+     * the group node NavigationBuilder creates for each path segment.
+     *
+     * @param  array<string, true>  $set
+     */
+    private function collectDirectories(array &$set, string $directory): void
+    {
+        if ($directory === '') {
+            return;
+        }
+
+        $accumulated = '';
+
+        foreach (explode('/', $directory) as $segment) {
+            $accumulated = $accumulated === '' ? $segment : $accumulated.'/'.$segment;
+            $set[$accumulated] = true;
+        }
     }
 
     private function isUnderscored(string $slug): bool

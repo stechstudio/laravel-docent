@@ -39,6 +39,7 @@ Alpine.data('docentAdmin', (config) => {
 
     // Tree + registry metadata.
     tree: [],
+    groupList: [],
     treeLoading: true,
     treeError: false,
     meta: { conditions: [], values: [], links: [], components: [], audiences: [], icons: [], abilities: [] },
@@ -97,6 +98,17 @@ Alpine.data('docentAdmin', (config) => {
     revisionsOpen: false,
     revisions: [],
     revisionsLoading: false,
+
+    // Group settings modal + its lazy icon picker.
+    groupModalOpen: false,
+    groupEditing: null,
+    groupForm: { label: '', order: '', icon: '' },
+    groupSaving: false,
+    iconPickerOpen: false,
+    iconSearch: '',
+    iconList: [],
+    iconsLoaded: false,
+    iconsLoading: false,
 
     // Insert menus + toasts.
     menu: null,
@@ -242,6 +254,12 @@ Alpine.data('docentAdmin', (config) => {
         return this.hasSelection && !this.readonly && this.title.trim() !== '' && !this.saving;
     },
 
+    /**
+     * Pages bucketed by directory and enriched with each directory's group meta
+     * (label/order/icon/iconSvg/source) from the tree response. Root/ungrouped
+     * pages render first with no header; the rest sort by (order, label) and
+     * pages within a group by title (order isn't carried on tree entries).
+     */
     get groups() {
         const map = new Map();
         for (const page of this.tree) {
@@ -250,15 +268,29 @@ Alpine.data('docentAdmin', (config) => {
             map.get(key).push(page);
         }
 
-        const groups = [...map.entries()].map(([label, pages]) => ({
-            label,
-            pages: pages.sort((a, b) => a.title.localeCompare(b.title)),
-        }));
+        const metaFor = (directory) => this.groupList.find((g) => g.directory === directory) || null;
+
+        const groups = [...map.entries()].map(([directory, pages]) => {
+            const meta = directory === '' ? null : metaFor(directory);
+            return {
+                directory,
+                label: directory === '' ? '' : (meta ? meta.label : directory),
+                order: meta ? meta.order : null,
+                icon: meta ? meta.icon : null,
+                iconSvg: meta ? meta.iconSvg : null,
+                source: meta ? meta.source : null,
+                pages: pages.sort((a, b) => a.title.localeCompare(b.title)),
+            };
+        });
+
+        const MAX = Number.MAX_SAFE_INTEGER;
 
         return groups.sort((a, b) => {
-            if (a.label === '') return -1;
-            if (b.label === '') return 1;
-            return a.label.localeCompare(b.label);
+            if (a.directory === '') return -1;
+            if (b.directory === '') return 1;
+            const ao = a.order ?? MAX;
+            const bo = b.order ?? MAX;
+            return ao !== bo ? ao - bo : a.label.localeCompare(b.label);
         });
     },
 
@@ -327,6 +359,7 @@ Alpine.data('docentAdmin', (config) => {
         try {
             const data = await this.api('GET', `${this.base}/api/tree`);
             this.tree = data.pages || [];
+            this.groupList = data.groups || [];
         } catch (e) {
             this.treeError = true;
         } finally {
@@ -578,6 +611,93 @@ Alpine.data('docentAdmin', (config) => {
             this.previewStale = true;
             this.toast('Revision restored as a new draft.', 'success');
         } catch (e) {}
+    },
+
+    /* --- Group settings ------------------------------------------------- */
+
+    openGroupSettings(group) {
+        this.groupEditing = group;
+        this.groupForm = {
+            label: group.label || '',
+            order: group.order ?? '',
+            icon: group.icon || '',
+        };
+        this.iconPickerOpen = false;
+        this.iconSearch = '';
+        this.groupModalOpen = true;
+    },
+
+    /**
+     * The <svg> markup previewed for the group's current icon choice. Uses the
+     * loaded picker payload when available, otherwise the tree-provided svg for
+     * the icon this group already had.
+     */
+    get groupIconSvg() {
+        if (!this.groupForm.icon) return null;
+        const found = this.iconList.find((i) => i.name === this.groupForm.icon);
+        if (found) return found.svg;
+        return this.groupEditing && this.groupEditing.icon === this.groupForm.icon ? this.groupEditing.iconSvg : null;
+    },
+
+    async openIconPicker() {
+        this.iconPickerOpen = true;
+        this.iconSearch = '';
+        if (this.iconsLoaded || this.iconsLoading) return;
+        this.iconsLoading = true;
+        try {
+            const data = await this.api('GET', `${this.base}/api/icons`);
+            this.iconList = data.icons || [];
+            this.iconsLoaded = true;
+        } catch (e) {
+        } finally {
+            this.iconsLoading = false;
+        }
+    },
+
+    get filteredIcons() {
+        const q = this.iconSearch.trim().toLowerCase();
+        return q ? this.iconList.filter((i) => i.name.includes(q)) : this.iconList;
+    },
+
+    pickIcon(name) {
+        this.groupForm.icon = name || '';
+        this.iconPickerOpen = false;
+    },
+
+    async saveGroup() {
+        if (!this.groupEditing) return;
+        const label = String(this.groupForm.label || '').trim();
+        if (label === '') {
+            this.toast('A label is required.', 'error');
+            return;
+        }
+        this.groupSaving = true;
+        const body = { label };
+        if (this.groupForm.order !== '' && this.groupForm.order !== null) body.order = Number(this.groupForm.order);
+        if (this.groupForm.icon) body.icon = this.groupForm.icon;
+        try {
+            const data = await this.api('PUT', `${this.base}/api/groups/${this.groupEditing.directory}`, { body });
+            this.groupList = data.groups || [];
+            this.groupModalOpen = false;
+            this.toast('Group updated.', 'success');
+        } catch (e) {
+        } finally {
+            this.groupSaving = false;
+        }
+    },
+
+    async removeGroupOverride() {
+        if (!this.groupEditing) return;
+        this.groupSaving = true;
+        try {
+            const data = await this.api('DELETE', `${this.base}/api/groups/${this.groupEditing.directory}`);
+            this.groupList = data.groups || [];
+            this.groupModalOpen = false;
+            this.toast('Group override removed.', 'success');
+        } catch (e) {
+        } finally {
+            this.groupSaving = false;
+        }
     },
 
     /* --- Preview -------------------------------------------------------- */

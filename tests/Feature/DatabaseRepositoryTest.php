@@ -1,7 +1,9 @@
 <?php
 
 use STS\Docent\Content\Models\DocentPage;
+use STS\Docent\Content\Repositories\CompositeRepository;
 use STS\Docent\Content\Repositories\DatabaseRepository;
+use STS\Docent\Content\Repositories\FilesystemRepository;
 
 beforeEach(function () {
     $this->repo = new DatabaseRepository;
@@ -74,8 +76,27 @@ it('builds page references from the published front matter', function () {
         ->and($ref->directory)->toBe('guides');
 });
 
-it('groupMeta is always null in phase A', function () {
-    expect($this->repo->groupMeta('billing'))->toBeNull();
+it('reads group metadata from a reserved _groups row front matter, without publishing', function () {
+    // Never published — group meta takes effect immediately.
+    DocentPage::write('_groups/billing', '', ['label' => 'Invoices', 'order' => 5, 'icon' => 'credit-card']);
+
+    expect($this->repo->groupMeta('billing'))->toBe(['label' => 'Invoices', 'order' => 5, 'icon' => 'credit-card'])
+        ->and($this->repo->groupMeta('nonexistent'))->toBeNull();
+});
+
+it('lets a database group override beat a filesystem _group.yml through the composite', function () {
+    $composite = new CompositeRepository(
+        new DatabaseRepository,
+        new FilesystemRepository(config('docent.filesystem.path')),
+    );
+
+    // billing/_group.yml → label Billing, order 2.
+    expect($composite->groupMeta('billing'))->toBe(['label' => 'Billing', 'order' => 2]);
+
+    DocentPage::write('_groups/billing', '', ['label' => 'Payments', 'order' => 9]);
+
+    // Database wins the cascade.
+    expect($composite->groupMeta('billing'))->toBe(['label' => 'Payments', 'order' => 9]);
 });
 
 it('changes the directory hash whenever served content changes', function () {

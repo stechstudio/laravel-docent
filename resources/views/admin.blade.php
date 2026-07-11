@@ -202,6 +202,9 @@
         {{-- ================= Revisions slide-over ================= --}}
         @include('docent::partials.admin.revisions')
 
+        {{-- ================= Group settings modal ================= --}}
+        @include('docent::partials.admin.group-settings')
+
         {{-- ================= Edit-a-copy confirmation ================= --}}
         <div x-show="overridePromptOpen" x-cloak class="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" @keydown.escape.window="overridePromptOpen = false">
             <div x-show="overridePromptOpen" x-transition.opacity class="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" @click="overridePromptOpen = false"></div>

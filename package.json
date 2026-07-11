@@ -28,6 +28,7 @@
         "@tiptap/suggestion": "^2.27.2",
         "alpinejs": "^3.14.9",
         "esbuild": "^0.25.0",
+        "heroicons": "^2.2.0",
         "tailwindcss": "^4.1.0"
     }
 }

@@ -24,6 +24,8 @@ use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\PhikiCodeBlockRenderer;
 use STS\Docent\Http\Controllers\Admin\AdminController;
 use STS\Docent\Http\Controllers\Admin\ExportController;
+use STS\Docent\Http\Controllers\Admin\GroupController;
+use STS\Docent\Http\Controllers\Admin\IconController;
 use STS\Docent\Http\Controllers\Admin\MetaController;
 use STS\Docent\Http\Controllers\Admin\PageController as AdminPageController;
 use STS\Docent\Http\Controllers\Admin\PageStateController;
@@ -33,6 +35,7 @@ use STS\Docent\Http\Controllers\Admin\UploadController;
 use STS\Docent\Http\Controllers\AssetController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
+use STS\Docent\Http\Controllers\UploadsController;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
@@ -139,6 +142,10 @@ final class DocentServiceProvider extends ServiceProvider
                 ->where('file', '[A-Za-z0-9._-]+')
                 ->name('docent.asset');
 
+            Route::get('/_uploads/{path}', UploadsController::class)
+                ->where('path', '.*')
+                ->name('docent.upload');
+
             if (config('docent.search.enabled', true)) {
                 Route::get('/_search', SearchController::class)->name('docent.search');
             }
@@ -169,8 +176,17 @@ final class DocentServiceProvider extends ServiceProvider
 
             Route::get('api/tree', TreeController::class)->name('docent.admin.tree');
             Route::get('api/meta', MetaController::class)->name('docent.admin.meta');
+            Route::get('api/icons', IconController::class)->name('docent.admin.icons');
             Route::post('api/preview', PreviewController::class)->name('docent.admin.preview');
             Route::post('api/uploads', UploadController::class)->name('docent.admin.uploads');
+
+            // Group metadata — declared before the api/pages/{slug} catch-alls so
+            // the more specific paths win.
+            Route::get('api/groups', [GroupController::class, 'index'])->name('docent.admin.groups.index');
+            Route::put('api/groups/{directory}', [GroupController::class, 'update'])
+                ->where('directory', '.*')->name('docent.admin.groups.update');
+            Route::delete('api/groups/{directory}', [GroupController::class, 'destroy'])
+                ->where('directory', '.*')->name('docent.admin.groups.destroy');
 
             Route::post('api/pages', [AdminPageController::class, 'store'])->name('docent.admin.pages.store');
 

@@ -11,6 +11,10 @@ dataset('adminRoutes', [
     'panel' => ['GET', '/docs/admin'],
     'tree' => ['GET', '/docs/admin/api/tree'],
     'meta' => ['GET', '/docs/admin/api/meta'],
+    'icons' => ['GET', '/docs/admin/api/icons'],
+    'groups' => ['GET', '/docs/admin/api/groups'],
+    'group-update' => ['PUT', '/docs/admin/api/groups/guides'],
+    'group-delete' => ['DELETE', '/docs/admin/api/groups/guides'],
     'preview' => ['POST', '/docs/admin/api/preview'],
     'uploads' => ['POST', '/docs/admin/api/uploads'],
     'create' => ['POST', '/docs/admin/api/pages'],
@@ -47,4 +51,18 @@ it('reaches the tree for a user who passes the gate', function () {
         ->getJson('/docs/admin/api/tree')
         ->assertOk()
         ->assertJsonFragment(['slug' => 'draft-page', 'store' => 'database']);
+});
+
+it('serves the icon library to a user who passes the gate', function () {
+    $response = $this->actingAs($this->adminUser())
+        ->getJson('/docs/admin/api/icons')
+        ->assertOk();
+
+    $icons = $response->json('icons');
+
+    expect($icons)->toBeArray()->not->toBeEmpty();
+
+    $first = $icons[0];
+    expect($first)->toHaveKeys(['name', 'svg'])
+        ->and($first['svg'])->toContain('<svg');
 });
