@@ -71,6 +71,19 @@ Everything here is open for review/reversal — flag anything you disagree with.
     highlighting both themes, mobile slide-over nav, prev/next. Screenshots in ~/.dev-browser/tmp.
 22. **`package-lock.json` now tracked** (reproducible asset builds); `workbench/storage` ignored
     (testbench build artifact).
+## Post-v1 decisions (confirmed by Joseph, July 11)
+
+- **Admin UI stack: dependency-free Blade + Alpine + JSON endpoints** — consistent with the reader
+  UI, no dependency fights with host apps. Admin assets are separate prebuilt bundles.
+- **Editor: straight to Tiptap** (no markdown-editor interim). Tiptap JSON is the canonical format
+  for editor-authored DB pages; the AST bridges import (markdown → AST → Tiptap) and export
+  (AST → normalized markdown). Phase B ships a scaffolding textarea so the DB store is usable
+  while the Tiptap build lands.
+- **Database store is opt-in** (`docent:install --with-database`); repository-first stays the
+  default story. Composite resolution: database overrides filesystem, drift always visible.
+- **Build order**: theming tokens → landing/cards → DB+composite store → admin panel → Tiptap.
+- Full detail in ROADMAP.md.
+
 23. **Future-store audit (per Joseph's request)**: two filesystem assumptions removed so a database
     or composite repository has no blockers. `DocumentSource` now carries `format` (parser dispatch
     point — v1 registers only markdown; AST cache keys include it) and `baseDir` (relative-link
