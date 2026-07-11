@@ -88,6 +88,22 @@ Everything here is open for review/reversal — flag anything you disagree with.
   (new `unknown-icon` check; built-in inline-SVG icon set in Support\Icon).
 - The landing/cards executor was killed twice by infra interruptions mid-task; I completed the
   final ~15% (dist rebuild, test suite, verification) directly.
+- **Admin Phase A shipped**: opt-in migrations (`docent-migrations` tag, `docent:install
+  --with-database`), `DocentPage`/`DocentPageRevision` models (model-as-API: `write()` upserts with
+  revision-on-change, `publish`/`unpublish`/`revertTo`), `DatabaseRepository` serving published
+  revisions only, `CompositeRepository` (DB over files, first-match-wins) with `shadowed()` +
+  a `shadowed-page` docent:check warning for drift visibility. Workbench seeds a live
+  "Announcements" DB page.
+- **Review caught a page-level authorization hole in the DB store**: the `front_matter` column
+  never reached the parsed document, so a DB page's `authorize` gated search/nav but NOT the
+  rendered page itself (and the title column was ignored at render time). Fixed by having the
+  repository compose the file-equivalent markdown (YAML front matter block + content) so both
+  stores flow through the pipeline identically; the source hash covers the composed document, so
+  metadata edits invalidate caches. Regression-tested over HTTP (guest 404 / admin 200).
+- **directoryHash semantics clarified in tests**: the hash must change whenever *served* content
+  changes; lifecycle states that serve identical content (never-published vs unpublished, deleted
+  vs empty) may share a hash. The executor's original test demanded universal uniqueness — over-
+  strict; rewritten to assert real invalidation incl. republish-newer-revision.
 
 ## Post-v1 decisions (confirmed by Joseph, July 11)
 

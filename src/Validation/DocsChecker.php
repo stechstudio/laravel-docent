@@ -11,6 +11,7 @@ use STS\Docent\Validation\Checks\HeadingHierarchyCheck;
 use STS\Docent\Validation\Checks\IncludeCycleCheck;
 use STS\Docent\Validation\Checks\MissingImageCheck;
 use STS\Docent\Validation\Checks\MissingIncludeCheck;
+use STS\Docent\Validation\Checks\ShadowedPageCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
 use STS\Docent\Validation\Checks\UnknownComponentCheck;
@@ -51,6 +52,7 @@ final class DocsChecker
             new MissingImageCheck,
             new HeadingHierarchyCheck,
             new UnknownIconCheck,
+            new ShadowedPageCheck,
         ]);
     }
 

@@ -7,6 +7,7 @@ namespace STS\Docent\Validation;
 use Closure;
 use STS\Docent\Content\DocumentSource;
 use STS\Docent\Content\PageReference;
+use STS\Docent\Content\Repositories\CompositeRepository;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\Parser\DocumentParser;
@@ -50,6 +51,15 @@ final class CheckContext
     public function registry(): IntegrationRegistry
     {
         return $this->registry;
+    }
+
+    /**
+     * The bound repository. Exposed so store-aware checks (e.g. shadowed pages)
+     * can inspect a {@see CompositeRepository}.
+     */
+    public function repository(): DocumentationRepository
+    {
+        return $this->repository;
     }
 
     public function docsPath(): string

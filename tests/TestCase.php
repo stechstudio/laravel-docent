@@ -19,6 +19,13 @@ abstract class TestCase extends Orchestra
         ];
     }
 
+    protected function defineDatabaseMigrations(): void
+    {
+        // The database store is opt-in and not auto-loaded; tests that exercise
+        // it enable `docent.database.enabled` and rely on these tables.
+        $this->loadMigrationsFrom(dirname(__DIR__).'/database/migrations');
+    }
+
     protected function defineEnvironment($app): void
     {
         $app['config']->set('docent.filesystem.path', dirname(__DIR__).'/tests/fixtures/docs');

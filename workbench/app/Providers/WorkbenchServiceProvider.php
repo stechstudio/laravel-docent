@@ -16,6 +16,8 @@ class WorkbenchServiceProvider extends ServiceProvider
         config([
             'docent.name' => 'Acme Ledger Docs',
             'docent.filesystem.path' => dirname(__DIR__, 2).'/resources/docs',
+            // Demo the composite store: database pages compose over the files.
+            'docent.database.enabled' => true,
         ]);
 
         // Try a different feel — theming tokens are pure config, no rebuild:
@@ -30,6 +32,9 @@ class WorkbenchServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // The database store is opt-in, so its migrations load only for the demo.
+        $this->loadMigrationsFrom(dirname(__DIR__, 3).'/database/migrations');
+
         // Demo gates: only the account owner may manage billing or view reports.
         Gate::define('billing.manage', fn (?User $user) => $user?->email === 'admin@acme.test');
         Gate::define('reports.view', fn (?User $user) => $user?->email === 'admin@acme.test');

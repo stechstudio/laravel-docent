@@ -7,10 +7,15 @@ namespace STS\Docent;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\InstallCommand;
+use STS\Docent\Content\Models\DocentPage;
+use STS\Docent\Content\Repositories\CompositeRepository;
+use STS\Docent\Content\Repositories\DatabaseRepository;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Parser\DocumentParser;
@@ -40,9 +45,21 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocentCache::class),
         ));
 
-        $this->app->singleton(DocumentationRepository::class, static fn (Application $app): FilesystemRepository => new FilesystemRepository(
-            $app['config']->get('docent.filesystem.path') ?? $app->resourcePath('docs'),
-        ));
+        $this->app->singleton(DocumentationRepository::class, static function (Application $app): DocumentationRepository {
+            $filesystem = new FilesystemRepository(
+                $app['config']->get('docent.filesystem.path') ?? $app->resourcePath('docs'),
+            );
+
+            if (! $app['config']->get('docent.database.enabled', false)) {
+                return $filesystem;
+            }
+
+            // Database over filesystem: a DB page overrides a file of the same slug.
+            return new CompositeRepository(
+                new DatabaseRepository($app['config']->get('docent.database.connection')),
+                $filesystem,
+            );
+        });
 
         $this->app->singleton(DocentCache::class, static fn (Application $app): DocentCache => new DocentCache(
             $app['cache']->store($app['config']->get('docent.cache.store')),
@@ -87,6 +104,7 @@ final class DocentServiceProvider extends ServiceProvider
             $this->publishes([__DIR__.'/../config/docent.php' => config_path('docent.php')], 'docent-config');
             $this->publishes([__DIR__.'/../resources/views' => resource_path('views/vendor/docent')], 'docent-views');
             $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/docent')], 'docent-assets');
+            $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'docent-migrations');
 
             $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class]);
         }
@@ -125,6 +143,24 @@ final class DocentServiceProvider extends ServiceProvider
             'Version' => DocentManager::VERSION,
             'Pages' => (string) count(iterator_to_array($this->app->make(DocumentationRepository::class)->all())),
             'Route Prefix' => '/'.config('docent.route.prefix', 'docs'),
+            'Database' => $this->databaseSummary(),
         ]);
+    }
+
+    private function databaseSummary(): string
+    {
+        if (! config('docent.database.enabled', false)) {
+            return 'Disabled';
+        }
+
+        $connection = config('docent.database.connection');
+
+        if (! Schema::connection($connection)->hasTable('docent_pages')) {
+            return 'Enabled (not migrated)';
+        }
+
+        $count = DocentPage::on($connection)->published()->count();
+
+        return 'Enabled ('.$count.' '.Str::plural('page', $count).')';
     }
 }

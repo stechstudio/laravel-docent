@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\File;
  */
 final class InstallCommand extends Command
 {
-    protected $signature = 'docent:install';
+    protected $signature = 'docent:install {--with-database : Also publish the database store migrations}';
 
     protected $description = 'Install Docent: publish config and scaffold starter docs';
 
@@ -26,12 +26,22 @@ final class InstallCommand extends Command
         $this->scaffold($docs.'/index.md', $this->indexStub());
         $this->scaffold($docs.'/getting-started/introduction.md', $this->introductionStub());
 
+        $withDatabase = (bool) $this->option('with-database');
+
+        if ($withDatabase) {
+            $this->call('vendor:publish', ['--tag' => 'docent-migrations']);
+        }
+
         $this->newLine();
         $this->components->info('Docent installed.');
         $this->components->bulletList([
             'Write your docs in '.$docs,
             'Register app integrations (values, links, components) in a service provider via the Docent facade',
             'Visit /'.config('docent.route.prefix', 'docs').' to browse',
+            ...$withDatabase ? [
+                'Run `php artisan migrate` to create the docent_pages tables',
+                'Set `docent.database.enabled` to true to compose the database store over your files',
+            ] : [],
         ]);
 
         return self::SUCCESS;

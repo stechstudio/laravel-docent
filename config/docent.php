@@ -45,6 +45,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Database Store
+    |--------------------------------------------------------------------------
+    |
+    | Opt-in database-backed pages, composed *over* the filesystem (a database
+    | page overrides a file with the same slug). Publish the tables with
+    | `php artisan docent:install --with-database` (or
+    | `vendor:publish --tag=docent-migrations`), migrate, then flip `enabled`.
+    | `connection` is null for the default database connection.
+    |
+    */
+
+    'database' => [
+        'enabled' => false,
+        'connection' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Authorization
     |--------------------------------------------------------------------------
     |
