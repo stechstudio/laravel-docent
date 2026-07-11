@@ -42,6 +42,7 @@ use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Support\InternalLink;
 
 /**
  * Renders a Docent AST to context-aware HTML.
@@ -281,21 +282,17 @@ final class HtmlRenderer
 
     private function resolveUrl(string $destination): string
     {
-        if ($this->urlResolver === null || ! $this->isInternalSlug($destination)) {
+        $target = InternalLink::resolve(
+            $destination,
+            (string) ($this->options['base_dir'] ?? ''),
+            (string) ($this->options['route_prefix'] ?? 'docs'),
+        );
+
+        if ($this->urlResolver === null || $target === null) {
             return $destination;
         }
 
-        return ($this->urlResolver)($destination) ?? $destination;
-    }
-
-    private function isInternalSlug(string $destination): bool
-    {
-        if ($destination === '') {
-            return false;
-        }
-
-        // Skip absolute URLs, protocol-relative, anchors, and mailto/tel.
-        return preg_match('/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i', $destination) !== 1;
+        return (($this->urlResolver)($target['slug']) ?? $destination).$target['suffix'];
     }
 
     private function allowHtml(): bool

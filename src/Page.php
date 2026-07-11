@@ -52,24 +52,25 @@ final class Page
      */
     public function authorize(DocumentationContext $context): bool
     {
-        $authorize = $this->frontMatter()->authorize();
-
-        if ($authorize !== null && ! $context->can($authorize)) {
-            return false;
-        }
-
-        $audience = $this->frontMatter()->audience();
-
-        if ($audience !== null && ! $this->manager->audienceAllows($audience, $context)) {
-            return false;
-        }
-
-        return true;
+        return $this->manager->authorizes($this->frontMatter()->authorize(), $this->frontMatter()->audience(), $context);
     }
 
     public function render(DocumentationContext $context): string
     {
-        return $this->manager->renderDocument($this->document, $context);
+        return $this->manager->renderDocument($this->document, $context, $this->baseDir());
+    }
+
+    /**
+     * The directory relative links resolve against: an index page is its own
+     * directory; any other page lives in its parent directory.
+     */
+    public function baseDir(): string
+    {
+        if (str_ends_with($this->source->path, DIRECTORY_SEPARATOR.'index.md') || $this->source->path === 'index.md') {
+            return $this->slug;
+        }
+
+        return str_contains($this->slug, '/') ? Str::beforeLast($this->slug, '/') : '';
     }
 
     /**

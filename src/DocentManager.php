@@ -135,7 +135,7 @@ final class DocentManager
         );
     }
 
-    public function renderDocument(Document $document, DocumentationContext $context): string
+    public function renderDocument(Document $document, DocumentationContext $context, string $baseDir = ''): string
     {
         $renderer = new HtmlRenderer(
             registry: $this->registry,
@@ -143,6 +143,8 @@ final class DocentManager
             options: [
                 'allow_html' => (bool) config('docent.content.allow_html', true),
                 'debug' => (bool) config('app.debug', false),
+                'base_dir' => $baseDir,
+                'route_prefix' => (string) config('docent.route.prefix', 'docs'),
             ],
             includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
             urlResolver: fn (string $slug): string => $this->url($slug),
@@ -156,6 +158,25 @@ final class DocentManager
         $source = $this->repository->partial($name);
 
         return $source === null ? null : $this->document($source);
+    }
+
+    /**
+     * Whether a viewer may see content gated by the given front matter
+     * `authorize` (gate/ability) and `audience`. The single source of truth for
+     * page-level access, shared by {@see Page} and search so a hit can never
+     * surface a page the viewer could not open.
+     */
+    public function authorizes(?string $authorize, ?string $audience, DocumentationContext $context): bool
+    {
+        if ($authorize !== null && ! $context->can($authorize)) {
+            return false;
+        }
+
+        if ($audience !== null && ! $this->audienceAllows($audience, $context)) {
+            return false;
+        }
+
+        return true;
     }
 
     public function audienceAllows(string $audience, DocumentationContext $context): bool

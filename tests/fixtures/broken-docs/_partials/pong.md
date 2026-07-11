@@ -1,0 +1,3 @@
+Pong.
+
+:::include name="ping"

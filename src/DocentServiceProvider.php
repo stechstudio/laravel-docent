@@ -8,6 +8,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\InstallCommand;
 use STS\Docent\Content\Repositories\DocumentationRepository;
@@ -15,8 +16,11 @@ use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
 use STS\Docent\Http\Controllers\PageController;
+use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Search\SearchEngine;
+use STS\Docent\Search\SearchIndexer;
 use STS\Docent\Support\DocentCache;
 
 final class DocentServiceProvider extends ServiceProvider
@@ -52,6 +56,17 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocentCache::class),
             $app->make(NavigationBuilder::class),
         ));
+
+        $this->app->singleton(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
+            $app->make(DocumentationRepository::class),
+            $app->make(DocentCache::class),
+            $app->make(DocentManager::class),
+        ));
+
+        $this->app->singleton(SearchEngine::class, static fn (Application $app): SearchEngine => new SearchEngine(
+            $app->make(SearchIndexer::class),
+            $app->make(DocentManager::class),
+        ));
     }
 
     public function boot(): void
@@ -64,7 +79,7 @@ final class DocentServiceProvider extends ServiceProvider
             $this->publishes([__DIR__.'/../config/docent.php' => config_path('docent.php')], 'docent-config');
             $this->publishes([__DIR__.'/../resources/views' => resource_path('views/vendor/docent')], 'docent-views');
 
-            $this->commands([InstallCommand::class, ClearCommand::class]);
+            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class]);
         }
 
         $this->registerAboutCommand();
@@ -78,6 +93,11 @@ final class DocentServiceProvider extends ServiceProvider
             'middleware' => config('docent.route.middleware', ['web']),
         ], function (): void {
             Route::get('/', [PageController::class, 'home'])->name('docent.home');
+
+            if (config('docent.search.enabled', true)) {
+                Route::get('/_search', SearchController::class)->name('docent.search');
+            }
+
             Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('docent.show');
         });
     }

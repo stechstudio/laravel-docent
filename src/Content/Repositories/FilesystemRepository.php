@@ -9,6 +9,7 @@ use STS\Docent\Content\DocumentSource;
 use STS\Docent\Content\PageReference;
 use STS\Docent\Documents\FrontMatter;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -159,7 +160,14 @@ final class FilesystemRepository implements DocumentationRepository
             return [];
         }
 
-        $data = Yaml::parse($matches[1]);
+        // Parsing author-supplied YAML is an external boundary: a malformed block
+        // must not abort enumeration. `docent:check`'s front-matter check re-parses
+        // and reports the error loudly; here we degrade to empty front matter.
+        try {
+            $data = Yaml::parse($matches[1]);
+        } catch (ParseException) {
+            return [];
+        }
 
         return is_array($data) ? $data : [];
     }

@@ -36,3 +36,20 @@ Everything here is open for review/reversal — flag anything you disagree with.
 12. **Versioned docs (v1/v2 dirs), localization, redirects-behavior, audiences-in-search deferred**
     per handoff roadmap. Front matter parses `redirect` but v1 may not act on it.
 13. **GitHub repo created private** — flip to public when you're ready to launch.
+
+## Build-log notes (overnight)
+
+14. **M1 review caught a parser bug** (fixed by me): the executor's whitespace-sentinel trick — which
+    lets `{{ link:x }}` tokens survive CommonMark's link-destination parsing — leaked invisible
+    `\x1F` bytes into code blocks, inline code, and front matter. Fixed with a `restore()` pass at
+    every literal capture point + regression tests. Docs that document Docent's own syntax now
+    round-trip verbatim.
+15. **Parser executor's judgment calls, reviewed and accepted**: `arguments="a,b"` attribute syntax
+    for gate/condition args; `:::when advanced-exports` bare-shorthand supported; missing-integration
+    markers only emit an HTML comment in debug mode.
+16. **Manager/nav executor's judgment calls, reviewed and accepted**: navigation returns one flat
+    ordered list of items+groups; store-agnostic cache invalidation via a version-stamp key
+    (`docent:clear` bumps it); AST cached via Laravel cache serialization keyed by content hash.
+17. **Workbench demo app is "Acme Ledger"**, a fictional SaaS with admin/member demo users
+    (`/demo/login/admin`, `/demo/login/member`, `/demo/logout`) so authorization is demoable in a
+    browser. `composer serve` boots it; docs live at `/docs`.
