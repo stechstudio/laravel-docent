@@ -331,3 +331,53 @@ return [
 - Follow the user's Laravel preferences: no defensive try/catch around our own code;
   model/manager affordances over service sprawl; no speculative config or columns.
 - Pint for formatting (`vendor/bin/pint`).
+
+## Tiptap schema contract (Phase C)
+
+The single contract shared by the PHP bridge and the JS editor. The schema is CLOSED and exactly
+co-extensive with the markdown dialect: every node has a canonical markdown spelling, so
+AST → markdown is a total function. The Docent AST is always the pivot — never convert
+Tiptap ↔ markdown directly.
+
+Round-trip promise: SEMANTIC, not byte-level. Exports are normalized markdown (ATX headings,
+`**`/`*` emphasis, `-` bullets, fenced code with backticks, directives with minimal fences,
+one blank line between blocks). Export must be a fixpoint: export(parse(export(x))) === export(x).
+No interactive source mode in the editor; read-only "View markdown" only.
+
+### Document shape
+Standard ProseMirror: `{"type":"doc","content":[...]}`. Stored verbatim as the page's `content`
+(JSON string) with `format: 'tiptap'`. Front matter stays in its column — never inside the doc.
+
+### Standard nodes (Tiptap core, AST mapping)
+paragraph→Paragraph · heading{level}→Heading (slugs computed at parse) · text(+marks)→Text/
+Emphasis/Strong/Strikethrough/InlineCode wrappers · bulletList/orderedList{start}/listItem
+{checked?}→BulletList/OrderedList/ListItem (checked non-null = task item) · blockquote→BlockQuote ·
+codeBlock{language, title?}→CodeBlock · horizontalRule→ThematicBreak · image{src,alt,title}→Image ·
+table/tableRow/tableHeader/tableCell→Table tree · hardBreak→HardBreak.
+Marks: bold, italic, strike, code, link{href} (href may be an internal slug — preserved verbatim,
+resolved at render).
+
+### Docent nodes (custom; names are the wire format — do not rename)
+- `docsGate` attrs `{mode: 'can'|'cannot', ability, arguments: []}` block container → AuthorizationBlock
+- `docsCondition` attrs `{condition, negated: bool, arguments: []}` block container → ConditionBlock
+- `docsAudience` attrs `{name}` block container → AudienceBlock
+- `docsCallout` attrs `{type: note|tip|info|warning|danger, title?}` block container → Callout
+- `docsCards` attrs `{columns: int}` container of docsCard → CardGroup
+- `docsCard` attrs `{title?, icon?, href?}` block container → Card
+- `docsInclude` attrs `{name}` atom (leaf) → IncludeNode
+- `docsComponent` attrs `{name, attributes: {}}` atom → ComponentNode
+- `docsValue` attrs `{key, arguments: []}` inline atom → DynamicValue
+- `docsAppLink` attrs `{kind: 'link'|'route', key, parameters: []}` inline atom → AppLink
+- `docsHtml` attrs `{html}` opaque atom → HtmlBlock. NOT insertable from the editor UI; exists only
+  to preserve raw HTML from imported markdown verbatim (rendered as a read-only widget).
+
+Unknown node types in stored JSON: TiptapDocumentParser must fail loudly (UnhandledMatchError-
+style), never silently drop content.
+
+### Markdown export spellings
+docsGate→`:::can ability="…"` (+ `arguments="a,b"`) · docsCondition→`:::when`/`:::unless` ·
+docsAudience→`:::audience name="…"` · docsCallout→`:::note` etc (+ `title="…"`) ·
+docsCards/docsCard→`::::cards`/`:::card` (outer fence one colon longer per nesting level) ·
+docsInclude→`:::include name="…"` · docsComponent→`<docs-component name="…" … />` ·
+docsValue→`{{ value:key args }}` · docsAppLink→`{{ link:key }}`/`{{ route:name }}` ·
+docsHtml→raw HTML verbatim · codeBlock title→info string `lang title="…"`.

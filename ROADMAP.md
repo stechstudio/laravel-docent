@@ -98,6 +98,14 @@ The Docent AST is the bridge; Tiptap JSON is just another authoring format.
   ship with a minimal textarea + preview as a stopgap so the DB store is usable while the Tiptap
   work lands; that textarea is not a product surface, just scaffolding, and `format: 'markdown'`
   DB pages remain fully supported forever.
+- **Serialization contract (decided with Joseph)**: the editor schema is CLOSED and exactly
+  co-extensive with the markdown dialect — every node has a canonical markdown spelling, the AST
+  is always the pivot (never Tiptap ↔ markdown directly). Round-trip is semantic, not byte-level;
+  exports are normalized markdown and exporting is a fixpoint. Raw HTML is not authorable in the
+  editor; imported HTML blocks are carried as opaque read-only widgets and export verbatim.
+  **No interactive source mode** — a read-only "View markdown" / copy-export only (the jumpy
+  normalize-on-flip UX isn't worth it; the repo is the power-user surface). Full node schema:
+  DESIGN.md §Tiptap schema contract.
 
 ## Standing constraints
 
