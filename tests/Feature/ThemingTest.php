@@ -13,7 +13,7 @@ function docsBody(): string
 it('emits the accent and defaults with no palette, radius, or font overrides', function () {
     $html = docsBody();
 
-    expect($html)->toContain('--docent-accent:#6366f1;')
+    expect($html)->toContain('--docent-accent:#0284c7;')
         // Slate is the identity palette and Default the identity radius, so
         // neither remaps its variables in the inline block.
         ->and($html)->not->toContain('--color-slate-200:')

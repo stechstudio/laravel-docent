@@ -11,6 +11,6 @@ it('registers no admin routes when the panel is disabled', function () {
         ->and(Route::has('docent.admin.tree'))->toBeFalse()
         ->and(Route::has('docent.admin.pages.store'))->toBeFalse();
 
-    $this->get('/docs/_admin')->assertNotFound();
-    $this->getJson('/docs/_admin/api/tree')->assertNotFound();
+    $this->get('/docs/admin')->assertNotFound();
+    $this->getJson('/docs/admin/api/tree')->assertNotFound();
 });

@@ -35,14 +35,18 @@ trait InteractsWithPages
     }
 
     /**
-     * Reject a path-traversal slug on any read/act route (the write routes get
-     * the stricter {@see assertValidSlug()}).
+     * Resolve a slug route parameter: reject path traversal, and map the
+     * `_home` wire alias to the home page's real slug — the empty string,
+     * which cannot travel as a URL path segment. Underscored slugs are
+     * reserved, so the alias can never collide with an actual page.
      */
-    protected function guardTraversal(string $slug): void
+    protected function resolveSlug(string $slug): string
     {
         if (str_contains($slug, '..')) {
             abort(404);
         }
+
+        return $slug === '_home' ? '' : $slug;
     }
 
     /**
@@ -59,6 +63,11 @@ trait InteractsWithPages
 
     private function isValidSlug(string $slug): bool
     {
+        // The empty slug is the docs home page (root index.md equivalent).
+        if ($slug === '') {
+            return true;
+        }
+
         if (str_starts_with($slug, '_partials/')) {
             $slug = substr($slug, strlen('_partials/'));
         } elseif (str_starts_with($slug, '_')) {

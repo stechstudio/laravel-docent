@@ -34,7 +34,7 @@ function tiptapDemoDoc(): array
 
 it('saves a tiptap draft, publishes it, and the reader renders it', function () {
     $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/pages', [
+        ->postJson('/docs/admin/api/pages', [
             'slug' => 'tiptap-demo',
             'title' => 'Tiptap Demo',
             'content_tiptap' => tiptapDemoDoc(),
@@ -42,7 +42,7 @@ it('saves a tiptap draft, publishes it, and the reader renders it', function () 
         ->assertJsonPath('format', 'tiptap')
         ->assertJsonPath('published', false);
 
-    $this->actingAs($this->adminUser())->postJson('/docs/_admin/api/pages/tiptap-demo/publish')->assertOk();
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages/tiptap-demo/publish')->assertOk();
 
     // Admin passes reports.view: sees the gated content, the resolved value, and the callout.
     $this->actingAs($this->adminUser())->get('/docs/tiptap-demo')
@@ -54,12 +54,12 @@ it('saves a tiptap draft, publishes it, and the reader renders it', function () 
 });
 
 it('gates tiptap content per viewer at read time', function () {
-    $this->actingAs($this->adminUser())->postJson('/docs/_admin/api/pages', [
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages', [
         'slug' => 'tiptap-gated',
         'title' => 'Tiptap Gated',
         'content_tiptap' => tiptapDemoDoc(),
     ])->assertCreated();
-    $this->actingAs($this->adminUser())->postJson('/docs/_admin/api/pages/tiptap-gated/publish')->assertOk();
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages/tiptap-gated/publish')->assertOk();
 
     // A member fails reports.view: the page renders, but the gated block is dropped.
     $this->actingAs($this->memberUser())->get('/docs/tiptap-gated')
@@ -69,13 +69,13 @@ it('gates tiptap content per viewer at read time', function () {
 });
 
 it('returns content_tiptap for a tiptap page', function () {
-    $this->actingAs($this->adminUser())->postJson('/docs/_admin/api/pages', [
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages', [
         'slug' => 'tiptap-detail',
         'title' => 'Tiptap Detail',
         'content_tiptap' => tiptapDemoDoc(),
     ])->assertCreated();
 
-    $this->actingAs($this->adminUser())->getJson('/docs/_admin/api/pages/tiptap-detail')
+    $this->actingAs($this->adminUser())->getJson('/docs/admin/api/pages/tiptap-detail')
         ->assertOk()
         ->assertJsonPath('format', 'tiptap')
         ->assertJsonPath('content_tiptap.type', 'doc')
@@ -83,7 +83,7 @@ it('returns content_tiptap for a tiptap page', function () {
 });
 
 it('returns content_tiptap for a markdown file page (converted on the fly)', function () {
-    $response = $this->actingAs($this->adminUser())->getJson('/docs/_admin/api/pages/guides/setup')
+    $response = $this->actingAs($this->adminUser())->getJson('/docs/admin/api/pages/guides/setup')
         ->assertOk()
         ->assertJsonPath('format', 'markdown')
         ->assertJsonPath('store', 'filesystem')
@@ -94,7 +94,7 @@ it('returns content_tiptap for a markdown file page (converted on the fly)', fun
 });
 
 it('rejects invalid tiptap with a 422 naming the bad node', function () {
-    $this->actingAs($this->adminUser())->postJson('/docs/_admin/api/pages', [
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages', [
         'slug' => 'bad-tiptap',
         'title' => 'Bad',
         'content_tiptap' => ['type' => 'doc', 'content' => [['type' => 'bogusNode']]],
@@ -103,14 +103,14 @@ it('rejects invalid tiptap with a 422 naming the bad node', function () {
 });
 
 it('exports any page to markdown the markdown parser accepts', function () {
-    $this->actingAs($this->adminUser())->postJson('/docs/_admin/api/pages', [
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages', [
         'slug' => 'tiptap-export',
         'title' => 'Tiptap Export',
         'content_tiptap' => tiptapDemoDoc(),
     ])->assertCreated();
 
     $markdown = $this->actingAs($this->adminUser())
-        ->getJson('/docs/_admin/api/pages/tiptap-export/markdown')
+        ->getJson('/docs/admin/api/pages/tiptap-export/markdown')
         ->assertOk()
         ->json('markdown');
 
@@ -129,7 +129,7 @@ it('exports any page to markdown the markdown parser accepts', function () {
 
 it('exports a markdown file page to markdown too', function () {
     $markdown = $this->actingAs($this->adminUser())
-        ->getJson('/docs/_admin/api/pages/guides/setup/markdown')
+        ->getJson('/docs/admin/api/pages/guides/setup/markdown')
         ->assertOk()
         ->json('markdown');
 
@@ -143,7 +143,7 @@ it('previews a tiptap draft, rendering it and reporting issues', function () {
     $draft['content'][] = ['type' => 'paragraph', 'content' => [['type' => 'docsValue', 'attrs' => ['key' => 'nope', 'arguments' => []]]]];
 
     $response = $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/preview', ['content_tiptap' => $draft])
+        ->postJson('/docs/admin/api/preview', ['content_tiptap' => $draft])
         ->assertOk();
 
     expect($response->json('html'))->toContain('Secret admin content')
@@ -153,7 +153,7 @@ it('previews a tiptap draft, rendering it and reporting issues', function () {
 
 it('rejects an invalid tiptap preview with a 422', function () {
     $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/preview', ['content_tiptap' => ['type' => 'doc', 'content' => [['type' => 'nope']]]])
+        ->postJson('/docs/admin/api/preview', ['content_tiptap' => ['type' => 'doc', 'content' => [['type' => 'nope']]]])
         ->assertStatus(422)
         ->assertJsonValidationErrors('content_tiptap');
 });

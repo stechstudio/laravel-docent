@@ -245,7 +245,7 @@ final class DocentManager
      */
     public function accent(): string
     {
-        return (string) config('docent.theme.accent', '#6366f1');
+        return (string) config('docent.theme.accent', '#0284c7');
     }
 
     /**

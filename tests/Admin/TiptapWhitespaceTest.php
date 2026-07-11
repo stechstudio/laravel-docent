@@ -19,7 +19,7 @@ it('preserves meaningful whitespace in tiptap text nodes through save and export
     ];
 
     $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/pages', [
+        ->postJson('/docs/admin/api/pages', [
             'slug' => 'whitespace-check',
             'title' => 'Whitespace Check',
             'content_tiptap' => $doc,
@@ -27,14 +27,14 @@ it('preserves meaningful whitespace in tiptap text nodes through save and export
         ->assertCreated();
 
     $detail = $this->actingAs($this->adminUser())
-        ->getJson('/docs/_admin/api/pages/whitespace-check')
+        ->getJson('/docs/admin/api/pages/whitespace-check')
         ->assertOk()
         ->json();
 
     expect($detail['content_tiptap']['content'][0]['content'][0]['text'])->toBe('Plan: ');
 
     $markdown = $this->actingAs($this->adminUser())
-        ->getJson('/docs/_admin/api/pages/whitespace-check/markdown')
+        ->getJson('/docs/admin/api/pages/whitespace-check/markdown')
         ->assertOk()
         ->json('markdown');
 

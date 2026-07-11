@@ -190,3 +190,31 @@ Everything here is open for review/reversal — flag anything you disagree with.
   bypass editable:false).
 - Preview renders on tab activation (stale-tracked) instead of debounced on every keystroke —
   fewer requests, and the tab is the natural "check my work" moment.
+
+## Feedback round 2 (Joseph, July 11 evening)
+
+- **Admin panel moved to `/docs/admin`** (was `/docs/_admin`), configurable via
+  `docent.admin.path`. Joseph: it's what users expect. The panel registers before the reader's
+  catch-all, so a docs page slugged exactly `admin` would be shadowed — documented in the config
+  comment, and the path is configurable for anyone who needs that slug.
+- **Home-page 404 fixed.** Root `index.md` maps to the empty-string slug, which cannot travel as
+  a URL path segment — clicking "Acme Ledger" in the tree hit `GET …/api/pages/` → 404 toast.
+  The empty slug now travels as the reserved `_home` wire alias (underscored slugs can never be
+  real pages, so no collision); controllers map it back via `resolveSlug()`, the empty slug is
+  valid for writes (you can override/edit/publish the home page), and JS guards use
+  `slug === null` instead of falsy checks. Regression test covers detail → override → edit →
+  publish for `_home`.
+- **Accents split**: the reader's default accent is now sky-600 `#0284c7` (was indigo — Joseph
+  wanted a blue variant as the default; sky-600 passes AA on white). The admin chrome wears its
+  own fixed pink (pink-600 light / pink-500 dark), set on `#docent-admin` so it beats the inline
+  theme style; the preview pane re-asserts the host's brand accent inline so previews stay true
+  to the reader. Rationale: authors always know which surface they're on, and the admin identity
+  is ours while the reader identity is the customer's.
+- **Ability picker humanized**: the access datalist shows "View reports" style labels next to
+  raw ability names (JS-side: split on separators/camelCase, verb-first flip for a known verb
+  list). The stored value stays the technical string — front matter is truthful.
+- Demo polish: removed the redundant body `# Acme Ledger` h1 from workbench index.md (reader
+  hides a leading h1; the editor shows content faithfully, so the duplicate looked wrong);
+  fixed `reports/_group.yml` icon `chart-bar` → `chart` (not a built-in icon name).
+- Deferred pending Joseph's direction (answered with recommendations, not built): page icons in
+  nav, database-side group metadata management, upload-serving strategy for private disks.

@@ -154,39 +154,44 @@ final class DocentServiceProvider extends ServiceProvider
     /**
      * The admin panel and its JSON API, registered inside the docs route group
      * (so prefix/domain/middleware apply) and additionally guarded by the
-     * configured gate. Page-scoped action routes are declared before the
-     * catch-all `{slug}` detail routes so the more specific paths win.
+     * configured gate. Registered before the reader's catch-all `{slug}` route,
+     * so the panel path (`admin` by default, `docent.admin.path`) shadows any
+     * docs page with that exact slug; page-scoped action routes are likewise
+     * declared before the catch-all `{slug}` detail routes so the more
+     * specific paths win.
      */
     private function registerAdminRoutes(): void
     {
-        Route::middleware('can:'.config('docent.admin.gate', 'viewDocentAdmin'))->group(function (): void {
-            Route::get('_admin', AdminController::class)->name('docent.admin');
+        $path = trim((string) config('docent.admin.path', 'admin'), '/');
 
-            Route::get('_admin/api/tree', TreeController::class)->name('docent.admin.tree');
-            Route::get('_admin/api/meta', MetaController::class)->name('docent.admin.meta');
-            Route::post('_admin/api/preview', PreviewController::class)->name('docent.admin.preview');
-            Route::post('_admin/api/uploads', UploadController::class)->name('docent.admin.uploads');
+        Route::middleware('can:'.config('docent.admin.gate', 'viewDocentAdmin'))->prefix($path)->group(function (): void {
+            Route::get('/', AdminController::class)->name('docent.admin');
 
-            Route::post('_admin/api/pages', [AdminPageController::class, 'store'])->name('docent.admin.pages.store');
+            Route::get('api/tree', TreeController::class)->name('docent.admin.tree');
+            Route::get('api/meta', MetaController::class)->name('docent.admin.meta');
+            Route::post('api/preview', PreviewController::class)->name('docent.admin.preview');
+            Route::post('api/uploads', UploadController::class)->name('docent.admin.uploads');
 
-            Route::get('_admin/api/pages/{slug}/revisions', [AdminPageController::class, 'revisions'])
+            Route::post('api/pages', [AdminPageController::class, 'store'])->name('docent.admin.pages.store');
+
+            Route::get('api/pages/{slug}/revisions', [AdminPageController::class, 'revisions'])
                 ->where('slug', '.*')->name('docent.admin.pages.revisions');
-            Route::get('_admin/api/pages/{slug}/markdown', ExportController::class)
+            Route::get('api/pages/{slug}/markdown', ExportController::class)
                 ->where('slug', '.*')->name('docent.admin.export');
-            Route::post('_admin/api/pages/{slug}/publish', [PageStateController::class, 'publish'])
+            Route::post('api/pages/{slug}/publish', [PageStateController::class, 'publish'])
                 ->where('slug', '.*')->name('docent.admin.pages.publish');
-            Route::post('_admin/api/pages/{slug}/unpublish', [PageStateController::class, 'unpublish'])
+            Route::post('api/pages/{slug}/unpublish', [PageStateController::class, 'unpublish'])
                 ->where('slug', '.*')->name('docent.admin.pages.unpublish');
-            Route::post('_admin/api/pages/{slug}/revert/{revision}', [PageStateController::class, 'revert'])
+            Route::post('api/pages/{slug}/revert/{revision}', [PageStateController::class, 'revert'])
                 ->where('slug', '.*')->where('revision', '[0-9]+')->name('docent.admin.pages.revert');
-            Route::post('_admin/api/pages/{slug}/override', [PageStateController::class, 'override'])
+            Route::post('api/pages/{slug}/override', [PageStateController::class, 'override'])
                 ->where('slug', '.*')->name('docent.admin.pages.override');
 
-            Route::get('_admin/api/pages/{slug}', [AdminPageController::class, 'show'])
+            Route::get('api/pages/{slug}', [AdminPageController::class, 'show'])
                 ->where('slug', '.*')->name('docent.admin.pages.show');
-            Route::put('_admin/api/pages/{slug}', [AdminPageController::class, 'update'])
+            Route::put('api/pages/{slug}', [AdminPageController::class, 'update'])
                 ->where('slug', '.*')->name('docent.admin.pages.update');
-            Route::delete('_admin/api/pages/{slug}', [AdminPageController::class, 'destroy'])
+            Route::delete('api/pages/{slug}', [AdminPageController::class, 'destroy'])
                 ->where('slug', '.*')->name('docent.admin.pages.destroy');
         });
     }

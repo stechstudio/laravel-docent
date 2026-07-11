@@ -12,8 +12,6 @@ hero:
       style: secondary
 ---
 
-# Acme Ledger
-
 Double-entry accounting your engineers will actually enjoy integrating with.
 These docs adapt to who you are and what your account can do.
 

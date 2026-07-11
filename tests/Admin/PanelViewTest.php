@@ -1,7 +1,7 @@
 <?php
 
 it('renders the panel shell with mount point, assets, and csrf token', function () {
-    $response = $this->actingAs($this->adminUser())->get('/docs/_admin');
+    $response = $this->actingAs($this->adminUser())->get('/docs/admin');
 
     $response->assertOk()
         ->assertSee('id="docent-admin"', false)

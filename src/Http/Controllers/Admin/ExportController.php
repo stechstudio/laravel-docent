@@ -20,7 +20,7 @@ final class ExportController
 
     public function __invoke(string $slug, DocentManager $docent): JsonResponse
     {
-        $this->guardTraversal($slug);
+        $slug = $this->resolveSlug($slug);
 
         return response()->json(['markdown' => $docent->exportMarkdown($slug) ?? abort(404)]);
     }

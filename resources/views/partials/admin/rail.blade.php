@@ -66,7 +66,7 @@
                     <span class="dax-rail-field">Required ability</span>
                     <input x-model="fm.authorize" @input="onEdit()" :disabled="readonly" list="dax-abilities" type="text" class="dax-input font-mono text-[12px]" placeholder="e.g. billing.manage">
                     <datalist id="dax-abilities">
-                        <template x-for="ability in meta.abilities" :key="ability"><option :value="ability"></option></template>
+                        <template x-for="ability in meta.abilities" :key="ability"><option :value="ability" :label="abilityLabel(ability)"></option></template>
                     </datalist>
                     <p class="text-[11px] leading-snug text-[var(--docent-faint)]">Viewers without this gate get a 404 — the page also disappears from navigation and search for them.</p>
                 </label>

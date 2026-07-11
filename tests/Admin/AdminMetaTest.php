@@ -14,7 +14,7 @@ it('returns registered integration metadata with labels for the pickers', functi
         description: 'Account has the advanced exports add-on.',
     );
 
-    $this->getJson('/docs/_admin/api/meta')
+    $this->getJson('/docs/admin/api/meta')
         ->assertOk()
         ->assertJsonFragment([
             'name' => 'advanced-exports',
@@ -24,7 +24,7 @@ it('returns registered integration metadata with labels for the pickers', functi
 });
 
 it('lists conditions, values, links, components, and audiences', function () {
-    $this->getJson('/docs/_admin/api/meta')
+    $this->getJson('/docs/admin/api/meta')
         ->assertOk()
         ->assertJsonStructure([
             'conditions', 'values', 'links', 'components', 'audiences', 'icons', 'abilities',
@@ -35,7 +35,7 @@ it('lists conditions, values, links, components, and audiences', function () {
 });
 
 it('includes the built-in icons and registered abilities', function () {
-    $meta = $this->getJson('/docs/_admin/api/meta')->assertOk()->json();
+    $meta = $this->getJson('/docs/admin/api/meta')->assertOk()->json();
 
     expect($meta['icons'])->toContain('rocket')
         ->and($meta['abilities'])->toContain('reports.view')

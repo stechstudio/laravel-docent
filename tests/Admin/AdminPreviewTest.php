@@ -18,7 +18,7 @@ MD;
 
 it('renders gated content for an admin who passes the ability', function () use ($draft) {
     $response = $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/preview', ['content' => $draft])
+        ->postJson('/docs/admin/api/preview', ['content' => $draft])
         ->assertOk();
 
     expect($response->json('html'))->toContain('Secret admin content');
@@ -26,7 +26,7 @@ it('renders gated content for an admin who passes the ability', function () use 
 
 it('hides gated content for a viewer who fails the ability', function () use ($draft) {
     $response = $this->actingAs($this->memberUser())
-        ->postJson('/docs/_admin/api/preview', ['content' => $draft]);
+        ->postJson('/docs/admin/api/preview', ['content' => $draft]);
 
     // Members cannot reach the panel at all; this proves the gate, not the render.
     $response->assertForbidden();
@@ -34,7 +34,7 @@ it('hides gated content for a viewer who fails the ability', function () use ($d
 
 it('reports reference issues for unknown values and broken links', function () use ($draft) {
     $issues = $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/preview', ['content' => $draft])
+        ->postJson('/docs/admin/api/preview', ['content' => $draft])
         ->assertOk()
         ->json('issues');
 
@@ -48,7 +48,7 @@ it('returns a table of contents built for the viewer', function () {
     $content = "# Title\n\n## Section One\n\n## Section Two";
 
     $toc = $this->actingAs($this->adminUser())
-        ->postJson('/docs/_admin/api/preview', ['content' => $content])
+        ->postJson('/docs/admin/api/preview', ['content' => $content])
         ->assertOk()
         ->json('toc');
 

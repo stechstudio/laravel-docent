@@ -130,7 +130,7 @@ return [
     'filesystem' => ['path' => null],             // defaults to resource_path('docs')
     'authorization' => ['denied_response' => 404], // or 403, or 'redirect:/login'
     'search' => ['enabled' => true],
-    'theme' => ['accent' => '#6366f1', 'logo' => null],
+    'theme' => ['accent' => '#0284c7', 'logo' => null],
 ];
 ```
 

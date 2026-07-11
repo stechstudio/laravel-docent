@@ -7,7 +7,7 @@ beforeEach(function () {
 });
 
 it('creates a draft that shows in the tree but is invisible to readers until published', function () {
-    $this->postJson('/docs/_admin/api/pages', [
+    $this->postJson('/docs/admin/api/pages', [
         'slug' => 'new-page',
         'title' => 'New Page',
         'content' => "# New Page\n\nHello.",
@@ -18,14 +18,14 @@ it('creates a draft that shows in the tree but is invisible to readers until pub
         ->assertJsonPath('title', 'New Page');
 
     // In the tree...
-    $this->getJson('/docs/_admin/api/tree')
+    $this->getJson('/docs/admin/api/tree')
         ->assertJsonFragment(['slug' => 'new-page', 'store' => 'database', 'published' => false]);
 
     // ...but a reader cannot open it yet.
     $this->get('/docs/new-page')->assertNotFound();
 
     // Publish, and it goes live.
-    $this->postJson('/docs/_admin/api/pages/new-page/publish')
+    $this->postJson('/docs/admin/api/pages/new-page/publish')
         ->assertOk()
         ->assertJsonPath('published', true);
 
@@ -33,36 +33,36 @@ it('creates a draft that shows in the tree but is invisible to readers until pub
 });
 
 it('snapshots a revision on every update and tracks unpublished changes', function () {
-    $this->postJson('/docs/_admin/api/pages', [
+    $this->postJson('/docs/admin/api/pages', [
         'slug' => 'evolving',
         'title' => 'Evolving',
         'content' => 'First draft.',
     ])->assertCreated();
 
-    $this->postJson('/docs/_admin/api/pages/evolving/publish')->assertOk();
+    $this->postJson('/docs/admin/api/pages/evolving/publish')->assertOk();
 
-    $this->putJson('/docs/_admin/api/pages/evolving', [
+    $this->putJson('/docs/admin/api/pages/evolving', [
         'title' => 'Evolving',
         'content' => 'Second draft.',
     ])->assertOk()
         ->assertJsonPath('hasUnpublishedChanges', true);
 
-    $this->getJson('/docs/_admin/api/pages/evolving/revisions')
+    $this->getJson('/docs/admin/api/pages/evolving/revisions')
         ->assertOk()
         ->assertJsonCount(2, 'revisions')
         ->assertJsonPath('revisions.0.excerpt', 'Second draft.');
 });
 
 it('unpublishes a page back out of the reader tree', function () {
-    $this->postJson('/docs/_admin/api/pages', [
+    $this->postJson('/docs/admin/api/pages', [
         'slug' => 'temporary',
         'title' => 'Temporary',
         'content' => 'Live for now.',
     ])->assertCreated();
-    $this->postJson('/docs/_admin/api/pages/temporary/publish')->assertOk();
+    $this->postJson('/docs/admin/api/pages/temporary/publish')->assertOk();
     $this->get('/docs/temporary')->assertOk();
 
-    $this->postJson('/docs/_admin/api/pages/temporary/unpublish')
+    $this->postJson('/docs/admin/api/pages/temporary/unpublish')
         ->assertOk()
         ->assertJsonPath('published', false);
 
@@ -70,7 +70,7 @@ it('unpublishes a page back out of the reader tree', function () {
 });
 
 it('rejects unknown front matter keys with a 422 that names them', function () {
-    $this->postJson('/docs/_admin/api/pages', [
+    $this->postJson('/docs/admin/api/pages', [
         'slug' => 'bad-fm',
         'title' => 'Bad FM',
         'content' => 'x',
@@ -82,7 +82,7 @@ it('rejects unknown front matter keys with a 422 that names them', function () {
 });
 
 it('validates slug format on create', function (string $slug, bool $valid) {
-    $response = $this->postJson('/docs/_admin/api/pages', [
+    $response = $this->postJson('/docs/admin/api/pages', [
         'slug' => $slug,
         'title' => 'T',
         'content' => 'x',
@@ -103,7 +103,7 @@ it('validates slug format on create', function (string $slug, bool $valid) {
 it('rejects a create that collides with an existing database page', function () {
     DocentPage::write('taken', 'x', ['title' => 'Taken']);
 
-    $this->postJson('/docs/_admin/api/pages', [
+    $this->postJson('/docs/admin/api/pages', [
         'slug' => 'taken',
         'title' => 'Taken Again',
         'content' => 'y',
@@ -113,29 +113,29 @@ it('rejects a create that collides with an existing database page', function () 
 it('deletes a database page', function () {
     DocentPage::write('disposable', 'x', ['title' => 'Disposable'])->publish();
 
-    $this->deleteJson('/docs/_admin/api/pages/disposable')
+    $this->deleteJson('/docs/admin/api/pages/disposable')
         ->assertOk()
         ->assertJsonPath('deleted', true);
 
-    $this->getJson('/docs/_admin/api/pages/disposable')->assertNotFound();
+    $this->getJson('/docs/admin/api/pages/disposable')->assertNotFound();
     $this->get('/docs/disposable')->assertNotFound();
 });
 
 it('reverts to a past revision as a new draft', function () {
-    $this->postJson('/docs/_admin/api/pages', [
+    $this->postJson('/docs/admin/api/pages', [
         'slug' => 'history',
         'title' => 'History',
         'content' => 'Original content.',
     ])->assertCreated();
-    $this->putJson('/docs/_admin/api/pages/history', [
+    $this->putJson('/docs/admin/api/pages/history', [
         'title' => 'History',
         'content' => 'Changed content.',
     ])->assertOk();
 
-    $first = $this->getJson('/docs/_admin/api/pages/history/revisions')
+    $first = $this->getJson('/docs/admin/api/pages/history/revisions')
         ->json('revisions.1.id');
 
-    $this->postJson("/docs/_admin/api/pages/history/revert/{$first}")
+    $this->postJson("/docs/admin/api/pages/history/revert/{$first}")
         ->assertOk()
         ->assertJsonPath('content', 'Original content.');
 });
@@ -145,12 +145,12 @@ it('404s a revert to a revision that belongs to a different page', function () {
     $other = DocentPage::write('page-b', 'B', ['title' => 'B']);
     $foreignRevision = $other->latestRevision()->id;
 
-    $this->postJson("/docs/_admin/api/pages/page-a/revert/{$foreignRevision}")
+    $this->postJson("/docs/admin/api/pages/page-a/revert/{$foreignRevision}")
         ->assertNotFound();
 });
 
 it('overrides a filesystem page into a database draft matching the file', function () {
-    $detail = $this->postJson('/docs/_admin/api/pages/changelog/override')
+    $detail = $this->postJson('/docs/admin/api/pages/changelog/override')
         ->assertOk()
         ->assertJsonPath('store', 'database')
         ->assertJsonPath('front_matter.title', 'Changelog')
@@ -160,17 +160,41 @@ it('overrides a filesystem page into a database draft matching the file', functi
         ->and($detail['content'])->toContain('flibbertigibbet');
 
     // A second override collides with the freshly created database page.
-    $this->postJson('/docs/_admin/api/pages/changelog/override')->assertStatus(409);
+    $this->postJson('/docs/admin/api/pages/changelog/override')->assertStatus(409);
 });
 
 it('404s an override of a slug that exists in no store', function () {
-    $this->postJson('/docs/_admin/api/pages/does-not-exist/override')->assertNotFound();
+    $this->postJson('/docs/admin/api/pages/does-not-exist/override')->assertNotFound();
 });
 
 it('returns filesystem page detail as read-only', function () {
-    $this->getJson('/docs/_admin/api/pages/changelog')
+    $this->getJson('/docs/admin/api/pages/changelog')
         ->assertOk()
         ->assertJsonPath('store', 'filesystem')
         ->assertJsonPath('readonly', true)
         ->assertJsonPath('front_matter.title', 'Changelog');
+});
+
+it('serves, overrides, and publishes the home page through the _home alias', function () {
+    // The root index.md has the empty-string slug, which cannot travel as a
+    // URL path segment — it goes over the wire as the reserved `_home` alias.
+    $this->getJson('/docs/admin/api/pages/_home')
+        ->assertOk()
+        ->assertJsonPath('slug', '')
+        ->assertJsonPath('store', 'filesystem')
+        ->assertJsonPath('front_matter.title', 'Home');
+
+    $this->postJson('/docs/admin/api/pages/_home/override')
+        ->assertOk()
+        ->assertJsonPath('slug', '')
+        ->assertJsonPath('store', 'database');
+
+    $this->putJson('/docs/admin/api/pages/_home', [
+        'title' => 'Home',
+        'content' => 'Edited home body.',
+    ])->assertOk();
+
+    $this->postJson('/docs/admin/api/pages/_home/publish')->assertOk();
+
+    $this->get('/docs')->assertOk()->assertSee('Edited home body.');
 });

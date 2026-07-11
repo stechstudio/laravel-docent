@@ -283,8 +283,34 @@ Alpine.data('docentAdmin', (config) => {
         return null;
     },
 
+    /**
+     * The home page's slug is the empty string, which cannot travel as a URL
+     * path segment — it goes over the wire as the reserved `_home` alias
+     * (underscored slugs can never be real pages).
+     */
+    apiSlug(slug) {
+        return slug === '' ? '_home' : slug;
+    },
+
+    /**
+     * A human label for a technical gate ability, shown alongside the raw
+     * name in the access picker: "reports.view" → "View reports".
+     */
+    abilityLabel(ability) {
+        const words = String(ability)
+            .split(/[.\-_:]+|(?=[A-Z])/)
+            .filter(Boolean)
+            .map((w) => w.toLowerCase());
+        const verbs = ['view', 'see', 'read', 'access', 'manage', 'edit', 'update', 'create', 'delete', 'export', 'download'];
+        if (words.length > 1 && verbs.includes(words[words.length - 1])) {
+            words.unshift(words.pop());
+        }
+        const label = words.join(' ');
+        return label.charAt(0).toUpperCase() + label.slice(1);
+    },
+
     treeTooltip(page) {
-        const bits = [page.slug];
+        const bits = [page.slug || '/'];
         bits.push(page.store === 'filesystem' ? 'Repository file' : 'Database page');
         if (page.store === 'database' && page.published === false) bits.push('draft — not published');
         if (page.store === 'database' && page.published && page.hasUnpublishedChanges) bits.push('has unpublished edits');
@@ -321,7 +347,7 @@ Alpine.data('docentAdmin', (config) => {
         this.detailLoading = true;
         this.creating = false;
         try {
-            const data = await this.api('GET', `${this.base}/api/pages/${slug}`);
+            const data = await this.api('GET', `${this.base}/api/pages/${this.apiSlug(slug)}`);
             this.applyDetail(data);
             this.view = 'write';
             this.previewStale = true;
@@ -441,7 +467,7 @@ Alpine.data('docentAdmin', (config) => {
                 data = await this.api('POST', `${this.base}/api/pages`, { body: { slug: this.slugField, ...body } });
                 this.creating = false;
             } else {
-                data = await this.api('PUT', `${this.base}/api/pages/${this.slug}`, { body });
+                data = await this.api('PUT', `${this.base}/api/pages/${this.apiSlug(this.slug)}`, { body });
             }
             this.applyDetail(data);
             this.lastSaved = new Date();
@@ -458,7 +484,7 @@ Alpine.data('docentAdmin', (config) => {
     },
 
     async setState(action, verb) {
-        if (!this.slug) return;
+        if (this.slug === null) return;
         this.publishing = true;
         // Optimistic chip update.
         const prev = { published: this.published, hasUnpublishedChanges: this.hasUnpublishedChanges };
@@ -469,7 +495,7 @@ Alpine.data('docentAdmin', (config) => {
             this.published = false;
         }
         try {
-            const data = await this.api('POST', `${this.base}/api/pages/${this.slug}/${action}`);
+            const data = await this.api('POST', `${this.base}/api/pages/${this.apiSlug(this.slug)}/${action}`);
             this.applyDetail(data);
             await this.loadTree();
             this.toast(`Page ${verb}.`, 'success');
@@ -496,10 +522,10 @@ Alpine.data('docentAdmin', (config) => {
     },
 
     async override() {
-        if (!this.slug) return;
+        if (this.slug === null) return;
         this.overridePromptOpen = false;
         try {
-            const data = await this.api('POST', `${this.base}/api/pages/${this.slug}/override`);
+            const data = await this.api('POST', `${this.base}/api/pages/${this.apiSlug(this.slug)}/override`);
             await this.loadTree();
             this.applyDetail(data);
             this.view = 'write';
@@ -515,7 +541,7 @@ Alpine.data('docentAdmin', (config) => {
         if (!window.confirm(message)) return;
         const slug = this.slug;
         try {
-            await this.api('DELETE', `${this.base}/api/pages/${slug}`);
+            await this.api('DELETE', `${this.base}/api/pages/${this.apiSlug(slug)}`);
             await this.loadTree();
             this.toast(isOverride ? 'Override discarded.' : 'Page deleted.', 'success');
             // A shadowed slug still exists as a file; reopen it. A pure DB page is gone.
@@ -530,11 +556,11 @@ Alpine.data('docentAdmin', (config) => {
     /* --- Revisions ------------------------------------------------------ */
 
     async openRevisions() {
-        if (!this.slug || this.store !== 'database') return;
+        if (this.slug === null || this.store !== 'database') return;
         this.revisionsOpen = true;
         this.revisionsLoading = true;
         try {
-            const data = await this.api('GET', `${this.base}/api/pages/${this.slug}/revisions`);
+            const data = await this.api('GET', `${this.base}/api/pages/${this.apiSlug(this.slug)}/revisions`);
             this.revisions = data.revisions || [];
         } catch (e) {
         } finally {
@@ -545,7 +571,7 @@ Alpine.data('docentAdmin', (config) => {
     async restoreRevision(id) {
         if (!window.confirm('Restore this revision as the current draft?')) return;
         try {
-            const data = await this.api('POST', `${this.base}/api/pages/${this.slug}/revert/${id}`);
+            const data = await this.api('POST', `${this.base}/api/pages/${this.apiSlug(this.slug)}/revert/${id}`);
             this.applyDetail(data);
             this.revisionsOpen = false;
             await this.loadTree();
@@ -604,12 +630,12 @@ Alpine.data('docentAdmin', (config) => {
     },
 
     async viewMarkdown() {
-        if (!this.slug || this.creating) return;
+        if (this.slug === null || this.creating) return;
         this.markdownOpen = true;
         this.markdownLoading = true;
         this.markdownText = '';
         try {
-            const data = await this.api('GET', `${this.base}/api/pages/${this.slug}/markdown`);
+            const data = await this.api('GET', `${this.base}/api/pages/${this.apiSlug(this.slug)}/markdown`);
             this.markdownText = data.markdown || '';
         } catch (e) {
             this.markdownOpen = false;

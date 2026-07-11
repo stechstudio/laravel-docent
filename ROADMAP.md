@@ -59,7 +59,7 @@ Opt-in: `php artisan docent:install --with-database` publishes migrations (or
 
 ## 4. Admin Phase B — the panel
 
-`/docs/_admin` (configurable), gated by `config('docent.admin.gate')` (default: a
+`/docs/admin` (configurable), gated by `config('docent.admin.gate')` (default: a
 `viewDocentAdmin` gate the host defines). Stack: Blade + Alpine + JSON endpoints — the package
 stays dependency-free; admin JS/CSS are separate prebuilt bundles (`docent-admin.js/css`) so the
 reader bundle stays lean.

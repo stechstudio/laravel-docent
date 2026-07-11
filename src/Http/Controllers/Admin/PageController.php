@@ -50,14 +50,14 @@ final class PageController
 
     public function show(string $slug, DocentManager $docent): JsonResponse
     {
-        $this->guardTraversal($slug);
+        $slug = $this->resolveSlug($slug);
 
         return response()->json($docent->adminDetail($slug) ?? abort(404));
     }
 
     public function update(Request $request, string $slug, DocentManager $docent): JsonResponse
     {
-        $this->guardTraversal($slug);
+        $slug = $this->resolveSlug($slug);
         $this->assertValidSlug($slug);
 
         [$content, $frontMatter, $format] = $this->payload($request, $docent);
@@ -69,7 +69,7 @@ final class PageController
 
     public function destroy(string $slug): JsonResponse
     {
-        $this->guardTraversal($slug);
+        $slug = $this->resolveSlug($slug);
         $this->findPageOrFail($slug)->delete();
 
         return response()->json(['deleted' => true]);
@@ -77,7 +77,7 @@ final class PageController
 
     public function revisions(string $slug): JsonResponse
     {
-        $this->guardTraversal($slug);
+        $slug = $this->resolveSlug($slug);
 
         $revisions = $this->findPageOrFail($slug)
             ->revisions()
