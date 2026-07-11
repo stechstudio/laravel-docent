@@ -537,3 +537,751 @@
 [x-cloak] {
     display: none !important;
 }
+
+/*
+| ===========================================================================
+| Tiptap visual editor
+| ===========================================================================
+*/
+
+/* --- Toolbar --------------------------------------------------------------- */
+.dax-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--docent-border);
+    border-bottom: 1px solid var(--docent-border);
+}
+
+.dax-toolbar-sep {
+    width: 1px;
+    height: 1.2rem;
+    margin: 0 0.3rem;
+    background-color: var(--docent-border);
+}
+
+.dax-tool-icon,
+.dax-tool-txt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.85rem;
+    min-width: 1.85rem;
+    padding: 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 650;
+    color: var(--docent-muted);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.dax-tool-icon:hover,
+.dax-tool-txt:hover {
+    background-color: var(--docent-panel);
+    color: var(--docent-fg);
+}
+
+.dax-tool-icon.is-active,
+.dax-tool-txt.is-active {
+    background-color: color-mix(in srgb, var(--docent-accent) 14%, transparent);
+    color: var(--docent-accent);
+}
+
+.dax-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.1rem;
+    padding: 0.05rem 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--docent-muted);
+    background-color: var(--docent-panel);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.3rem;
+}
+
+/* --- Editor surface -------------------------------------------------------- */
+.dax-editor .ProseMirror,
+.dax-editor-surface {
+    min-height: 24rem;
+    outline: none;
+}
+
+.dax-editor .ProseMirror:focus {
+    outline: none;
+}
+
+.dax-editor.is-readonly {
+    opacity: 0.9;
+}
+
+.dax-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: var(--docent-faint);
+    pointer-events: none;
+}
+
+.dax-editor .ProseMirror-selectednode {
+    outline: 2px solid color-mix(in srgb, var(--docent-accent) 55%, transparent);
+    outline-offset: 2px;
+    border-radius: 0.35rem;
+}
+
+.dax-editor .dax-link {
+    color: var(--docent-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: text;
+}
+
+/* --- Block container node views -------------------------------------------- */
+.dax-node {
+    position: relative;
+    margin: 1.1rem 0;
+    border: 1px solid var(--docent-border);
+    border-left: 3px solid var(--dax-accent, var(--docent-border-strong));
+    border-radius: 0.6rem;
+    background-color: var(--docent-bg);
+}
+
+.dax-node-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.45rem 0.35rem 0.7rem;
+    border-bottom: 1px solid var(--docent-border);
+    background-color: color-mix(in srgb, var(--dax-accent, var(--docent-panel)) 7%, var(--docent-bg));
+    border-radius: 0.5rem 0.5rem 0 0;
+    user-select: none;
+}
+
+.dax-node-body {
+    padding: 0.35rem 0.85rem;
+}
+
+.dax-node-body > :first-child { margin-top: 0; }
+.dax-node-body > :last-child { margin-bottom: 0; }
+
+.dax-node-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--docent-muted);
+    min-width: 0;
+}
+
+.dax-node-ic {
+    display: inline-flex;
+    flex: none;
+    color: var(--dax-accent, var(--docent-faint));
+}
+
+.dax-node-kicker {
+    font-weight: 600;
+    color: var(--docent-strong);
+}
+
+.dax-node-code {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 0.3rem;
+    background-color: color-mix(in srgb, var(--dax-accent, var(--docent-faint)) 14%, transparent);
+    color: color-mix(in srgb, var(--dax-accent, var(--docent-fg)) 90%, var(--docent-fg));
+}
+
+.dax-node-actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex: none;
+}
+
+.dax-node-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.28rem;
+    color: var(--docent-faint);
+    background-color: transparent;
+    border: 0;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.dax-node-btn:hover {
+    background-color: color-mix(in srgb, var(--docent-fg) 8%, transparent);
+    color: var(--docent-fg);
+}
+
+.dax-node-btn-danger:hover {
+    color: #dc2626;
+    background-color: color-mix(in srgb, #dc2626 10%, transparent);
+}
+
+/* Accent palette per node type. */
+.dax-node-gate { --dax-accent: #6366f1; }
+.dax-node-cond { --dax-accent: #0ea5e9; }
+.dax-node-aud { --dax-accent: #8b5cf6; }
+.dax-node-callout.dax-callout-note { --dax-accent: #64748b; }
+.dax-node-callout.dax-callout-tip { --dax-accent: #16a34a; }
+.dax-node-callout.dax-callout-info { --dax-accent: #2563eb; }
+.dax-node-callout.dax-callout-warning { --dax-accent: #d97706; }
+.dax-node-callout.dax-callout-danger { --dax-accent: #dc2626; }
+
+/* --- Cards ----------------------------------------------------------------- */
+.dax-node-cards { --dax-accent: var(--docent-border-strong); }
+
+.dax-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+    padding: 0.7rem;
+}
+
+@media (min-width: 720px) {
+    .dax-cards-grid[data-columns='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dax-cards-grid[data-columns='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dax-cards-grid[data-columns='4'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.dax-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.6rem;
+    background-color: var(--docent-bg);
+    overflow: hidden;
+}
+
+.dax-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.4rem 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--docent-border);
+    background-color: var(--docent-panel);
+}
+
+.dax-card-metabtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.1rem 0.15rem;
+    background: transparent;
+    border: 0;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    text-align: left;
+}
+
+.dax-card-metabtn:hover { background-color: color-mix(in srgb, var(--docent-fg) 6%, transparent); }
+
+.dax-card-ic {
+    display: inline-flex;
+    flex: none;
+    color: var(--docent-accent);
+}
+
+.dax-card-ic-empty { color: var(--docent-faint); }
+
+.dax-card-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--docent-strong);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dax-card-href { display: inline-flex; color: var(--docent-faint); flex: none; }
+
+.dax-card-body { padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+.dax-card-body > :first-child { margin-top: 0; }
+.dax-card-body > :last-child { margin-bottom: 0; }
+
+/* --- Widgets (include / component / html block atoms) ---------------------- */
+.dax-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px dashed var(--docent-border-strong);
+    border-left: 3px solid var(--docent-border-strong);
+    border-radius: 0.5rem;
+    background-color: var(--docent-panel);
+    user-select: none;
+}
+
+.dax-widget-ic { display: inline-flex; flex: none; color: var(--docent-faint); }
+
+.dax-widget-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    min-width: 0;
+    font-size: 0.82rem;
+}
+
+.dax-widget-kind {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--docent-faint);
+}
+
+.dax-widget-name { font-weight: 600; color: var(--docent-strong); }
+
+.dax-widget-component { border-left-color: #8b5cf6; }
+.dax-widget-html { border-style: solid; }
+.dax-widget-html .dax-widget-name { font-weight: 400; color: var(--docent-faint); font-style: italic; }
+
+.dax-attr-row { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.dax-attr-chip {
+    font-size: 0.7rem;
+    color: var(--docent-muted);
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.3rem;
+    padding: 0.02rem 0.3rem;
+}
+
+.dax-attr-chip code { font-family: var(--font-mono); color: var(--docent-fg); }
+
+/* --- Inline chips (value / app-link atoms) --------------------------------- */
+.dax-inline-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.05rem 0.4rem 0.05rem 0.3rem;
+    margin: 0 0.05rem;
+    font-size: 0.85em;
+    font-weight: 550;
+    line-height: 1.3;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border: 1px solid transparent;
+    user-select: none;
+}
+
+.dax-inline-ic { display: inline-flex; opacity: 0.8; }
+
+.dax-chip-value {
+    color: var(--docent-accent);
+    background-color: color-mix(in srgb, var(--docent-accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--docent-accent) 28%, transparent);
+}
+
+.dax-chip-link {
+    color: #0ea5e9;
+    background-color: color-mix(in srgb, #0ea5e9 12%, transparent);
+    border-color: color-mix(in srgb, #0ea5e9 28%, transparent);
+}
+
+.dark .dax-chip-link { color: #7dd3fc; }
+
+.dax-inline-chip.ProseMirror-selectednode {
+    outline: 2px solid color-mix(in srgb, var(--docent-accent) 55%, transparent);
+    outline-offset: 1px;
+}
+
+/* --- Code block ------------------------------------------------------------ */
+.dax-code {
+    margin: 1.1rem 0;
+    border-radius: 0.6rem;
+    overflow: hidden;
+    background-color: #0b1120;
+    border: 1px solid #1e293b;
+}
+
+.dax-code-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.55rem;
+    background-color: #111a2e;
+    border-bottom: 1px solid #1e293b;
+}
+
+.dax-code-ic { display: inline-flex; color: #64748b; flex: none; }
+
+.dax-code-lang,
+.dax-code-title {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: #cbd5e1;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.3rem;
+    padding: 0.1rem 0.35rem;
+}
+
+.dax-code-lang { width: 8rem; }
+.dax-code-title { flex: 1; }
+
+.dax-code-lang::placeholder,
+.dax-code-title::placeholder { color: #475569; }
+
+.dax-code-lang:focus,
+.dax-code-title:focus {
+    outline: none;
+    background-color: #0b1120;
+    border-color: #334155;
+}
+
+.dax-code-pre {
+    margin: 0;
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+    background: transparent;
+}
+
+.dax-code-pre code {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: #e2e8f0;
+    white-space: pre;
+    background: transparent;
+}
+
+/* --- Task list items ------------------------------------------------------- */
+.dax-editor li.dax-task {
+    list-style: none;
+    display: flex;
+    gap: 0.5rem;
+    margin-left: -1.1rem;
+    padding-left: 0;
+}
+
+.dax-checkbox {
+    flex: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: 0.28rem;
+    border: 1.5px solid var(--docent-border-strong);
+    border-radius: 0.3rem;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.dax-checkbox.is-checked {
+    background-color: var(--docent-accent);
+    border-color: var(--docent-accent);
+}
+
+.dax-checkbox.is-checked::after {
+    content: '';
+    position: absolute;
+    left: 0.32rem;
+    top: 0.12rem;
+    width: 0.28rem;
+    height: 0.52rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.dax-li-content { flex: 1; min-width: 0; }
+.dax-li-content > :first-child { margin-top: 0; }
+.dax-li-content > :last-child { margin-bottom: 0; }
+
+li[data-checked='true'] .dax-li-content { color: var(--docent-faint); text-decoration: line-through; }
+
+/* --- Popovers -------------------------------------------------------------- */
+.dax-pop {
+    position: fixed;
+    z-index: 80;
+    width: 18rem;
+    max-width: calc(100vw - 1rem);
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.7rem;
+    box-shadow: var(--docent-shadow);
+    overflow: hidden;
+}
+
+.dax-pop-body { padding: 0.6rem; display: flex; flex-direction: column; gap: 0.55rem; }
+
+.dax-pop-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.1rem;
+}
+
+.dax-pop-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--docent-faint);
+}
+
+.dax-pop-x {
+    margin-left: auto;
+    display: inline-flex;
+    padding: 0.15rem;
+    color: var(--docent-faint);
+    background: transparent;
+    border: 0;
+    border-radius: 0.3rem;
+    cursor: pointer;
+}
+
+.dax-pop-x:hover { color: #dc2626; }
+
+.dax-pop-field { display: flex; flex-direction: column; gap: 0.25rem; }
+
+.dax-pop-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--docent-muted);
+}
+
+.dax-pop-input { padding: 0.35rem 0.5rem; font-size: 0.8rem; }
+
+.dax-mono { font-family: var(--font-mono); font-size: 0.76rem; }
+
+/* --- Registry picker lists ------------------------------------------------- */
+.dax-pick { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.dax-pick-search {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    color: var(--docent-fg);
+    background-color: var(--docent-panel);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.45rem;
+}
+
+.dax-pick-search:focus { outline: none; border-color: var(--docent-accent); }
+
+.dax-pick-list { display: flex; flex-direction: column; max-height: 15rem; overflow-y: auto; }
+
+.dax-pick-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    padding: 0.35rem 0.45rem;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 0.4rem;
+    cursor: pointer;
+}
+
+.dax-pick-item:hover { background-color: color-mix(in srgb, var(--docent-accent) 10%, transparent); }
+
+.dax-pick-item.is-active {
+    background-color: color-mix(in srgb, var(--docent-accent) 14%, transparent);
+}
+
+.dax-pick-title { font-size: 0.82rem; font-weight: 550; color: var(--docent-fg); }
+.dax-pick-desc { font-size: 0.72rem; color: var(--docent-faint); }
+.dax-pick-desc code { font-family: var(--font-mono); color: var(--docent-muted); }
+.dax-pick-empty { padding: 0.9rem 0.5rem; text-align: center; font-size: 0.78rem; color: var(--docent-faint); }
+
+/* --- Segmented control ----------------------------------------------------- */
+.dax-seg {
+    display: inline-flex;
+    padding: 0.15rem;
+    gap: 0.15rem;
+    background-color: var(--docent-panel);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.5rem;
+}
+
+.dax-seg-btn {
+    flex: 1;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 550;
+    color: var(--docent-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 0.35rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.dax-seg-btn.is-active {
+    background-color: var(--docent-bg);
+    color: var(--docent-accent);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+/* --- Icon picker grid ------------------------------------------------------ */
+.dax-icon-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.2rem;
+}
+
+.dax-icon-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    color: var(--docent-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.4rem;
+    cursor: pointer;
+}
+
+.dax-icon-cell:hover { background-color: var(--docent-panel); color: var(--docent-fg); }
+
+.dax-icon-cell.is-active {
+    color: var(--docent-accent);
+    background-color: color-mix(in srgb, var(--docent-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--docent-accent) 30%, transparent);
+}
+
+/* --- Slash menu ------------------------------------------------------------ */
+.dax-slash {
+    position: fixed;
+    z-index: 80;
+    width: 19rem;
+    max-height: 22rem;
+    overflow-y: auto;
+    padding: 0.35rem;
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.7rem;
+    box-shadow: var(--docent-shadow);
+}
+
+.dax-slash-group {
+    padding: 0.4rem 0.5rem 0.2rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--docent-faint);
+}
+
+.dax-slash-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 0.45rem;
+    cursor: pointer;
+}
+
+.dax-slash-item.is-active { background-color: color-mix(in srgb, var(--docent-accent) 12%, transparent); }
+
+.dax-slash-ic {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.8rem;
+    height: 1.8rem;
+    color: var(--docent-muted);
+    background-color: var(--docent-panel);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.4rem;
+}
+
+.dax-slash-item.is-active .dax-slash-ic { color: var(--docent-accent); border-color: color-mix(in srgb, var(--docent-accent) 30%, transparent); }
+
+.dax-slash-text { display: flex; flex-direction: column; min-width: 0; }
+.dax-slash-title { font-size: 0.82rem; font-weight: 550; color: var(--docent-fg); }
+.dax-slash-desc { font-size: 0.72rem; color: var(--docent-faint); }
+
+/* --- Bubble menu ----------------------------------------------------------- */
+.dax-bubble {
+    position: fixed;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.2rem;
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.5rem;
+    box-shadow: var(--docent-shadow);
+}
+
+.dax-bubble-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--docent-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 0.35rem;
+    cursor: pointer;
+}
+
+.dax-bubble-btn:hover { background-color: var(--docent-panel); color: var(--docent-fg); }
+.dax-bubble-btn.is-active { color: var(--docent-accent); background-color: color-mix(in srgb, var(--docent-accent) 14%, transparent); }
+.dax-bubble-sep { width: 1px; height: 1.1rem; margin: 0 0.15rem; background-color: var(--docent-border); }
+
+/* --- Link popover ---------------------------------------------------------- */
+.dax-link-pop { width: 20rem; }
+.dax-link-row { display: flex; gap: 0.4rem; align-items: center; }
+.dax-link-row .dax-pop-input { flex: 1; }
+.dax-link-remove {
+    font-size: 0.72rem;
+    color: #dc2626;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+    padding: 0.1rem;
+}
+
+.dax-btn-sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+
+/* --- View markdown modal --------------------------------------------------- */
+.dax-modal {
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.8rem;
+    box-shadow: var(--docent-shadow);
+    overflow: hidden;
+}
+
+.dax-md-export {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.65;
+    color: var(--docent-fg);
+    background-color: var(--docent-panel);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.6rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

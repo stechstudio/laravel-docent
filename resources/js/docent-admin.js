@@ -1,5 +1,6 @@
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
+import { createDocentEditor } from './editor/index.js';
 
 Alpine.plugin(collapse);
 
@@ -25,7 +26,13 @@ Alpine.store('theme', {
  * surface against the existing JSON API. Config (route base, docs home, CSRF
  * token) arrives from the Blade shell.
  * ------------------------------------------------------------------------- */
-Alpine.data('docentAdmin', (config) => ({
+Alpine.data('docentAdmin', (config) => {
+    // The Tiptap editor owns its own DOM + ProseMirror state and must never be
+    // wrapped in Alpine's reactive proxy. This per-instance closure holds it
+    // (and the live document JSON) outside the reactive object returned below.
+    const ed = { instance: null, doc: null };
+
+    return {
     base: config.base,
     docsHome: config.docsHome,
     csrf: config.csrf,
@@ -40,7 +47,6 @@ Alpine.data('docentAdmin', (config) => ({
     slug: null,
     slugField: '',
     title: '',
-    content: '',
     fm: { description: '', order: '', hidden: false, authorize: '', audience: '', layout: 'docs' },
     _extraFm: {},
     store: null,
@@ -61,6 +67,14 @@ Alpine.data('docentAdmin', (config) => ({
     dirty: false,
     lastSaved: null,
     fmOpen: false,
+
+    // Editor: reactive mirror of the active marks/nodes (for toolbar state) and
+    // the "View markdown" export modal.
+    active: {},
+    editorReady: false,
+    markdownOpen: false,
+    markdownLoading: false,
+    markdownText: '',
 
     // Preview.
     previewHtml: '',
@@ -94,6 +108,112 @@ Alpine.data('docentAdmin', (config) => ({
             }
         };
         window.addEventListener('keydown', this._onKey);
+
+        // Mount the Tiptap editor once; content is swapped per page in
+        // applyDetail(). The mount node is always present (x-show only hides it).
+        this.$nextTick(() => this.bootEditor());
+    },
+
+    bootEditor() {
+        const mount = this.$refs.editorMount;
+        if (!mount || ed.instance) return;
+        ed.instance = createDocentEditor({
+            element: mount,
+            content: ed.doc,
+            editable: !this.readonly,
+            meta: () => this.meta,
+            placeholder: 'Start writing, or press / for blocks…',
+            onImage: () => this.$refs.image && this.$refs.image.click(),
+            onUpdate: (doc) => {
+                // Ignore the editor's own updates while we programmatically swap
+                // documents — setContent/setEditable both emit, and letting them
+                // write back would clobber the doc we are loading.
+                if (ed.loading) return;
+                ed.doc = doc;
+                this.onEdit();
+            },
+        });
+        ed.instance.on('selectionUpdate', () => this.syncActive());
+        ed.instance.on('transaction', () => { if (!ed.loading) this.syncActive(); });
+        this.editorReady = true;
+    },
+
+    /* --- Editor bridge -------------------------------------------------- */
+
+    get editor() {
+        return ed.instance;
+    },
+
+    loadDoc(doc) {
+        const next = doc || { type: 'doc', content: [{ type: 'paragraph' }] };
+        if (!ed.instance) {
+            ed.doc = next;
+            return;
+        }
+        // Guard the swap: setEditable() emits an "update" (whose getJSON is still
+        // the OLD/empty doc) and setContent() would otherwise mark the draft
+        // dirty — both must not feed back through onUpdate.
+        ed.loading = true;
+        ed.instance.setEditable(!this.readonly);
+        ed.instance.commands.setContent(next, false);
+        ed.loading = false;
+        // Canonicalize from the editor so ed.doc matches exactly what will be saved.
+        ed.doc = ed.instance.getJSON();
+        this.syncActive();
+    },
+
+    syncActive() {
+        const e = ed.instance;
+        if (!e) return;
+        this.active = {
+            bold: e.isActive('bold'),
+            italic: e.isActive('italic'),
+            code: e.isActive('code'),
+            h1: e.isActive('heading', { level: 1 }),
+            h2: e.isActive('heading', { level: 2 }),
+            h3: e.isActive('heading', { level: 3 }),
+            bulletList: e.isActive('bulletList'),
+            orderedList: e.isActive('orderedList'),
+            blockquote: e.isActive('blockquote'),
+            codeBlock: e.isActive('codeBlock'),
+        };
+    },
+
+    cmd(fn) {
+        if (!ed.instance || this.readonly) return;
+        fn(ed.instance.chain().focus());
+    },
+
+    setHeading(level) {
+        this.cmd((c) => c.toggleHeading({ level }).run());
+    },
+
+    insertNode(json) {
+        if (!ed.instance || this.readonly) return;
+        ed.instance.chain().focus().insertContent(json).run();
+    },
+
+    insertCallout(type) {
+        this.menu = null;
+        this.insertNode({ type: 'docsCallout', attrs: { type }, content: [{ type: 'paragraph' }] });
+    },
+
+    insertGate(ability) {
+        this.menu = null;
+        this.insertNode({ type: 'docsGate', attrs: { mode: 'can', ability: ability || '', arguments: [] }, content: [{ type: 'paragraph' }] });
+    },
+
+    insertReferenceNode(kind, item) {
+        this.menu = null;
+        const name = item.name;
+        const map = {
+            value: { type: 'docsValue', attrs: { key: name, arguments: [] } },
+            link: { type: 'docsAppLink', attrs: { kind: 'link', key: name, parameters: [] } },
+            condition: { type: 'docsCondition', attrs: { condition: name, negated: false, arguments: [] }, content: [{ type: 'paragraph' }] },
+            component: { type: 'docsComponent', attrs: { name, attributes: {} } },
+            audience: { type: 'docsAudience', attrs: { name }, content: [{ type: 'paragraph' }] },
+        };
+        if (map[kind]) this.insertNode(map[kind]);
     },
 
     /* --- Derived state -------------------------------------------------- */
@@ -183,7 +303,6 @@ Alpine.data('docentAdmin', (config) => ({
         this.slug = data.slug;
         this.slugField = data.slug;
         this.title = data.title || '';
-        this.content = data.content || '';
         this.store = data.store;
         this.readonly = data.readonly === true;
         this.shadowed = this.tree.some((p) => p.slug === data.slug && p.shadowed);
@@ -207,6 +326,7 @@ Alpine.data('docentAdmin', (config) => ({
         this._extraFm = source;
 
         this.saveIssues = Array.isArray(data.issues) ? data.issues : [];
+        this.loadDoc(data.content_tiptap);
         this.dirty = false;
     },
 
@@ -214,12 +334,12 @@ Alpine.data('docentAdmin', (config) => ({
         this.slug = null;
         this.creating = false;
         this.title = '';
-        this.content = '';
         this.store = null;
         this.readonly = false;
         this.previewHtml = '';
         this.previewIssues = [];
         this.saveIssues = [];
+        this.loadDoc(null);
     },
 
     /* --- Create --------------------------------------------------------- */
@@ -244,7 +364,6 @@ Alpine.data('docentAdmin', (config) => ({
         this.slug = null;
         this.slugField = slug;
         this.title = title;
-        this.content = '';
         this.store = 'database';
         this.readonly = false;
         this.shadowed = false;
@@ -256,8 +375,9 @@ Alpine.data('docentAdmin', (config) => ({
         this.saveIssues = [];
         this.previewHtml = '';
         this.previewIssues = [];
+        this.loadDoc(null);
         this.dirty = true;
-        this.$nextTick(() => this.$refs.content && this.$refs.content.focus());
+        this.$nextTick(() => ed.instance && ed.instance.commands.focus());
     },
 
     /* --- Front matter payload ------------------------------------------ */
@@ -281,7 +401,7 @@ Alpine.data('docentAdmin', (config) => ({
         if (!this.canSave) return;
         this.saving = true;
         try {
-            const body = { title: this.title, content: this.content, front_matter: this.buildFrontMatter() };
+            const body = { title: this.title, content_tiptap: ed.doc, front_matter: this.buildFrontMatter() };
             let data;
             if (this.creating) {
                 data = await this.api('POST', `${this.base}/api/pages`, { body: { slug: this.slugField, ...body } });
@@ -410,7 +530,7 @@ Alpine.data('docentAdmin', (config) => ({
         this.previewLoading = true;
         try {
             const data = await this.api('POST', `${this.base}/api/preview`, {
-                body: { content: this.content, front_matter: { ...this.buildFrontMatter(), title: this.title } },
+                body: { content_tiptap: ed.doc, front_matter: { ...this.buildFrontMatter(), title: this.title } },
                 silent: true,
             });
             if (seq !== this._previewSeq) return;
@@ -423,64 +543,43 @@ Alpine.data('docentAdmin', (config) => ({
         }
     },
 
-    /* --- Editor insert helpers ----------------------------------------- */
-
-    insert(snippet) {
-        this.menu = null;
-        const el = this.$refs.content;
-        if (!el) return;
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        let text = snippet;
-        let caret = null;
-        const marker = text.indexOf('$0');
-        if (marker !== -1) {
-            text = text.slice(0, marker) + text.slice(marker + 2);
-            caret = start + marker;
-        }
-        this.content = this.content.slice(0, start) + text + this.content.slice(end);
-        this.onEdit();
-        this.$nextTick(() => {
-            el.focus();
-            const pos = caret !== null ? caret : start + text.length;
-            el.setSelectionRange(pos, pos);
-        });
-    },
-
-    onTab(e) {
-        const el = e.target;
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
-        this.content = this.content.slice(0, start) + '  ' + this.content.slice(end);
-        this.onEdit();
-        this.$nextTick(() => {
-            el.focus();
-            el.setSelectionRange(start + 2, start + 2);
-        });
-    },
-
-    insertReference(kind, name) {
-        const templates = {
-            value: `{{ value:${name} }}`,
-            link: `{{ link:${name} }}`,
-            condition: `:::when condition="${name}"\n$0\n:::\n`,
-            component: `:::component name="${name}"\n:::\n`,
-            audience: `:::audience name="${name}"\n$0\n:::\n`,
-        };
-        this.insert(templates[kind]);
-    },
+    /* --- Image upload + View markdown ----------------------------------- */
 
     async uploadImage(e) {
         const file = e.target.files && e.target.files[0];
         e.target.value = '';
-        if (!file) return;
+        if (!file || !ed.instance) return;
         const form = new FormData();
         form.append('file', file);
         try {
             const data = await this.api('POST', `${this.base}/api/uploads`, { form });
-            this.insert(`![](${data.url})`);
+            ed.instance.chain().focus().insertContent({ type: 'image', attrs: { src: data.url, alt: '', title: null } }).run();
             this.toast('Image uploaded.', 'success');
         } catch (err) {}
+    },
+
+    async viewMarkdown() {
+        if (!this.slug || this.creating) return;
+        this.markdownOpen = true;
+        this.markdownLoading = true;
+        this.markdownText = '';
+        try {
+            const data = await this.api('GET', `${this.base}/api/pages/${this.slug}/markdown`);
+            this.markdownText = data.markdown || '';
+        } catch (e) {
+            this.markdownOpen = false;
+        } finally {
+            this.markdownLoading = false;
+        }
+    },
+
+    async copyMarkdown() {
+        try {
+            await navigator.clipboard.writeText(this.markdownText);
+            this.toast('Markdown copied to clipboard.', 'success');
+        } catch (e) {
+            this.toast('Copy failed — select the text manually.', 'error');
+        }
     },
 
     /* --- Toasts --------------------------------------------------------- */
@@ -556,7 +655,8 @@ Alpine.data('docentAdmin', (config) => ({
 
         return data;
     },
-}));
+    };
+});
 
 window.Alpine = Alpine;
 Alpine.start();
