@@ -117,13 +117,14 @@
 | Tree rows
 | ---------------------------------------------------------------------------
 */
+/* Single-line rows, always: store glyph + truncating title + status dot. */
 .dax-tree-item {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    align-items: center;
+    gap: 0.5rem;
     width: 100%;
-    padding: 0.4rem 0.6rem;
-    border-radius: 0.5rem;
+    padding: 0.32rem 0.6rem;
+    border-radius: 0.45rem;
     text-align: left;
     cursor: pointer;
     border: 1px solid transparent;
@@ -139,15 +140,43 @@
     border-color: color-mix(in srgb, var(--docent-accent) 30%, transparent);
 }
 
-.dax-tree-item.is-active .dax-tree-title {
+.dax-tree-item.is-active .dax-tree-title,
+.dax-tree-item.is-active .dax-tree-glyph {
     color: var(--docent-accent);
 }
 
+.dax-tree-glyph {
+    display: inline-flex;
+    flex: none;
+    color: var(--docent-faint);
+}
+
 .dax-tree-title {
-    font-size: 0.875rem;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.82rem;
     font-weight: 500;
     color: var(--docent-fg);
-    line-height: 1.3;
+    line-height: 1.4;
+}
+
+.dax-tree-dot {
+    flex: none;
+    width: 0.44rem;
+    height: 0.44rem;
+    border-radius: 9999px;
+}
+
+.dax-tree-dot.is-draft { background-color: #f59e0b; }
+.dax-tree-dot.is-changes { background-color: #3b82f6; }
+.dax-tree-dot.is-shadowed { background-color: #ef4444; }
+
+.dax-tree-item.is-hidden-page .dax-tree-title {
+    color: var(--docent-faint);
+    font-style: italic;
 }
 
 /*
@@ -178,12 +207,13 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--docent-accent) 18%, transparent);
 }
 
-/* Title input: large, borderless-feel. */
+/* Title input: large, borderless-feel — the dominant element on the page. */
 .dax-title-input {
     width: 100%;
-    font-size: 1.6rem;
+    font-size: 2rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
     color: var(--docent-strong);
     background: transparent;
     border: 0;
@@ -696,8 +726,8 @@
     font-size: 0.72rem;
     padding: 0.05rem 0.35rem;
     border-radius: 0.3rem;
-    background-color: color-mix(in srgb, var(--dax-accent, var(--docent-faint)) 14%, transparent);
-    color: color-mix(in srgb, var(--dax-accent, var(--docent-fg)) 90%, var(--docent-fg));
+    background-color: color-mix(in srgb, var(--docent-fg) 7%, transparent);
+    color: var(--docent-muted);
 }
 
 .dax-node-actions {
@@ -1284,4 +1314,228 @@ li[data-checked='true'] .dax-li-content { color: var(--docent-faint); text-decor
     border-radius: 0.6rem;
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Workspace: view tabs
+| ---------------------------------------------------------------------------
+*/
+.dax-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.2rem;
+    border-radius: 0.55rem;
+    background-color: color-mix(in srgb, var(--docent-fg) 5%, transparent);
+}
+
+.dax-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.28rem 0.85rem;
+    border-radius: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--docent-muted);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.dax-tab:hover { color: var(--docent-fg); }
+
+.dax-tab.is-active {
+    background-color: var(--docent-bg);
+    color: var(--docent-strong);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.dax-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.05rem;
+    height: 1.05rem;
+    padding: 0 0.25rem;
+    border-radius: 9999px;
+    background-color: color-mix(in srgb, #f59e0b 18%, transparent);
+    color: #b45309;
+    font-size: 0.66rem;
+    font-weight: 600;
+}
+
+.dark .dax-tab-badge { color: #fbbf24; }
+
+/*
+| ---------------------------------------------------------------------------
+| Workspace: settings rail
+| ---------------------------------------------------------------------------
+*/
+.dax-rail-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--docent-faint);
+}
+
+.dax-rail-field {
+    display: block;
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: var(--docent-muted);
+}
+
+.dax-rail-action {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.42rem 0.55rem;
+    margin-left: -0.55rem;
+    border-radius: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--docent-muted);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.12s ease, color 0.12s ease;
+    width: calc(100% + 0.55rem);
+}
+
+.dax-rail-action:hover {
+    background-color: color-mix(in srgb, var(--docent-fg) 6%, transparent);
+    color: var(--docent-fg);
+}
+
+.dax-rail-action svg { flex: none; color: var(--docent-faint); }
+
+.dax-rail-danger { color: #dc2626; }
+.dax-rail-danger svg { color: #dc2626; }
+.dax-rail-danger:hover {
+    background-color: color-mix(in srgb, #dc2626 8%, transparent);
+    color: #dc2626;
+}
+.dark .dax-rail-danger, .dark .dax-rail-danger svg { color: #f87171; }
+
+.dax-link {
+    font-weight: 500;
+    color: var(--docent-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Reader-parity node views: floating hover actions + header input blending
+| ---------------------------------------------------------------------------
+*/
+.dax-nv-callout { position: relative; }
+
+.dax-float-actions {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 5;
+    display: inline-flex;
+    gap: 0.15rem;
+    padding: 0.12rem;
+    border-radius: 0.45rem;
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.dax-nv-callout:hover .dax-float-actions,
+.dax-nv-callout.ProseMirror-selectednode .dax-float-actions,
+.dax-float-actions:focus-within {
+    opacity: 1;
+}
+
+/* The editor's callout body flows exactly like the reader's. */
+.dax-nv-callout .docent-callout-content > :first-child { margin-top: 0; }
+.dax-nv-callout .docent-callout-content > :last-child { margin-bottom: 0; }
+
+/* Code cards: blend the language/filename inputs into the reader header bar. */
+.dax-nv-code .docent-code-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dax-code-lang,
+.dax-code-title {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: inherit;
+    padding: 0.1rem 0.25rem;
+    border-radius: 0.3rem;
+}
+
+.dax-code-lang { width: 6.5rem; }
+.dax-code-title { flex: 1; min-width: 0; }
+
+.dax-code-lang:focus,
+.dax-code-title:focus {
+    background-color: color-mix(in srgb, var(--docent-fg) 7%, transparent);
+}
+
+.dax-code-lang::placeholder,
+.dax-code-title::placeholder {
+    color: color-mix(in srgb, currentcolor 45%, transparent);
+    font-style: italic;
+}
+
+.dax-nv-code .dax-code-pre {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre;
+    background: transparent;
+    border: none;
+}
+
+.dax-nv-code .dax-code-pre code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Editor-prose corrections (Write must mirror Preview, but stay editable-sane)
+| ---------------------------------------------------------------------------
+*/
+/* The reader hides a leading body h1 (the title renders in the page header);
+   an editor must never hide content the author typed — and the admin preview
+   mirrors the editor so Write and Preview always agree. */
+.dax-editor .docent-prose > h1:first-child,
+#docent-admin article.docent-prose > h1:first-child { display: block; }
+
+/* Read-only pages: node views render but never offer editing affordances. */
+.dax-editor.is-readonly .dax-node-actions,
+.dax-editor.is-readonly .dax-float-actions {
+    display: none;
+}
+
+.dax-editor.is-readonly .dax-code-lang,
+.dax-editor.is-readonly .dax-code-title {
+    pointer-events: none;
+}
+
+.dax-editor.is-readonly .dax-code-lang::placeholder,
+.dax-editor.is-readonly .dax-code-title::placeholder {
+    color: transparent;
 }

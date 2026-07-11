@@ -66,7 +66,14 @@ Alpine.data('docentAdmin', (config) => {
     publishing: false,
     dirty: false,
     lastSaved: null,
-    fmOpen: false,
+
+    // Workspace layout: Write/Preview tab, collapsible tree (overlay on small
+    // screens), and the edit-a-copy confirmation for repository pages.
+    view: 'write',
+    sidebar: true,
+    overlayMode: false,
+    overridePromptOpen: false,
+    previewStale: true,
 
     // Editor: reactive mirror of the active marks/nodes (for toolbar state) and
     // the "View markdown" export modal.
@@ -91,15 +98,24 @@ Alpine.data('docentAdmin', (config) => {
     revisions: [],
     revisionsLoading: false,
 
-    // Insert menus + toasts + mobile tree.
+    // Insert menus + toasts.
     menu: null,
     toasts: [],
     _toastId: 0,
-    treeOverlay: false,
 
     init() {
         this.loadTree();
         this.loadMeta();
+
+        // The tree is an in-flow column on md+ screens and an overlay below;
+        // it starts open only where it fits.
+        const media = window.matchMedia('(max-width: 767px)');
+        this.overlayMode = media.matches;
+        this.sidebar = !media.matches;
+        media.addEventListener('change', (e) => {
+            this.overlayMode = e.matches;
+            this.sidebar = !e.matches;
+        });
 
         this._onKey = (e) => {
             if ((e.key === 's' || e.key === 'S') && (e.metaKey || e.ctrlKey)) {
@@ -246,19 +262,35 @@ Alpine.data('docentAdmin', (config) => {
         });
     },
 
-    chipsFor(page) {
-        const chips = [];
-        if (page.store === 'filesystem') {
-            chips.push({ label: 'file', cls: 'dax-chip-file' });
-        } else if (page.published === false) {
-            chips.push({ label: 'draft', cls: 'dax-chip-draft' });
-        } else if (page.hasUnpublishedChanges) {
-            chips.push({ label: 'changes', cls: 'dax-chip-changes' });
-        }
-        if (page.shadowed) {
-            chips.push({ label: 'shadowed', cls: 'dax-chip-shadowed' });
-        }
-        return chips;
+    toggleSidebar() {
+        this.sidebar = !this.sidebar;
+    },
+
+    setView(view) {
+        this.view = view;
+        if (view === 'preview' && this.previewStale) this.runPreviewNow();
+    },
+
+    /**
+     * Tree rows stay single-line: one status dot instead of text chips.
+     * Amber = never published, blue = published with newer draft edits,
+     * red = a database page shadowing a repository file.
+     */
+    treeDot(page) {
+        if (page.store === 'database' && page.shadowed) return 'is-shadowed';
+        if (page.store === 'database' && page.published === false) return 'is-draft';
+        if (page.store === 'database' && page.hasUnpublishedChanges) return 'is-changes';
+        return null;
+    },
+
+    treeTooltip(page) {
+        const bits = [page.slug];
+        bits.push(page.store === 'filesystem' ? 'Repository file' : 'Database page');
+        if (page.store === 'database' && page.published === false) bits.push('draft — not published');
+        if (page.store === 'database' && page.published && page.hasUnpublishedChanges) bits.push('has unpublished edits');
+        if (page.shadowed) bits.push(page.store === 'database' ? 'overrides a repository file' : 'overridden by a database copy');
+        if (page.hidden) bits.push('hidden from navigation');
+        return bits.join(' · ');
     },
 
     /* --- Data loading --------------------------------------------------- */
@@ -285,13 +317,14 @@ Alpine.data('docentAdmin', (config) => {
     async selectPage(slug) {
         this.menu = null;
         this.newPageOpen = false;
-        this.treeOverlay = false;
+        if (this.overlayMode) this.sidebar = false;
         this.detailLoading = true;
         this.creating = false;
         try {
             const data = await this.api('GET', `${this.base}/api/pages/${slug}`);
             this.applyDetail(data);
-            this.runPreviewNow();
+            this.view = 'write';
+            this.previewStale = true;
         } catch (e) {
             this.clearEditor();
         } finally {
@@ -359,7 +392,8 @@ Alpine.data('docentAdmin', (config) => {
             return;
         }
         this.newPageOpen = false;
-        this.treeOverlay = false;
+        if (this.overlayMode) this.sidebar = false;
+        this.view = 'write';
         this.creating = true;
         this.slug = null;
         this.slugField = slug;
@@ -414,7 +448,8 @@ Alpine.data('docentAdmin', (config) => {
             await this.loadTree();
             this.shadowed = this.tree.some((p) => p.slug === this.slug && p.shadowed);
             this.toast('Draft saved.', 'success');
-            this.runPreviewNow();
+            this.previewStale = true;
+            if (this.view === 'preview') this.runPreviewNow();
         } catch (e) {
             // api() has already surfaced a toast.
         } finally {
@@ -456,14 +491,20 @@ Alpine.data('docentAdmin', (config) => {
 
     /* --- Override / delete --------------------------------------------- */
 
+    editOverridePrompt() {
+        this.overridePromptOpen = true;
+    },
+
     async override() {
         if (!this.slug) return;
+        this.overridePromptOpen = false;
         try {
             const data = await this.api('POST', `${this.base}/api/pages/${this.slug}/override`);
             await this.loadTree();
             this.applyDetail(data);
-            this.runPreviewNow();
-            this.toast('Override created — this page is now an editable draft.', 'success');
+            this.view = 'write';
+            this.previewStale = true;
+            this.toast('Editable copy created — readers will see this version once you publish changes.', 'success');
         } catch (e) {}
     },
 
@@ -508,7 +549,7 @@ Alpine.data('docentAdmin', (config) => {
             this.applyDetail(data);
             this.revisionsOpen = false;
             await this.loadTree();
-            this.runPreviewNow();
+            this.previewStale = true;
             this.toast('Revision restored as a new draft.', 'success');
         } catch (e) {}
     },
@@ -517,17 +558,21 @@ Alpine.data('docentAdmin', (config) => {
 
     onEdit() {
         this.dirty = true;
-        this.schedulePreview();
+        this.previewStale = true;
+        // Rail edits (description, access…) can happen while previewing;
+        // refresh in place. Editor edits only re-render on tab switch.
+        if (this.view === 'preview') this.schedulePreview();
     },
 
     schedulePreview() {
         clearTimeout(this._previewTimer);
-        this._previewTimer = setTimeout(() => this.runPreviewNow(), 600);
+        this._previewTimer = setTimeout(() => this.runPreviewNow(), 500);
     },
 
     async runPreviewNow() {
         const seq = ++this._previewSeq;
         this.previewLoading = true;
+        this.previewStale = false;
         try {
             const data = await this.api('POST', `${this.base}/api/preview`, {
                 body: { content_tiptap: ed.doc, front_matter: { ...this.buildFrontMatter(), title: this.title } },

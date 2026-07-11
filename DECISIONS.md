@@ -167,3 +167,26 @@ Everything here is open for review/reversal — flag anything you disagree with.
   roadmap, or a third instance of reimplementing their template chrome by hand.
 - **Standing discipline**: extensions define schema and commands; node views only render.
   Document semantics never leak into view code — that keeps the swap cheap.
+
+## Admin panel UX overhaul (after Joseph's review, July 11)
+
+- Joseph's critique of the first admin panel: wrapping tree badges, cramped equal-split editor,
+  Write/Preview visual inconsistency, confusing "Override into database", dead hamburger. All
+  addressed in a hands-on redesign with browser iteration (his feedback: delegation without
+  browser-in-the-loop produced a half-baked surface; the reader UI got iteration and it showed).
+- New layout: Write/Preview as tabs (editor gets full document width, ~46rem centered prose);
+  page settings moved to a right rail (status, metadata, access/permissions with explanatory
+  copy, tools, danger zone); tree rows are single-line always (store glyph + truncating title +
+  status dot: amber draft / blue unpublished edits / red shadowing); the top-left toggle now
+  collapses the tree at any width (overlay below md).
+- Write/Preview parity: the callout and code-block node views now render the READER's exact
+  markup/classes (docent-callout, docent-code card with header) with hover-revealed edit
+  affordances; editing chrome (gate/condition/audience frames, chips, widgets) stays editorial
+  by design since it has no reader equivalent.
+- "Override into database" became "Edit this page" with an explanatory confirm ("creates a
+  database copy readers see instead of the file; discard anytime"); shadowing shows as a slim
+  amber banner with inline discard.
+- Read-only pages hide all node-view edit affordances (programmatic commands would otherwise
+  bypass editable:false).
+- Preview renders on tab activation (stale-tracked) instead of debounced on every keystroke —
+  fewer requests, and the tab is the natural "check my work" moment.

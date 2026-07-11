@@ -307,21 +307,43 @@ export function DocsCallout(context) {
         renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-docs-callout': '' }), 0],
         addNodeView() {
             const ctx = this.options.context;
-            return ({ node, editor, getPos }) => containerView({
-                editor, getPos, node, accentClass: `dax-node-callout dax-callout-${node.attrs.type}`,
-                renderHead: (head, n, { anchor }) => {
-                    head.parentElement.className = `dax-node dax-node-callout dax-callout-${n.attrs.type}`;
-                    head.append(
-                        pill('callout', [
-                            h('span', { class: 'dax-node-kicker' }, n.attrs.title || n.attrs.type.charAt(0).toUpperCase() + n.attrs.type.slice(1)),
-                        ]),
-                        h('span', { class: 'dax-node-actions' }, [
-                            editButton(() => openCalloutEditor(editor, getPos, n, ctx, anchor)),
-                            deleteButton(() => deleteNode(editor, getPos)),
-                        ]),
+            // Render with the READER's callout markup + classes so what you
+            // write is exactly what readers get; the editing affordances float
+            // in the corner and appear on hover.
+            return ({ node, editor, getPos }) => {
+                const dom = h('div', {});
+                const actions = h('span', { class: 'dax-float-actions', contenteditable: 'false' });
+                const titleEl = h('div', { class: 'docent-callout-title', contenteditable: 'false' });
+                const content = h('div', { class: 'docent-callout-content' });
+                dom.append(actions, titleEl, content);
+
+                let current = node;
+                const paint = () => {
+                    dom.className = `docent-callout docent-callout-${current.attrs.type} dax-nv-callout`;
+                    dom.setAttribute('data-callout', current.attrs.type);
+                    titleEl.textContent = current.attrs.title || '';
+                    titleEl.style.display = current.attrs.title ? '' : 'none';
+                    actions.innerHTML = '';
+                    actions.append(
+                        editButton(() => openCalloutEditor(editor, getPos, current, ctx, actions)),
+                        deleteButton(() => deleteNode(editor, getPos)),
                     );
-                },
-            });
+                };
+                paint();
+
+                return {
+                    dom,
+                    contentDOM: content,
+                    update(updated) {
+                        if (updated.type !== node.type) return false;
+                        current = updated;
+                        paint();
+                        return true;
+                    },
+                    ignoreMutation: (m) => m.type !== 'selection' && !content.contains(m.target),
+                    stopEvent: (e) => actions.contains(e.target),
+                };
+            };
         },
     });
 }
@@ -776,23 +798,24 @@ export function DocsCodeBlock() {
             };
         },
         addNodeView() {
+            // The READER's code-card chrome (.docent-code + header) so the
+            // block looks identical in Write and Preview; language and title
+            // are edited inline through blended header inputs. No client-side
+            // highlighting — the preview shows the real Phiki render.
             return ({ node, editor, getPos }) => {
-                const dom = h('div', { class: 'dax-code' });
-                const head = h('div', { class: 'dax-code-head', contenteditable: 'false' });
+                const dom = h('div', { class: 'docent-code dax-nv-code' });
+                const head = h('div', { class: 'docent-code-header', contenteditable: 'false' });
                 const langInput = h('input', {
                     type: 'text', class: 'dax-code-lang', placeholder: 'language', spellcheck: 'false',
                     value: node.attrs.language || '',
                     oninput: (e) => setAttrs(editor, getPos, { language: e.target.value.trim() === '' ? null : e.target.value.trim() }),
                 });
                 const titleInput = h('input', {
-                    type: 'text', class: 'dax-code-title', placeholder: 'title (optional)', spellcheck: 'false',
+                    type: 'text', class: 'dax-code-title', placeholder: 'filename (optional)', spellcheck: 'false',
                     value: node.attrs.title || '',
                     oninput: (e) => setAttrs(editor, getPos, { title: e.target.value.trim() === '' ? null : e.target.value }),
                 });
-                head.append(
-                    h('span', { class: 'dax-code-ic', html: ui('code', 13) }),
-                    langInput, titleInput,
-                );
+                head.append(langInput, titleInput);
                 const pre = h('pre', { class: 'dax-code-pre' });
                 const code = document.createElement('code');
                 pre.appendChild(code);

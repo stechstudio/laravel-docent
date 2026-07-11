@@ -37,8 +37,6 @@ class DatabaseSeeder extends Seeder
         DocentPage::write(
             'announcements',
             <<<'MD'
-            # Announcements
-
             This page lives in the **database store**, composed over the markdown files
             you author in the repository. It flows through the exact same parser,
             renderer, navigation, and search pipeline.
@@ -48,7 +46,7 @@ class DatabaseSeeder extends Seeder
             gates, dynamic values, and includes.
             :::
 
-            Editing this content in a future admin panel writes a new revision;
+            Editing this content in the admin panel writes a new revision;
             readers keep seeing the published one until you publish again.
             MD,
             ['title' => 'Announcements', 'description' => 'Product news, authored in the database store.', 'order' => 5],
