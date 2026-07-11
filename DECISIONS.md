@@ -117,6 +117,18 @@ Everything here is open for review/reversal — flag anything you disagree with.
   finished the remainder (revisions slide-over, admin build scripts, asset allowlist, panel tests)
   in the main session. Further subagent delegation is unavailable until the limit resets/raises.
 
+- **Phase C shipped (Tiptap)**: C1 format bridge — TiptapDocumentParser, AstToTiptap, normalized
+  MarkdownExporter (fixpoint-verified across 21 real docs), format-aware admin API + markdown
+  export endpoint. C2 editor — fully WYSIWYG with custom node views (gate/condition/audience
+  frames with pickers, callouts, cards, value/app-link chips, include/component widgets, opaque
+  HTML blocks), slash menu, bubble menu, View Markdown modal. Admin bundle 429KB min (tables kept
+  for contract correctness over the 400KB target). Both executors' work review-verified; my pass
+  caught Laravel's TrimStrings middleware eating meaningful whitespace inside rich-text nodes on
+  save (fixed by reading tiptap payloads from the raw request body, regression-tested); the C2
+  executor itself caught and fixed a setEditable event-ordering bug that blanked loaded docs.
+- **Tiptap task items** use an extended listItem with a `checked` attr per our contract rather
+  than Tiptap's taskList/taskItem extensions (whose node types aren't in our schema).
+
 ## Post-v1 decisions (confirmed by Joseph, July 11)
 
 - **Admin UI stack: dependency-free Blade + Alpine + JSON endpoints** — consistent with the reader
