@@ -21,6 +21,8 @@ use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\DocentCache;
+use STS\Docent\Support\GrayPalette;
+use STS\Docent\Support\RadiusScale;
 
 /**
  * The facade root and primary affordance layer. Applications register their
@@ -218,9 +220,72 @@ final class DocentManager
      */
     public function logo(): ?string
     {
-        $logo = config('docent.theme.logo');
+        return $this->themeString('logo');
+    }
 
-        return $logo === null ? null : (string) $logo;
+    /**
+     * The dark-mode logo, or null to reuse {@see logo()} in both modes. The
+     * header swaps between them via CSS, so there is no theme flash.
+     */
+    public function logoDark(): ?string
+    {
+        return $this->themeString('logo_dark');
+    }
+
+    /**
+     * A square mark shown in the compact/mobile header, or null to keep the
+     * full logo/wordmark at every size.
+     */
+    public function logomark(): ?string
+    {
+        return $this->themeString('logomark');
+    }
+
+    /**
+     * The favicon (path or URL), emitted as <link rel="icon"> when set.
+     */
+    public function favicon(): ?string
+    {
+        return $this->themeString('favicon');
+    }
+
+    /**
+     * Optional webfont stylesheet URL (Bunny/Google …). Null keeps the default
+     * of zero external requests.
+     */
+    public function fontHref(): ?string
+    {
+        return $this->themeString('font.href');
+    }
+
+    /**
+     * The complete contents of the dynamic <style> block: the accent, any
+     * configured font stacks, and the gray/radius palette remaps. Emitted after
+     * the built stylesheet so these host overrides always win the cascade.
+     */
+    public function themeStyles(): string
+    {
+        $declarations = '--docent-accent:'.$this->accent().';';
+
+        if (($sans = $this->themeString('font.sans')) !== null) {
+            $declarations .= '--font-sans:'.$sans.';';
+        }
+
+        if (($mono = $this->themeString('font.mono')) !== null) {
+            $declarations .= '--font-mono:'.$mono.';';
+        }
+
+        $declarations .= GrayPalette::fromConfig($this->themeString('gray'))->declarations();
+        $declarations .= RadiusScale::fromConfig($this->themeString('radius'))->declarations();
+
+        return ':root{'.$declarations.'}';
+    }
+
+    private function themeString(string $key): ?string
+    {
+        $value = config('docent.theme.'.$key);
+
+        return $value === null ? null : (string) $value;
     }
 
     /**

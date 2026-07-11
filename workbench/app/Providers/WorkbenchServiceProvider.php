@@ -17,6 +17,15 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.name' => 'Acme Ledger Docs',
             'docent.filesystem.path' => dirname(__DIR__, 2).'/resources/docs',
         ]);
+
+        // Try a different feel — theming tokens are pure config, no rebuild:
+        // config([
+        //     'docent.theme.accent' => '#e11d48',
+        //     'docent.theme.gray' => 'zinc',
+        //     'docent.theme.radius' => 'soft',
+        //     'docent.theme.font.sans' => "'Inter', ui-sans-serif, system-ui, sans-serif",
+        //     'docent.theme.font.href' => 'https://fonts.bunny.net/css?family=inter:400,500,600,700',
+        // ]);
     }
 
     public function boot(): void

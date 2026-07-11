@@ -103,16 +103,38 @@ return [
     | Theme
     |--------------------------------------------------------------------------
     |
-    | Brand the documentation UI. `accent` is a single hex colour that drives
-    | every accent in the interface (active nav, links, focus rings, search
-    | highlights). `logo` is a path or URL shown in the top bar; null falls
-    | back to a text wordmark built from the site name.
+    | Brand the documentation UI entirely from config — no CSS rebuild, no
+    | published views. Every token below flows through runtime CSS variables.
+    |
+    | `accent` is a single hex colour driving every accent (active nav, links,
+    | focus rings, search highlights). `logo` is a path or URL shown in the top
+    | bar; null falls back to a text wordmark. `logo_dark` swaps it in dark mode
+    | (falls back to `logo`); `logomark` is a square mark used in the compact
+    | mobile header (falls back to `logo` → wordmark). `favicon` is emitted as a
+    | <link rel="icon"> when set.
+    |
+    | `font.sans` / `font.mono` are CSS font-family stacks (null keeps the
+    | system stack); `font.href` optionally emits a webfont stylesheet link
+    | (default is zero external requests).
+    |
+    | `gray` selects the base palette temperature (slate | zinc | stone |
+    | neutral) and `radius` the corner feel (sharp | default | soft).
     |
     */
 
     'theme' => [
         'accent' => '#6366f1',
         'logo' => null,
+        'logo_dark' => null,
+        'logomark' => null,
+        'favicon' => null,
+        'font' => [
+            'sans' => null,
+            'mono' => null,
+            'href' => null,
+        ],
+        'gray' => 'slate',
+        'radius' => 'default',
     ],
 
 ];

@@ -8,11 +8,21 @@
         @if($description)<meta name="description" content="{{ $description }}">@endif
     @endisset
 
-    <style>:root{--docent-accent:{{ $docent->accent() }};}</style>
+    @if($docent->favicon())
+        <link rel="icon" href="{{ $docent->favicon() }}">
+    @endif
+    @if($docent->fontHref())
+        <link rel="preconnect" href="{{ $docent->fontHref() }}" crossorigin>
+        <link rel="stylesheet" href="{{ $docent->fontHref() }}">
+    @endif
+
     <script>(function(){try{var t=localStorage.getItem('docentTheme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();</script>
 
     <link rel="stylesheet" href="{{ $docent->asset('docent.css') }}">
     <script defer src="{{ $docent->asset('docent.js') }}"></script>
+
+    {{-- Dynamic theme tokens last so host config always wins the cascade. --}}
+    <style>{!! $docent->themeStyles() !!}</style>
 </head>
 <body class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     <a href="#docent-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-[var(--docent-accent)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">
@@ -29,12 +39,22 @@
                 </button>
 
                 <a href="{{ $homeUrl }}" class="flex items-center gap-2 font-semibold tracking-tight text-slate-900 dark:text-white">
-                    @if($docent->logo())
-                        <img src="{{ $docent->logo() }}" alt="{{ $siteName }}" class="h-7 w-auto">
-                    @else
-                        <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--docent-accent)] text-sm font-bold text-white">{{ mb_substr($siteName, 0, 1) }}</span>
-                        <span class="text-[15px]">{{ $siteName }}</span>
+                    @if($docent->logomark())
+                        {{-- Compact square mark, only below the sm breakpoint. --}}
+                        <img src="{{ $docent->logomark() }}" alt="{{ $siteName }}" class="h-7 w-7 sm:hidden">
                     @endif
+
+                    <span class="flex items-center gap-2{{ $docent->logomark() ? ' hidden sm:flex' : '' }}">
+                        @if($docent->logo())
+                            <img src="{{ $docent->logo() }}" alt="{{ $siteName }}" class="h-7 w-auto{{ $docent->logoDark() ? ' dark:hidden' : '' }}">
+                            @if($docent->logoDark())
+                                <img src="{{ $docent->logoDark() }}" alt="{{ $siteName }}" class="hidden h-7 w-auto dark:block">
+                            @endif
+                        @else
+                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--docent-accent)] text-sm font-bold text-white">{{ mb_substr($siteName, 0, 1) }}</span>
+                            <span class="text-[15px]">{{ $siteName }}</span>
+                        @endif
+                    </span>
                 </a>
 
                 <div class="ml-auto flex items-center gap-2">
