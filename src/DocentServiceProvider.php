@@ -22,6 +22,13 @@ use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\PhikiCodeBlockRenderer;
+use STS\Docent\Http\Controllers\Admin\AdminController;
+use STS\Docent\Http\Controllers\Admin\MetaController;
+use STS\Docent\Http\Controllers\Admin\PageController as AdminPageController;
+use STS\Docent\Http\Controllers\Admin\PageStateController;
+use STS\Docent\Http\Controllers\Admin\PreviewController;
+use STS\Docent\Http\Controllers\Admin\TreeController;
+use STS\Docent\Http\Controllers\Admin\UploadController;
 use STS\Docent\Http\Controllers\AssetController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
@@ -45,10 +52,15 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocentCache::class),
         ));
 
+        // A plain bind (not a singleton) so it always reflects the current
+        // configured path — tests re-point `docent.filesystem.path` and expect a
+        // fresh read when they forget the repository.
+        $this->app->bind(FilesystemRepository::class, static fn (Application $app): FilesystemRepository => new FilesystemRepository(
+            $app['config']->get('docent.filesystem.path') ?? $app->resourcePath('docs'),
+        ));
+
         $this->app->singleton(DocumentationRepository::class, static function (Application $app): DocumentationRepository {
-            $filesystem = new FilesystemRepository(
-                $app['config']->get('docent.filesystem.path') ?? $app->resourcePath('docs'),
-            );
+            $filesystem = $app->make(FilesystemRepository::class);
 
             if (! $app['config']->get('docent.database.enabled', false)) {
                 return $filesystem;
@@ -80,6 +92,7 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocentCache::class),
             $app->make(NavigationBuilder::class),
             $app->make(CodeBlockRenderer::class),
+            $app->make(FilesystemRepository::class),
         ));
 
         $this->app->singleton(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
@@ -129,7 +142,49 @@ final class DocentServiceProvider extends ServiceProvider
                 Route::get('/_search', SearchController::class)->name('docent.search');
             }
 
+            if (config('docent.admin.enabled', false) && config('docent.database.enabled', false)) {
+                $this->registerAdminRoutes();
+            }
+
             Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('docent.show');
+        });
+    }
+
+    /**
+     * The admin panel and its JSON API, registered inside the docs route group
+     * (so prefix/domain/middleware apply) and additionally guarded by the
+     * configured gate. Page-scoped action routes are declared before the
+     * catch-all `{slug}` detail routes so the more specific paths win.
+     */
+    private function registerAdminRoutes(): void
+    {
+        Route::middleware('can:'.config('docent.admin.gate', 'viewDocentAdmin'))->group(function (): void {
+            Route::get('_admin', AdminController::class)->name('docent.admin');
+
+            Route::get('_admin/api/tree', TreeController::class)->name('docent.admin.tree');
+            Route::get('_admin/api/meta', MetaController::class)->name('docent.admin.meta');
+            Route::post('_admin/api/preview', PreviewController::class)->name('docent.admin.preview');
+            Route::post('_admin/api/uploads', UploadController::class)->name('docent.admin.uploads');
+
+            Route::post('_admin/api/pages', [AdminPageController::class, 'store'])->name('docent.admin.pages.store');
+
+            Route::get('_admin/api/pages/{slug}/revisions', [AdminPageController::class, 'revisions'])
+                ->where('slug', '.*')->name('docent.admin.pages.revisions');
+            Route::post('_admin/api/pages/{slug}/publish', [PageStateController::class, 'publish'])
+                ->where('slug', '.*')->name('docent.admin.pages.publish');
+            Route::post('_admin/api/pages/{slug}/unpublish', [PageStateController::class, 'unpublish'])
+                ->where('slug', '.*')->name('docent.admin.pages.unpublish');
+            Route::post('_admin/api/pages/{slug}/revert/{revision}', [PageStateController::class, 'revert'])
+                ->where('slug', '.*')->where('revision', '[0-9]+')->name('docent.admin.pages.revert');
+            Route::post('_admin/api/pages/{slug}/override', [PageStateController::class, 'override'])
+                ->where('slug', '.*')->name('docent.admin.pages.override');
+
+            Route::get('_admin/api/pages/{slug}', [AdminPageController::class, 'show'])
+                ->where('slug', '.*')->name('docent.admin.pages.show');
+            Route::put('_admin/api/pages/{slug}', [AdminPageController::class, 'update'])
+                ->where('slug', '.*')->name('docent.admin.pages.update');
+            Route::delete('_admin/api/pages/{slug}', [AdminPageController::class, 'destroy'])
+                ->where('slug', '.*')->name('docent.admin.pages.destroy');
         });
     }
 

@@ -10,6 +10,7 @@ use STS\Docent\Content\PageReference;
 use STS\Docent\Content\Repositories\CompositeRepository;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Documents\Document;
+use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Runtime\IntegrationRegistry;
 use Throwable;
@@ -34,6 +35,13 @@ final class CheckContext
     private array $partials = [];
 
     /**
+     * When set, the run is scoped to a single unsaved draft: {@see pages()}
+     * yields only this slug (built from the draft's own front matter), and
+     * {@see Document()} parses `$overrideContent` for it instead of hitting the
+     * repository. {@see slugSet()} still reflects every stored page (plus the
+     * draft), so broken-link checks validate against the live tree. This is how
+     * the admin runs the reference checks over content that isn't persisted yet.
+     *
      * @param  Closure(string): bool  $routeExists
      * @param  Closure(string): bool  $abilityExists
      */
@@ -46,6 +54,8 @@ final class CheckContext
         private readonly string $routePrefix,
         private readonly Closure $routeExists,
         private readonly Closure $abilityExists,
+        private readonly ?string $overrideSlug = null,
+        private readonly ?string $overrideContent = null,
     ) {}
 
     public function registry(): IntegrationRegistry
@@ -88,17 +98,24 @@ final class CheckContext
     }
 
     /**
-     * All enumerable pages (front-matter-only references).
+     * The pages the checks iterate. Normally every enumerable page; when scoped
+     * to a draft (see the constructor), only that draft.
      *
      * @return list<PageReference>
      */
     public function pages(): array
     {
-        return $this->pages ??= array_values([...$this->repository->all()]);
+        if ($this->overrideSlug !== null) {
+            return [$this->overrideReference()];
+        }
+
+        return $this->allReferences();
     }
 
     /**
-     * The set of known page slugs, keyed for O(1) lookup. Home is the empty slug.
+     * The set of known page slugs, keyed for O(1) lookup. Home is the empty
+     * slug. Always the full stored tree (plus the draft slug when scoped), so
+     * broken-link checks resolve against every page a reader could reach.
      *
      * @return array<string, true>
      */
@@ -106,11 +123,49 @@ final class CheckContext
     {
         $set = [];
 
-        foreach ($this->pages() as $page) {
+        foreach ($this->allReferences() as $page) {
             $set[$page->slug] = true;
         }
 
+        if ($this->overrideSlug !== null) {
+            $set[$this->overrideSlug] = true;
+        }
+
         return $set;
+    }
+
+    /**
+     * All enumerable pages (front-matter-only references), cached per run.
+     *
+     * @return list<PageReference>
+     */
+    private function allReferences(): array
+    {
+        return $this->pages ??= array_values([...$this->repository->all()]);
+    }
+
+    /**
+     * The synthetic page reference for a scoped draft, derived from the parsed
+     * draft's own front matter so page-level checks (authorize, directory-based
+     * link resolution) behave exactly as they would once saved.
+     */
+    private function overrideReference(): PageReference
+    {
+        $frontMatter = $this->document((string) $this->overrideSlug)?->frontMatter() ?? new FrontMatter;
+
+        $slug = (string) $this->overrideSlug;
+
+        return new PageReference(
+            slug: $slug,
+            title: $frontMatter->title() ?? '',
+            order: $frontMatter->order(),
+            hidden: $frontMatter->hidden(),
+            authorize: $frontMatter->authorize(),
+            audience: $frontMatter->audience(),
+            searchExcluded: $frontMatter->searchExcluded(),
+            description: $frontMatter->description(),
+            directory: str_contains($slug, '/') ? substr($slug, 0, (int) strrpos($slug, '/')) : '',
+        );
     }
 
     public function source(string $slug): ?DocumentSource
@@ -128,6 +183,10 @@ final class CheckContext
     {
         if (array_key_exists($slug, $this->documents)) {
             return $this->documents[$slug];
+        }
+
+        if ($this->overrideSlug !== null && $slug === $this->overrideSlug) {
+            return $this->documents[$slug] = $this->parse((string) $this->overrideContent);
         }
 
         $source = $this->repository->find($slug);

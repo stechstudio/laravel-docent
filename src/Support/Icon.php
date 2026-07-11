@@ -54,4 +54,14 @@ final class Icon
     {
         return isset(self::ICONS[$name]);
     }
+
+    /**
+     * Every built-in icon name, for the admin icon picker.
+     *
+     * @return list<string>
+     */
+    public static function names(): array
+    {
+        return array_keys(self::ICONS);
+    }
 }

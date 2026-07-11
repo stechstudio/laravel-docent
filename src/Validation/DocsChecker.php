@@ -57,6 +57,29 @@ final class DocsChecker
     }
 
     /**
+     * The subset of checks that validate a single page's references against the
+     * registry and the live page tree — the ones worth running inline on every
+     * admin save and preview. Tree-wide checks (duplicate slugs, shadowed pages,
+     * missing local images) are excluded: they belong to `docent:check`, not a
+     * per-draft edit.
+     */
+    public static function references(): self
+    {
+        return new self([
+            new BrokenLinkCheck,
+            new UnknownConditionCheck,
+            new UnknownValueCheck,
+            new UnknownLinkCheck,
+            new UnknownRouteCheck,
+            new UnknownComponentCheck,
+            new UnknownAudienceCheck,
+            new UnknownAbilityCheck,
+            new MissingIncludeCheck,
+            new UnknownIconCheck,
+        ]);
+    }
+
+    /**
      * @return list<Issue>
      */
     public function run(CheckContext $context): array

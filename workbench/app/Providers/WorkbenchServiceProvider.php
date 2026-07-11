@@ -18,6 +18,8 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.filesystem.path' => dirname(__DIR__, 2).'/resources/docs',
             // Demo the composite store: database pages compose over the files.
             'docent.database.enabled' => true,
+            // Demo the admin panel (gated below to the account owner).
+            'docent.admin.enabled' => true,
         ]);
 
         // Try a different feel — theming tokens are pure config, no rebuild:
@@ -38,6 +40,9 @@ class WorkbenchServiceProvider extends ServiceProvider
         // Demo gates: only the account owner may manage billing or view reports.
         Gate::define('billing.manage', fn (?User $user) => $user?->email === 'admin@acme.test');
         Gate::define('reports.view', fn (?User $user) => $user?->email === 'admin@acme.test');
+
+        // The admin panel is gated to the account owner; guests are denied.
+        Gate::define('viewDocentAdmin', fn (?User $user) => $user?->email === 'admin@acme.test');
 
         // Teach Docent about this application.
         Docent::value('account.plan', fn () => 'Team Plan', label: 'Account plan name')

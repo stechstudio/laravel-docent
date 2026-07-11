@@ -63,6 +63,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Admin Panel
+    |--------------------------------------------------------------------------
+    |
+    | The database-backed authoring panel, served under `_admin` inside the
+    | docs route group. Requires the database store (`docent.database.enabled`)
+    | and is off by default. Every admin route — the panel and its JSON API — is
+    | additionally guarded by the `gate` ability, which the host application
+    | defines (it denies guests by default). Image uploads land on `disk`.
+    |
+    */
+
+    'admin' => [
+        'enabled' => false,
+        'gate' => 'viewDocentAdmin',
+        'disk' => 'public',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Authorization
     |--------------------------------------------------------------------------
     |

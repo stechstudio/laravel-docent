@@ -206,6 +206,46 @@ final class IntegrationRegistry
     }
 
     /**
+     * Name/label/description metadata for every registered integration, grouped
+     * by kind — the source for the admin picker endpoint. Resolvers are never
+     * exposed; only what an editor needs to offer choices.
+     *
+     * @return array{
+     *     conditions: list<array{name: string, label: ?string, description: ?string}>,
+     *     values: list<array{name: string, label: ?string, description: ?string}>,
+     *     links: list<array{name: string, label: ?string, description: ?string}>,
+     *     components: list<array{name: string, label: ?string, description: ?string}>,
+     *     audiences: list<array{name: string, label: ?string, description: ?string}>,
+     * }
+     */
+    public function describe(): array
+    {
+        return [
+            'conditions' => $this->describeAll($this->conditions),
+            'values' => $this->describeAll($this->values),
+            'links' => $this->describeAll($this->links),
+            'components' => $this->describeAll($this->components),
+            'audiences' => $this->describeAll($this->audiences),
+        ];
+    }
+
+    /**
+     * @param  array<string, RegisteredAudience|RegisteredComponent|RegisteredCondition|RegisteredLink|RegisteredValue>  $registered
+     * @return list<array{name: string, label: ?string, description: ?string}>
+     */
+    private function describeAll(array $registered): array
+    {
+        return array_values(array_map(
+            static fn (object $item): array => [
+                'name' => $item->name,
+                'label' => $item->label,
+                'description' => $item->description,
+            ],
+            $registered,
+        ));
+    }
+
+    /**
      * @param  Closure|class-string  $resolver
      * @param  array<int, mixed>  $arguments
      */

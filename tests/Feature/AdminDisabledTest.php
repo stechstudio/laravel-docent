@@ -1,0 +1,16 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+/**
+ * With the admin panel disabled (the default), none of its routes exist and the
+ * panel path falls through to the ordinary page resolver (a 404).
+ */
+it('registers no admin routes when the panel is disabled', function () {
+    expect(Route::has('docent.admin'))->toBeFalse()
+        ->and(Route::has('docent.admin.tree'))->toBeFalse()
+        ->and(Route::has('docent.admin.pages.store'))->toBeFalse();
+
+    $this->get('/docs/_admin')->assertNotFound();
+    $this->getJson('/docs/_admin/api/tree')->assertNotFound();
+});
