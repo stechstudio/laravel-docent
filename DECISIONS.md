@@ -71,3 +71,11 @@ Everything here is open for review/reversal — flag anything you disagree with.
     highlighting both themes, mobile slide-over nav, prev/next. Screenshots in ~/.dev-browser/tmp.
 22. **`package-lock.json` now tracked** (reproducible asset builds); `workbench/storage` ignored
     (testbench build artifact).
+23. **Future-store audit (per Joseph's request)**: two filesystem assumptions removed so a database
+    or composite repository has no blockers. `DocumentSource` now carries `format` (parser dispatch
+    point — v1 registers only markdown; AST cache keys include it) and `baseDir` (relative-link
+    base, decided by the repository instead of sniffed from the file path in `Page`). Everything
+    else was already store-agnostic: the AST is the canonical model, renderers/search/nav/check
+    consume repository + AST only, and the `DocumentationRepository` interface (find/all/partial/
+    groupMeta/directoryHash) composes naturally into a first-match-wins composite. The interface
+    stays marked internal/experimental so v2 can still reshape it.

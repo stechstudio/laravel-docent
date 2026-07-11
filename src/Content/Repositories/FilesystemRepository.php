@@ -139,6 +139,7 @@ final class FilesystemRepository implements DocumentationRepository
             hash: sha1($content),
             path: $absolute,
             lastModified: (int) filemtime($absolute),
+            baseDir: basename($relative) === 'index.md' ? $slug : $this->directoryOf($relative),
         );
     }
 

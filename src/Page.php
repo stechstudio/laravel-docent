@@ -61,16 +61,12 @@ final class Page
     }
 
     /**
-     * The directory relative links resolve against: an index page is its own
-     * directory; any other page lives in its parent directory.
+     * The directory relative links resolve against — decided by the repository,
+     * which is the only layer that knows whether a slug is a section index.
      */
     public function baseDir(): string
     {
-        if (str_ends_with($this->source->path, DIRECTORY_SEPARATOR.'index.md') || $this->source->path === 'index.md') {
-            return $this->slug;
-        }
-
-        return str_contains($this->slug, '/') ? Str::beforeLast($this->slug, '/') : '';
+        return $this->source->baseDir;
     }
 
     /**

@@ -270,11 +270,20 @@ final class DocentManager
     }
 
     /**
-     * Parse a source's markdown into an AST, transparently cached by content
-     * hash so a page is only parsed once per content revision.
+     * Parse a source into an AST, transparently cached by format + content hash
+     * so a page is only parsed once per content revision. v1 ships only the
+     * markdown parser; `DocumentSource::format` is the dispatch point a future
+     * database/Tiptap repository plugs into.
      */
     private function document(DocumentSource $source): Document
     {
-        return $this->cache->remember('ast:'.$source->hash, fn (): Document => $this->parser->parse($source->rawContent));
+        $parser = match ($source->format) {
+            DocumentSource::FORMAT_MARKDOWN => $this->parser,
+        };
+
+        return $this->cache->remember(
+            'ast:'.$source->format.':'.$source->hash,
+            fn (): Document => $parser->parse($source->rawContent),
+        );
     }
 }
