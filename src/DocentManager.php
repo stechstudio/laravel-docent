@@ -22,6 +22,7 @@ use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\DocentCache;
 use STS\Docent\Support\GrayPalette;
+use STS\Docent\Support\InternalLink;
 use STS\Docent\Support\RadiusScale;
 
 /**
@@ -200,6 +201,19 @@ final class DocentManager
     public function url(string $slug): string
     {
         return $slug === '' ? route('docent.home') : route('docent.show', $slug);
+    }
+
+    /**
+     * Resolve a link destination the way the renderer does: slug-style and
+     * docs-rooted destinations become page URLs; external URLs pass through
+     * verbatim. Shared with landing-page CTA resolution so a front-matter href
+     * behaves exactly like an in-body markdown link.
+     */
+    public function resolveUrl(string $destination, string $baseDir = ''): string
+    {
+        $target = InternalLink::resolve($destination, $baseDir, (string) config('docent.route.prefix', 'docs'));
+
+        return $target === null ? $destination : $this->url($target['slug']).$target['suffix'];
     }
 
     public function siteName(): string

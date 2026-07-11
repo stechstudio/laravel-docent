@@ -362,6 +362,145 @@
 
 /*
 | ---------------------------------------------------------------------------
+| Cards — a responsive grid of linkable panels
+| ---------------------------------------------------------------------------
+| Authored as `::::cards` / `:::card`, usable on any page. A card with an href
+| is a full-panel link; without one it is a static panel. The grid collapses to
+| a single column on narrow viewports and steps up to its configured width.
+*/
+.docent-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin: 1.75rem 0;
+}
+
+@media (min-width: 640px) {
+    .docent-cards[data-columns='2'],
+    .docent-cards[data-columns='4'] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .docent-cards[data-columns='3'] {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .docent-cards[data-columns='4'] {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.docent-card {
+    display: block;
+    padding: 1.25rem 1.35rem;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.8rem;
+    background-color: var(--docent-bg);
+    color: var(--docent-fg);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+a.docent-card:hover {
+    border-color: var(--docent-accent);
+    box-shadow: var(--docent-shadow);
+    transform: translateY(-1px);
+}
+
+/* Cards render inside prose; keep the link chrome off the whole panel. */
+.docent-prose a.docent-card,
+.docent-prose a.docent-card:hover {
+    color: var(--docent-fg);
+    font-weight: inherit;
+    text-decoration: none;
+}
+
+.docent-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.9rem;
+    border-radius: 0.6rem;
+    color: var(--docent-accent);
+    background-color: color-mix(in srgb, var(--docent-accent) 12%, transparent);
+}
+
+.docent-card-icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.docent-card-title {
+    font-weight: 650;
+    font-size: 1rem;
+    color: var(--docent-strong);
+}
+
+.docent-card-body {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--docent-muted);
+}
+
+.docent-prose .docent-card-body > *:first-child {
+    margin-top: 0;
+}
+
+.docent-prose .docent-card-body > *:last-child {
+    margin-bottom: 0;
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Landing hero
+| ---------------------------------------------------------------------------
+*/
+.docent-cta-primary,
+.docent-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1.3rem;
+    border-radius: 0.65rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.docent-cta-primary {
+    background-color: var(--docent-accent);
+    color: #fff;
+    border: 1px solid var(--docent-accent);
+}
+
+.docent-cta-primary:hover {
+    opacity: 0.9;
+}
+
+.docent-cta-secondary {
+    color: var(--docent-strong);
+    border: 1px solid var(--docent-border-strong);
+    background-color: transparent;
+}
+
+.docent-cta-secondary:hover {
+    border-color: var(--docent-accent);
+    background-color: var(--docent-panel);
+}
+
+/* Prose on a landing page: the leading h1 is not hidden (there is no page
+   title above it), and content is comfortably centered. */
+.docent-landing-body > *:first-child {
+    margin-top: 0;
+}
+
+/*
+| ---------------------------------------------------------------------------
 | Code cards
 | ---------------------------------------------------------------------------
 */

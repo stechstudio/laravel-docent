@@ -33,10 +33,12 @@
         {{-- Top bar --}}
         <header class="docent-topbar sticky top-0 z-40 h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80">
             <div class="mx-auto flex h-full max-w-[100rem] items-center gap-3 px-4 sm:px-6">
-                <button type="button" class="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                        @click="sidebar = true" aria-label="Open navigation" :aria-expanded="sidebar" aria-controls="docent-sidebar">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                </button>
+                @unless($landing ?? false)
+                    <button type="button" class="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                            @click="sidebar = true" aria-label="Open navigation" :aria-expanded="sidebar" aria-controls="docent-sidebar">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                @endunless
 
                 <a href="{{ $homeUrl }}" class="flex items-center gap-2 font-semibold tracking-tight text-slate-900 dark:text-white">
                     @if($docent->logomark())
@@ -76,6 +78,13 @@
             </div>
         </header>
 
+        @if($landing ?? false)
+        <div class="mx-auto max-w-[100rem] px-4 sm:px-6">
+            <main id="docent-content" class="docent-main min-w-0 px-0 py-12 lg:py-16">
+                @yield('content')
+            </main>
+        </div>
+        @else
         <div class="mx-auto flex max-w-[100rem] px-4 sm:px-6">
             {{-- Left sidebar (desktop) --}}
             <aside class="docent-sidebar docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto py-8 pr-6 lg:block">
@@ -108,6 +117,7 @@
                 @yield('rail')
             </div>
         </div>
+        @endif
 
         @if($searchEnabled)
             @include('docent::partials.search')

@@ -9,6 +9,7 @@ use STS\Docent\Documents\Ast\AudienceBlock;
 use STS\Docent\Documents\Ast\AuthorizationBlock;
 use STS\Docent\Documents\Ast\BlockQuote;
 use STS\Docent\Documents\Ast\Callout;
+use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CodeBlock;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\HardBreak;
@@ -74,6 +75,9 @@ final class SearchTextRenderer
             $node instanceof Heading,
             $node instanceof Paragraph,
             $node instanceof Callout => $this->renderChildren($node)."\n\n",
+
+            // Cards are static content: their title and body are indexed.
+            $node instanceof Card => ($node->title ?? '')."\n".$this->renderChildren($node)."\n\n",
 
             $node instanceof CodeBlock => $node->code."\n\n",
             $node instanceof ListItem => $this->renderChildren($node)."\n",

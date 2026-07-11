@@ -74,6 +74,49 @@ final class FrontMatter
     }
 
     /**
+     * The page layout: `docs` (default, full navigation chrome) or `landing`
+     * (hero + centered body, no sidebar/TOC/prev-next).
+     */
+    public function layout(): string
+    {
+        $layout = $this->get('layout');
+
+        return is_scalar($layout) ? (string) $layout : 'docs';
+    }
+
+    /**
+     * Hero call-to-action buttons for a landing page. Each button is a label,
+     * an href (an internal slug or external URL, resolved by the caller), and a
+     * style (`primary` accent button, or `secondary` bordered).
+     *
+     * @return list<array{label: string, href: string, style: string}>
+     */
+    public function heroCta(): array
+    {
+        $cta = $this->get('hero.cta');
+
+        if (! is_array($cta)) {
+            return [];
+        }
+
+        $buttons = [];
+
+        foreach ($cta as $item) {
+            if (! is_array($item) || ! is_scalar($item['label'] ?? null) || ! is_scalar($item['href'] ?? null)) {
+                continue;
+            }
+
+            $buttons[] = [
+                'label' => (string) $item['label'],
+                'href' => (string) $item['href'],
+                'style' => ($item['style'] ?? null) === 'secondary' ? 'secondary' : 'primary',
+            ];
+        }
+
+        return $buttons;
+    }
+
+    /**
      * Dot-notation access into the raw front matter.
      */
     public function get(string $key, mixed $default = null): mixed

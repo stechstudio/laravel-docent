@@ -12,9 +12,13 @@ use League\CommonMark\Parser\Cursor;
 use STS\Docent\Documents\Parser\Markdown\Node\DirectiveBlock;
 
 /**
- * Continuation parser for a container directive. Directives nest, so a closing
- * `:::` fence only finalizes the innermost open directive — determined by walking
- * from the currently-active block up to its nearest directive ancestor.
+ * Continuation parser for a container directive. Directives nest, and closing
+ * fences are matched CommonMark-fenced-code style by length: a fence of N
+ * colons closes the innermost open directive that was opened with N colons
+ * (so `::::cards` wraps `:::card` blocks and is closed by its own `::::`).
+ * When no open directive matches the length exactly, the fence falls back to
+ * the innermost directive it is long enough to close — which is how a bare
+ * `:::` has always behaved.
  */
 final class DirectiveBlockParser extends AbstractBlockContinueParser
 {
@@ -23,9 +27,9 @@ final class DirectiveBlockParser extends AbstractBlockContinueParser
     /**
      * @param  array<string, string>  $attributes
      */
-    public function __construct(string $name, array $attributes, ?string $shorthand)
+    public function __construct(string $name, array $attributes, ?string $shorthand, int $fenceLength = 3)
     {
-        $this->block = new DirectiveBlock($name, $attributes, $shorthand);
+        $this->block = new DirectiveBlock($name, $attributes, $shorthand, $fenceLength);
     }
 
     public function getBlock(): DirectiveBlock
@@ -45,7 +49,9 @@ final class DirectiveBlockParser extends AbstractBlockContinueParser
 
     public function tryContinue(Cursor $cursor, BlockContinueParserInterface $activeBlockParser): ?BlockContinue
     {
-        if ($this->isClosingFence($cursor) && $this->ownsFence($activeBlockParser)) {
+        $fenceLength = $this->closingFenceLength($cursor);
+
+        if ($fenceLength !== null && $this->ownsFence($activeBlockParser, $fenceLength)) {
             $cursor->advanceToEnd();
 
             return BlockContinue::finished();
@@ -54,24 +60,59 @@ final class DirectiveBlockParser extends AbstractBlockContinueParser
         return BlockContinue::at($cursor);
     }
 
-    private function isClosingFence(Cursor $cursor): bool
+    private function closingFenceLength(Cursor $cursor): ?int
     {
-        return ! $cursor->isIndented()
-            && preg_match('/^:{3,}\s*$/', $cursor->getRemainder()) === 1;
+        if ($cursor->isIndented() || preg_match('/^(:{3,})\s*$/', $cursor->getRemainder(), $m) !== 1) {
+            return null;
+        }
+
+        return strlen($m[1]);
     }
 
     /**
-     * The innermost open directive owns the fence: find the nearest directive
-     * ancestor of the active block and compare it to ourselves.
+     * Whether this directive owns a closing fence of the given length. The
+     * owner is the innermost open directive whose opening fence matches the
+     * length exactly, or — when nothing matches exactly — the innermost open
+     * directive the fence is at least long enough to close. Outer parsers see
+     * each line first, so a claim here implicitly finalizes anything deeper.
      */
-    private function ownsFence(BlockContinueParserInterface $activeBlockParser): bool
+    private function ownsFence(BlockContinueParserInterface $activeBlockParser, int $fenceLength): bool
     {
+        $open = $this->openDirectives($activeBlockParser);
+
+        foreach ($open as $directive) {
+            if ($directive->fenceLength === $fenceLength) {
+                return $directive === $this->block;
+            }
+        }
+
+        foreach ($open as $directive) {
+            if ($directive->fenceLength <= $fenceLength) {
+                return $directive === $this->block;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Every open directive, innermost first, walked up from the active block.
+     *
+     * @return list<DirectiveBlock>
+     */
+    private function openDirectives(BlockContinueParserInterface $activeBlockParser): array
+    {
+        $directives = [];
         $node = $activeBlockParser->getBlock();
 
-        while ($node !== null && ! $node instanceof DirectiveBlock) {
+        while ($node !== null) {
+            if ($node instanceof DirectiveBlock) {
+                $directives[] = $node;
+            }
+
             $node = $node->parent();
         }
 
-        return $node === $this->block;
+        return $directives;
     }
 }

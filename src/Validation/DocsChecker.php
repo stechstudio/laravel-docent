@@ -15,6 +15,7 @@ use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
 use STS\Docent\Validation\Checks\UnknownComponentCheck;
 use STS\Docent\Validation\Checks\UnknownConditionCheck;
+use STS\Docent\Validation\Checks\UnknownIconCheck;
 use STS\Docent\Validation\Checks\UnknownLinkCheck;
 use STS\Docent\Validation\Checks\UnknownRouteCheck;
 use STS\Docent\Validation\Checks\UnknownValueCheck;
@@ -49,6 +50,7 @@ final class DocsChecker
             new IncludeCycleCheck,
             new MissingImageCheck,
             new HeadingHierarchyCheck,
+            new UnknownIconCheck,
         ]);
     }
 

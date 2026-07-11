@@ -47,6 +47,34 @@ final class Page
     }
 
     /**
+     * The page layout: `docs` (default) or `landing`. The controller uses this
+     * to pick the view and suppress the sidebar/TOC chrome.
+     */
+    public function layout(): string
+    {
+        return $this->frontMatter()->layout();
+    }
+
+    public function isLanding(): bool
+    {
+        return $this->layout() === 'landing';
+    }
+
+    /**
+     * Hero CTA buttons with their hrefs resolved through the same internal-link
+     * path as in-body markdown links.
+     *
+     * @return list<array{label: string, href: string, style: string}>
+     */
+    public function heroCta(): array
+    {
+        return array_map(
+            fn (array $cta): array => [...$cta, 'href' => $this->manager->resolveUrl($cta['href'], $this->baseDir())],
+            $this->frontMatter()->heroCta(),
+        );
+    }
+
+    /**
      * Whether the given viewer may see this page: front matter `authorize`
      * (gate/ability) and `audience` both gate the whole page.
      */

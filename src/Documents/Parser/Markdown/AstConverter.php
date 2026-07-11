@@ -38,6 +38,8 @@ use STS\Docent\Documents\Ast\BlockQuote;
 use STS\Docent\Documents\Ast\BulletList;
 use STS\Docent\Documents\Ast\Callout;
 use STS\Docent\Documents\Ast\CalloutType;
+use STS\Docent\Documents\Ast\Card;
+use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
@@ -140,7 +142,7 @@ final class AstConverter
         $children = $this->convertInlines($node, $line);
 
         // Drop orphaned closing fences that CommonMark folded into a paragraph.
-        if (count($children) === 1 && $children[0] instanceof Text && trim($children[0]->content) === ':::') {
+        if (count($children) === 1 && $children[0] instanceof Text && preg_match('/^:{3,}$/', trim($children[0]->content)) === 1) {
             return null;
         }
 
@@ -188,6 +190,13 @@ final class AstConverter
             'when' => new ConditionBlock($attributes['condition'] ?? $shorthand ?? '', false, $arguments, $line),
             'unless' => new ConditionBlock($attributes['condition'] ?? $shorthand ?? '', true, $arguments, $line),
             'audience' => new AudienceBlock($attributes['name'] ?? $shorthand ?? '', $line),
+            'cards' => new CardGroup($this->cardColumns($attributes['columns'] ?? null), $line),
+            'card' => new Card(
+                $attributes['title'] ?? $shorthand,
+                $attributes['icon'] ?? null,
+                $attributes['href'] ?? null,
+                $line,
+            ),
             default => new Callout(
                 CalloutType::tryFromName($node->name) ?? CalloutType::Note,
                 $attributes['title'] ?? $shorthand,
@@ -321,6 +330,14 @@ final class AstConverter
         $word = preg_split('/\s+/', trim($info))[0] ?? '';
 
         return $word !== '' ? $word : null;
+    }
+
+    /**
+     * Grid width for a `::::cards` group: a positive integer, defaulting to 2.
+     */
+    private function cardColumns(?string $value): int
+    {
+        return $value !== null && ctype_digit($value) && (int) $value > 0 ? (int) $value : 2;
     }
 
     /**

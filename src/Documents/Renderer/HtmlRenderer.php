@@ -13,6 +13,8 @@ use STS\Docent\Documents\Ast\AuthorizationBlock;
 use STS\Docent\Documents\Ast\BlockQuote;
 use STS\Docent\Documents\Ast\BulletList;
 use STS\Docent\Documents\Ast\Callout;
+use STS\Docent\Documents\Ast\Card;
+use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
@@ -42,6 +44,7 @@ use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Support\Icon;
 use STS\Docent\Support\InternalLink;
 
 /**
@@ -107,6 +110,8 @@ final class HtmlRenderer
             $node instanceof ThematicBreak => '<hr />',
             $node instanceof HtmlBlock => $this->allowHtml() ? $node->html : '',
             $node instanceof Callout => $this->renderCallout($node),
+            $node instanceof CardGroup => $this->renderCardGroup($node),
+            $node instanceof Card => $this->renderCard($node),
             $node instanceof AuthorizationBlock => $this->authorizationVisible($node, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof ConditionBlock => $this->conditionVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof AudienceBlock => $this->audienceVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
@@ -177,6 +182,38 @@ final class HtmlRenderer
         $html .= '<div class="docent-callout-content">'.$this->renderChildren($node).'</div>';
 
         return $html.'</div>';
+    }
+
+    private function renderCardGroup(CardGroup $node): string
+    {
+        return '<div class="docent-cards" data-columns="'.$node->columns.'">'.$this->renderChildren($node).'</div>';
+    }
+
+    private function renderCard(Card $node): string
+    {
+        $href = $node->href !== null && $node->href !== '' ? $this->resolveUrl($node->href) : null;
+
+        $inner = '';
+
+        if ($node->icon !== null && ($icon = Icon::svg($node->icon)) !== null) {
+            $inner .= '<div class="docent-card-icon">'.$icon.'</div>';
+        }
+
+        if ($node->title !== null && $node->title !== '') {
+            $inner .= '<div class="docent-card-title">'.e($node->title).'</div>';
+        }
+
+        $body = $this->renderChildren($node);
+
+        if ($body !== '') {
+            $inner .= '<div class="docent-card-body">'.$body.'</div>';
+        }
+
+        if ($href !== null) {
+            return '<a class="docent-card" href="'.e($href).'">'.$inner.'</a>';
+        }
+
+        return '<div class="docent-card">'.$inner.'</div>';
     }
 
     private function renderInclude(IncludeNode $node): string

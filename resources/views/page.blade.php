@@ -47,7 +47,7 @@
 
 @section('rail')
     @if(!empty($toc))
-        <aside class="docent-rail docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 xl:block" aria-label="On this page">
+        <aside class="docent-rail docent-toc docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 xl:block" aria-label="On this page">
             <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">On this page</p>
             <ul class="space-y-1 text-sm">
                 @foreach($toc as $entry)

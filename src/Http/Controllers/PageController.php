@@ -45,6 +45,21 @@ final class PageController
             return $this->denied();
         }
 
+        if ($page->isLanding()) {
+            return view('docent::landing', [
+                'docent' => $this->docent,
+                'siteName' => $this->docent->siteName(),
+                'homeUrl' => $this->docent->url(''),
+                'searchEnabled' => (bool) config('docent.search.enabled', true),
+                'page' => $page,
+                'title' => $page->title(),
+                'description' => $page->description(),
+                'html' => $page->render($context),
+                'heroCta' => $page->heroCta(),
+                'landing' => true,
+            ]);
+        }
+
         [$prev, $next] = $this->docent->prevNext($slug, $context);
 
         return view('docent::page', [

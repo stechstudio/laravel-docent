@@ -23,6 +23,7 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
     public const NAMES = [
         'can', 'cannot', 'when', 'unless', 'audience', 'include',
         'note', 'tip', 'info', 'warning', 'danger',
+        'cards', 'card',
     ];
 
     public function tryStart(Cursor $cursor, MarkdownParserStateInterface $parserState): ?BlockStart
@@ -33,17 +34,17 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
 
         $line = $cursor->getRemainder();
 
-        if (preg_match('/^:{3,}\s*([A-Za-z][A-Za-z0-9_-]*)(.*)$/', $line, $m) !== 1) {
+        if (preg_match('/^(:{3,})\s*([A-Za-z][A-Za-z0-9_-]*)(.*)$/', $line, $m) !== 1) {
             return BlockStart::none();
         }
 
-        $name = strtolower($m[1]);
+        $name = strtolower($m[2]);
 
         if (! in_array($name, self::NAMES, true)) {
             return BlockStart::none();
         }
 
-        $parsed = AttributeParser::parse($m[2] ?? '');
+        $parsed = AttributeParser::parse($m[3] ?? '');
 
         $cursor->advanceToEnd();
 
@@ -54,7 +55,7 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
         }
 
         return BlockStart::of(
-            new DirectiveBlockParser($name, $parsed['attributes'], $parsed['shorthand'])
+            new DirectiveBlockParser($name, $parsed['attributes'], $parsed['shorthand'], strlen($m[1]))
         )->at($cursor);
     }
 }
