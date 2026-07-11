@@ -150,3 +150,20 @@ Everything here is open for review/reversal — flag anything you disagree with.
     consume repository + AST only, and the `DocumentationRepository` interface (find/all/partial/
     groupMeta/directoryHash) composes naturally into a first-match-wins composite. The interface
     stays marked internal/experimental so v2 can still reshape it.
+
+## Editor framework posture (discussed with Joseph, July 11)
+
+- **Vanilla node views today; React is a contained, later-swappable view-layer decision.**
+  Tiptap's Notion-like template / UI-components kit is React-first, but the Notion UX decomposes
+  into framework-agnostic ProseMirror features (we built slash + bubble menus vanilla; drag-handle
+  has a neutral core). Our durable investment — schema contract, PHP bridge, serializers, admin
+  API, and the Tiptap *extensions* (names/attrs/commands) — is framework-independent; only the
+  ~1.5k-line node-view/chrome layer is framework-specific, and ReactNodeViewRenderer wraps the
+  same extensions if we ever swap.
+- Because the admin bundle is prebuilt and self-contained, adopting React later is invisible to
+  host apps — no compat or migration cost. The trade was our maintenance surface + bundle weight,
+  not host compatibility.
+- **Re-evaluate triggers**: collaborative editing / comments / Tiptap AI components on the
+  roadmap, or a third instance of reimplementing their template chrome by hand.
+- **Standing discipline**: extensions define schema and commands; node views only render.
+  Document semantics never leak into view code — that keeps the swap cheap.
