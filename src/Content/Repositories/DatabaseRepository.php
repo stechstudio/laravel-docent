@@ -7,6 +7,7 @@ namespace STS\Docent\Content\Repositories;
 use Illuminate\Support\Str;
 use STS\Docent\Content\DocumentSource;
 use STS\Docent\Content\Models\DocentPage;
+use STS\Docent\Content\Models\DocentPageRevision;
 use STS\Docent\Content\PageReference;
 use STS\Docent\Documents\FrontMatter;
 use Symfony\Component\Yaml\Yaml;
@@ -104,7 +105,26 @@ final class DatabaseRepository implements DocumentationRepository
             return null;
         }
 
-        $raw = $this->composeMarkdown($page, $revision->front_matter ?? [], $revision->content);
+        $frontMatter = ['title' => $page->title, ...($revision->front_matter ?? [])];
+
+        return $revision->format === DocumentSource::FORMAT_TIPTAP
+            ? $this->tiptapSource($slug, $page, $revision, $frontMatter)
+            : $this->markdownSource($slug, $page, $revision, $frontMatter);
+    }
+
+    /**
+     * A markdown page: the stored front matter (always including the page title)
+     * is emitted as a YAML block ahead of the content, so the parsed document
+     * carries the same metadata a file page would — page-level `authorize` /
+     * `audience` gating and the title flow through the render pipeline
+     * identically for both stores. The hash covers the composed document, so
+     * metadata changes invalidate caches too.
+     *
+     * @param  array<string, mixed>  $frontMatter
+     */
+    private function markdownSource(string $slug, DocentPage $page, DocentPageRevision $revision, array $frontMatter): DocumentSource
+    {
+        $raw = '---'."\n".Yaml::dump($frontMatter).'---'."\n\n".$revision->content;
 
         return new DocumentSource(
             slug: $slug,
@@ -113,25 +133,31 @@ final class DatabaseRepository implements DocumentationRepository
             path: 'database:docent_pages/'.$page->getKey(),
             lastModified: (int) $revision->created_at?->getTimestamp(),
             baseDir: $this->baseDirOf($slug),
-            format: $revision->format,
+            format: DocumentSource::FORMAT_MARKDOWN,
         );
     }
 
     /**
-     * Compose the file-equivalent markdown for a page: the stored front matter
-     * (always including the page title) is emitted as a YAML block ahead of the
-     * content, so the parsed document carries the same metadata a file page
-     * would — page-level `authorize`/`audience` gating and the title flow
-     * through the render pipeline identically for both stores. The hash covers
-     * the composed document, so metadata changes invalidate caches too.
+     * A Tiptap page: the content is ProseMirror JSON and passes through
+     * verbatim (prepending a YAML block would corrupt it). Front matter instead
+     * rides on the source's {@see DocumentSource::$frontMatter} override, which
+     * the parsing layer applies after parsing. The hash folds in the front
+     * matter so a metadata-only edit still invalidates caches.
      *
      * @param  array<string, mixed>  $frontMatter
      */
-    private function composeMarkdown(DocentPage $page, array $frontMatter, string $content): string
+    private function tiptapSource(string $slug, DocentPage $page, DocentPageRevision $revision, array $frontMatter): DocumentSource
     {
-        $frontMatter = ['title' => $page->title, ...$frontMatter];
-
-        return '---'."\n".Yaml::dump($frontMatter).'---'."\n\n".$content;
+        return new DocumentSource(
+            slug: $slug,
+            rawContent: $revision->content,
+            hash: sha1($revision->content.'|'.json_encode($frontMatter)),
+            path: 'database:docent_pages/'.$page->getKey(),
+            lastModified: (int) $revision->created_at?->getTimestamp(),
+            baseDir: $this->baseDirOf($slug),
+            format: DocumentSource::FORMAT_TIPTAP,
+            frontMatter: $frontMatter,
+        );
     }
 
     private function baseDirOf(string $slug): string

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use JsonException;
 use STS\Docent\Content\DocumentSource;
 use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\Content\Models\DocentPageRevision;
@@ -19,10 +21,13 @@ use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Parser\DocumentParser;
+use STS\Docent\Documents\Parser\TiptapDocumentParser;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\HtmlRenderer;
 use STS\Docent\Documents\Renderer\TableOfContents;
 use STS\Docent\Documents\Renderer\TocEntry;
+use STS\Docent\Documents\Serializer\AstToTiptap;
+use STS\Docent\Documents\Serializer\MarkdownExporter;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Navigation\NavigationGroup;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
@@ -469,34 +474,96 @@ final class DocentManager
     }
 
     /**
-     * Render a draft through the real pipeline (parse → HtmlRenderer + TOC) with
-     * the given viewer's context, plus the inline reference checks — no
-     * persistence. This is exactly what a reader would see if the draft were
-     * published and they were this viewer.
+     * Parse an admin draft into a Document ready for preview, checks, or export.
+     * A markdown draft is its front matter composed back over the body and
+     * parsed as usual; a Tiptap draft is JSON parsed by {@see TiptapDocumentParser}
+     * with the form's front matter applied over the (metadata-free) body — the
+     * same override the database repository performs for published Tiptap pages.
      *
      * @param  array<string, mixed>  $frontMatter
+     */
+    public function draftDocument(string $format, string $content, array $frontMatter): Document
+    {
+        return $format === DocumentSource::FORMAT_TIPTAP
+            ? $this->withFrontMatter((new TiptapDocumentParser)->parse($content), $frontMatter)
+            : $this->parser->parse($this->composeMarkdown($frontMatter, $content));
+    }
+
+    /**
+     * Validate that a Tiptap document (as decoded from the editor) parses into
+     * the AST, returning the parser's message on failure or null on success.
+     * The store/preview controllers turn a non-null result into a 422 — this is
+     * the one place we validate an untrusted editor payload at the boundary.
+     *
+     * @param  array<string, mixed>  $content
+     */
+    public function tiptapError(array $content): ?string
+    {
+        try {
+            (new TiptapDocumentParser)->parse(json_encode($content, JSON_THROW_ON_ERROR));
+
+            return null;
+        } catch (JsonException|InvalidArgumentException $e) {
+            return $e->getMessage();
+        }
+    }
+
+    /**
+     * Export any page — file or database, markdown or Tiptap — to normalized
+     * markdown with a front matter block, the pivot always being the Docent AST.
+     * Powers the admin "View markdown" / file-export action. Null when no such
+     * page exists.
+     */
+    public function exportMarkdown(string $slug): ?string
+    {
+        $page = DocentPage::on($this->databaseConnection())->where('slug', $slug)->first();
+
+        if ($page !== null) {
+            $frontMatter = $page->front_matter ?? ['title' => $page->title];
+            $document = $this->draftDocument($page->format, $page->content, $frontMatter);
+
+            return (new MarkdownExporter)->withFrontMatter($frontMatter)->export($document);
+        }
+
+        $source = $this->filesystem->find($slug);
+
+        if ($source === null) {
+            return null;
+        }
+
+        [$frontMatter, $content] = $this->splitFrontMatter($source->rawContent);
+        $document = $this->draftDocument($source->format, $content, $frontMatter);
+
+        return (new MarkdownExporter)->withFrontMatter($frontMatter)->export($document);
+    }
+
+    /**
+     * Render a draft through the real pipeline (HtmlRenderer + TOC) with the
+     * given viewer's context, plus the inline reference checks — no persistence.
+     * This is exactly what a reader would see if the draft were published and
+     * they were this viewer.
+     *
      * @return array{html: string, toc: list<array<string, mixed>>, issues: list<array<string, mixed>>}
      */
-    public function previewDraft(string $content, array $frontMatter, DocumentationContext $context): array
+    public function previewDraft(Document $document, DocumentationContext $context, string $slug = ''): array
     {
-        $document = $this->parser->parse($this->composeMarkdown($frontMatter, $content));
-
         return [
             'html' => $this->renderDocument($document, $context),
             'toc' => $this->tocToArray((new TableOfContents($this->registry, $context))->buildFor($document)),
-            'issues' => $this->draftIssues('', $content, $frontMatter),
+            'issues' => $this->draftIssues($slug, $document),
         ];
     }
 
     /**
-     * The reference-check issues for a draft, as plain arrays ready for JSON —
-     * unknown integrations, broken internal links, and missing includes for the
-     * content as it would parse under the given slug.
+     * The reference-check issues for a pre-parsed draft, as plain arrays ready
+     * for JSON — unknown integrations, broken internal links, and missing
+     * includes for the document as it would resolve under the given slug. Format
+     * agnostic: the draft is already an AST, so markdown and Tiptap drafts run
+     * the identical checks.
      *
-     * @param  array<string, mixed>  $frontMatter
      * @return list<array{severity: string, check: string, message: string, line: int|null}>
      */
-    public function draftIssues(string $slug, string $content, array $frontMatter): array
+    public function draftIssues(string $slug, Document $document): array
     {
         $context = new CheckContext(
             repository: $this->repository,
@@ -508,7 +575,7 @@ final class DocentManager
             routeExists: static fn (string $name): bool => Route::has($name),
             abilityExists: static fn (string $ability): bool => Gate::has($ability),
             overrideSlug: $slug,
-            overrideContent: $this->composeMarkdown($frontMatter, $content),
+            overrideDocument: $document,
         );
 
         return array_map(
@@ -547,6 +614,7 @@ final class DocentManager
             'slug' => $page->slug,
             'title' => $page->title,
             'content' => $page->content,
+            'content_tiptap' => $this->tiptapFor($page->content, $page->format),
             'front_matter' => $page->front_matter ?? [],
             'format' => $page->format,
             'published' => $page->isPublished(),
@@ -573,11 +641,32 @@ final class DocentManager
             'slug' => $slug,
             'title' => (new FrontMatter($frontMatter))->title() ?? ($slug === '' ? 'Home' : Str::headline(Str::afterLast($slug, '/'))),
             'content' => $content,
+            'content_tiptap' => $this->tiptapFor($content, $source->format),
             'front_matter' => $frontMatter,
             'format' => $source->format,
             'store' => 'filesystem',
             'readonly' => true,
         ];
+    }
+
+    /**
+     * The editor's Tiptap view of a page's body. A Tiptap page is decoded
+     * straight from its stored JSON; a markdown page is parsed and serialized so
+     * the visual editor can open any page. (Stored JSON is our own data, so a
+     * decode failure is a bug and throws.)
+     *
+     * @return array<string, mixed>
+     */
+    private function tiptapFor(string $content, string $format): array
+    {
+        if ($format === DocumentSource::FORMAT_TIPTAP) {
+            /** @var array<string, mixed> $decoded */
+            $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+
+            return $decoded;
+        }
+
+        return (new AstToTiptap)->convert($this->parser->parse($content));
     }
 
     /**
@@ -655,19 +744,44 @@ final class DocentManager
 
     /**
      * Parse a source into an AST, transparently cached by format + content hash
-     * so a page is only parsed once per content revision. v1 ships only the
-     * markdown parser; `DocumentSource::format` is the dispatch point a future
-     * database/Tiptap repository plugs into.
+     * so a page is only parsed once per content revision. `DocumentSource::format`
+     * dispatches to the matching parser (markdown or Tiptap JSON).
+     *
+     * Tiptap sources carry their metadata out-of-band (the JSON body has none),
+     * so the repository supplies a {@see DocumentSource::$frontMatter} override
+     * that is re-applied after the (front-matter-free) body is pulled from cache
+     * — keeping the cached AST content-addressed while a metadata-only edit
+     * still lands the right front matter.
      */
     private function document(DocumentSource $source): Document
     {
         $parser = match ($source->format) {
             DocumentSource::FORMAT_MARKDOWN => $this->parser,
+            DocumentSource::FORMAT_TIPTAP => new TiptapDocumentParser,
         };
 
-        return $this->cache->remember(
+        $document = $this->cache->remember(
             'ast:'.$source->format.':'.$source->hash,
             fn (): Document => $parser->parse($source->rawContent),
         );
+
+        return $source->frontMatter === null
+            ? $document
+            : $this->withFrontMatter($document, $source->frontMatter);
+    }
+
+    /**
+     * A copy of a parsed document with its front matter replaced — the seam that
+     * lets a Tiptap source's out-of-band metadata override the empty front
+     * matter the JSON parser produces.
+     *
+     * @param  array<string, mixed>  $frontMatter
+     */
+    private function withFrontMatter(Document $document, array $frontMatter): Document
+    {
+        $replacement = new Document(new FrontMatter($frontMatter), $document->line);
+        $replacement->setChildren($document->children);
+
+        return $replacement;
     }
 }

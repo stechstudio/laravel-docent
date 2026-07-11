@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace STS\Docent\Documents\Parser\Markdown;
+namespace STS\Docent\Documents\Parser;
 
 /**
  * GitHub-style heading slugger with per-document de-duplication.

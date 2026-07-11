@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\DocentManager;
+use STS\Docent\Documents\Parser\TiptapDocumentParser;
 use STS\Docent\Http\Controllers\Admin\Concerns\InteractsWithPages;
 
 /**
@@ -40,11 +41,11 @@ final class PageController
             ]);
         }
 
-        [$content, $frontMatter] = $this->payload($request);
+        [$content, $frontMatter, $format] = $this->payload($request, $docent);
 
-        DocentPage::write($slug, $content, $frontMatter, $this->authorId($request));
+        DocentPage::write($slug, $content, $frontMatter, $this->authorId($request), $format);
 
-        return $this->detailResponse($docent, $slug, $content, $frontMatter, 201);
+        return $this->detailResponse($docent, $slug, $content, $frontMatter, $format, 201);
     }
 
     public function show(string $slug, DocentManager $docent): JsonResponse
@@ -59,11 +60,11 @@ final class PageController
         $this->guardTraversal($slug);
         $this->assertValidSlug($slug);
 
-        [$content, $frontMatter] = $this->payload($request);
+        [$content, $frontMatter, $format] = $this->payload($request, $docent);
 
-        DocentPage::write($slug, $content, $frontMatter, $this->authorId($request));
+        DocentPage::write($slug, $content, $frontMatter, $this->authorId($request), $format);
 
-        return $this->detailResponse($docent, $slug, $content, $frontMatter);
+        return $this->detailResponse($docent, $slug, $content, $frontMatter, $format);
     }
 
     public function destroy(string $slug): JsonResponse
@@ -95,15 +96,17 @@ final class PageController
 
     /**
      * Validate and normalize a page write: title (required) folds into the front
-     * matter, and every front matter key must be known.
+     * matter, every front matter key must be known, and the body arrives as
+     * EITHER `content` (a markdown string) OR `content_tiptap` (a ProseMirror
+     * document, validated against {@see TiptapDocumentParser}
+     * and stored as JSON with `format: 'tiptap'`).
      *
-     * @return array{0: string, 1: array<string, mixed>}
+     * @return array{0: string, 1: array<string, mixed>, 2: string}
      */
-    private function payload(Request $request): array
+    private function payload(Request $request, DocentManager $docent): array
     {
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'content' => ['present', 'string'],
             'front_matter' => ['array'],
         ]);
 
@@ -118,17 +121,32 @@ final class PageController
 
         $frontMatter['title'] = $request->string('title')->toString();
 
-        return [$request->string('content')->toString(), $frontMatter];
+        if ($request->has('content_tiptap')) {
+            $request->validate(['content_tiptap' => ['array']]);
+            // Read from the raw body, not input — TrimStrings would eat
+            // meaningful whitespace inside rich-text nodes.
+            $tiptap = $this->rawTiptap($request);
+
+            if ($tiptap === null || ($error = $docent->tiptapError($tiptap)) !== null) {
+                throw ValidationException::withMessages(['content_tiptap' => $error ?? 'Invalid document.']);
+            }
+
+            return [json_encode($tiptap, JSON_THROW_ON_ERROR), $frontMatter, 'tiptap'];
+        }
+
+        $request->validate(['content' => ['present', 'string']]);
+
+        return [$request->string('content')->toString(), $frontMatter, 'markdown'];
     }
 
     /**
      * @param  array<string, mixed>  $frontMatter
      */
-    private function detailResponse(DocentManager $docent, string $slug, string $content, array $frontMatter, int $status = 200): JsonResponse
+    private function detailResponse(DocentManager $docent, string $slug, string $content, array $frontMatter, string $format, int $status = 200): JsonResponse
     {
         return response()->json([
             ...$docent->adminDetail($slug),
-            'issues' => $docent->draftIssues($slug, $content, $frontMatter),
+            'issues' => $docent->draftIssues($slug, $docent->draftDocument($format, $content, $frontMatter)),
         ], $status);
     }
 

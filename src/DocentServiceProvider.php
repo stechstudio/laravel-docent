@@ -23,6 +23,7 @@ use STS\Docent\Documents\Parser\MarkdownDocumentParser;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\PhikiCodeBlockRenderer;
 use STS\Docent\Http\Controllers\Admin\AdminController;
+use STS\Docent\Http\Controllers\Admin\ExportController;
 use STS\Docent\Http\Controllers\Admin\MetaController;
 use STS\Docent\Http\Controllers\Admin\PageController as AdminPageController;
 use STS\Docent\Http\Controllers\Admin\PageStateController;
@@ -170,6 +171,8 @@ final class DocentServiceProvider extends ServiceProvider
 
             Route::get('_admin/api/pages/{slug}/revisions', [AdminPageController::class, 'revisions'])
                 ->where('slug', '.*')->name('docent.admin.pages.revisions');
+            Route::get('_admin/api/pages/{slug}/markdown', ExportController::class)
+                ->where('slug', '.*')->name('docent.admin.export');
             Route::post('_admin/api/pages/{slug}/publish', [PageStateController::class, 'publish'])
                 ->where('slug', '.*')->name('docent.admin.pages.publish');
             Route::post('_admin/api/pages/{slug}/unpublish', [PageStateController::class, 'unpublish'])

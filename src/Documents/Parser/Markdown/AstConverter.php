@@ -71,6 +71,7 @@ use STS\Docent\Documents\Parser\Markdown\Node\ComponentBlock;
 use STS\Docent\Documents\Parser\Markdown\Node\DirectiveBlock;
 use STS\Docent\Documents\Parser\Markdown\Node\DocentTokenInline;
 use STS\Docent\Documents\Parser\Markdown\Node\IncludeDirectiveBlock;
+use STS\Docent\Documents\Parser\Slugger;
 
 /**
  * Converts a parsed CommonMark tree into the Docent AST. CommonMark node types

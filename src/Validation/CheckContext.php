@@ -37,10 +37,11 @@ final class CheckContext
     /**
      * When set, the run is scoped to a single unsaved draft: {@see pages()}
      * yields only this slug (built from the draft's own front matter), and
-     * {@see Document()} parses `$overrideContent` for it instead of hitting the
-     * repository. {@see slugSet()} still reflects every stored page (plus the
-     * draft), so broken-link checks validate against the live tree. This is how
-     * the admin runs the reference checks over content that isn't persisted yet.
+     * {@see Document()} returns `$overrideDocument` for it instead of hitting the
+     * repository. Passing an already-parsed document keeps the check
+     * format-agnostic — the admin pre-parses a markdown or Tiptap draft and the
+     * checks run identically. {@see slugSet()} still reflects every stored page
+     * (plus the draft), so broken-link checks validate against the live tree.
      *
      * @param  Closure(string): bool  $routeExists
      * @param  Closure(string): bool  $abilityExists
@@ -55,7 +56,7 @@ final class CheckContext
         private readonly Closure $routeExists,
         private readonly Closure $abilityExists,
         private readonly ?string $overrideSlug = null,
-        private readonly ?string $overrideContent = null,
+        private readonly ?Document $overrideDocument = null,
     ) {}
 
     public function registry(): IntegrationRegistry
@@ -186,7 +187,7 @@ final class CheckContext
         }
 
         if ($this->overrideSlug !== null && $slug === $this->overrideSlug) {
-            return $this->documents[$slug] = $this->parse((string) $this->overrideContent);
+            return $this->documents[$slug] = $this->overrideDocument;
         }
 
         $source = $this->repository->find($slug);

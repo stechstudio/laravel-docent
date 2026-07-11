@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Http\Controllers\Admin\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use STS\Docent\Content\Models\DocentPage;
 
@@ -72,5 +73,26 @@ trait InteractsWithPages
         $connection = config('docent.database.connection');
 
         return $connection === null ? null : (string) $connection;
+    }
+
+    /**
+     * Read the ProseMirror document from the RAW request body. Laravel's global
+     * TrimStrings middleware mutates nested input strings, but whitespace inside
+     * rich-text nodes is meaningful — "Plan: " before an inline value chip must
+     * keep its trailing space. Falls back to (trimmed) input for non-JSON bodies.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function rawTiptap(Request $request): ?array
+    {
+        $body = json_decode($request->getContent(), true);
+
+        if (is_array($body) && is_array($body['content_tiptap'] ?? null)) {
+            return $body['content_tiptap'];
+        }
+
+        $input = $request->input('content_tiptap');
+
+        return is_array($input) ? $input : null;
     }
 }
