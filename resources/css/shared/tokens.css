@@ -1,0 +1,39 @@
+/*
+| ---------------------------------------------------------------------------
+| Semantic surface tokens
+| ---------------------------------------------------------------------------
+| One palette for light and dark. The accent (`--docent-accent`) is injected
+| per-request from config; a soft tint is derived from it so a single config
+| key rebrands the entire UI. Everything accent flows through the variable.
+|
+| Shared by the reader bundle (docent.css) and the admin bundle
+| (docent-admin.css) so both read from one source of truth.
+*/
+:root {
+    --docent-fg: #0f172a;
+    --docent-strong: #020617;
+    --docent-muted: #475569;
+    --docent-faint: #64748b;
+    --docent-bg: #ffffff;
+    --docent-panel: #f8fafc;
+    --docent-border: #e2e8f0;
+    --docent-border-strong: #cbd5e1;
+    --docent-inline: #f1f5f9;
+    --docent-inline-fg: #be185d;
+    --docent-accent: #6366f1;
+    --docent-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+}
+
+.dark {
+    --docent-fg: #e2e8f0;
+    --docent-strong: #f8fafc;
+    --docent-muted: #94a3b8;
+    --docent-faint: #64748b;
+    --docent-bg: #020617;
+    --docent-panel: #0f172a;
+    --docent-border: #1e293b;
+    --docent-border-strong: #334155;
+    --docent-inline: #1e293b;
+    --docent-inline-fg: #f9a8d4;
+    --docent-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.4);
+}

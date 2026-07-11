@@ -1,0 +1,591 @@
+/*
+| ===========================================================================
+| Shared visual layer
+| ===========================================================================
+| The rendered-document (prose) styles plus every content component the
+| renderer emits: callouts, cards, landing hero, code cards, search-highlight
+| marks, custom scrollbars, and print rules. Shared verbatim by the reader
+| bundle (docent.css) and the admin bundle (docent-admin.css), so the live
+| preview in the panel is byte-for-byte the reader experience.
+*/
+
+/*
+| ---------------------------------------------------------------------------
+| Prose — the rendered document
+| ---------------------------------------------------------------------------
+*/
+.docent-prose {
+    color: var(--docent-fg);
+    font-size: 1rem;
+    line-height: 1.75;
+    word-wrap: break-word;
+}
+
+.docent-prose > *:first-child {
+    margin-top: 0;
+}
+
+/*
+ * The page title is surfaced in the header (from front matter or the leading
+ * heading), so a document's own leading h1 is redundant — hide it. Any later
+ * h1 (unusual in docs) still gets a sensible style.
+ */
+.docent-prose h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--docent-strong);
+    margin: 2.25rem 0 1rem;
+}
+
+.docent-prose > h1:first-child {
+    display: none;
+}
+
+.docent-prose p {
+    margin: 1.15rem 0;
+}
+
+.docent-prose h2,
+.docent-prose h3,
+.docent-prose h4 {
+    color: var(--docent-strong);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    scroll-margin-top: 6rem;
+    position: relative;
+}
+
+.docent-prose h2 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    margin: 2.75rem 0 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--docent-border);
+}
+
+.docent-prose h3 {
+    font-size: 1.2rem;
+    margin: 2rem 0 0.75rem;
+}
+
+.docent-prose h4 {
+    font-size: 1.02rem;
+    margin: 1.6rem 0 0.6rem;
+}
+
+/* Hover-revealed heading anchors, injected by JS. */
+.docent-prose .docent-anchor {
+    position: absolute;
+    left: -1.25rem;
+    padding-right: 0.5rem;
+    color: var(--docent-faint);
+    opacity: 0;
+    text-decoration: none;
+    transition: opacity 0.12s ease;
+}
+
+.docent-prose :is(h2, h3, h4):hover .docent-anchor,
+.docent-prose .docent-anchor:focus-visible {
+    opacity: 1;
+}
+
+.docent-prose a {
+    color: var(--docent-accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.docent-prose a:hover {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.docent-prose strong {
+    color: var(--docent-strong);
+    font-weight: 650;
+}
+
+.docent-prose ul,
+.docent-prose ol {
+    margin: 1.15rem 0;
+    padding-left: 1.5rem;
+}
+
+.docent-prose li {
+    margin: 0.4rem 0;
+}
+
+.docent-prose ul {
+    list-style: disc;
+}
+
+.docent-prose ol {
+    list-style: decimal;
+}
+
+.docent-prose li::marker {
+    color: var(--docent-faint);
+}
+
+.docent-prose .docent-task-item {
+    list-style: none;
+    margin-left: -1.35rem;
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+}
+
+.docent-prose .docent-task-item input[type='checkbox'] {
+    margin-top: 0.3em;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--docent-accent);
+    flex: none;
+}
+
+/* A loose task item wraps its text in a paragraph; keep it on the checkbox line. */
+.docent-prose .docent-task-item p {
+    margin: 0;
+}
+
+/* Inline code as soft pills. */
+.docent-prose :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background-color: var(--docent-inline);
+    color: var(--docent-inline-fg);
+    padding: 0.15em 0.4em;
+    border-radius: 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--docent-border) 60%, transparent);
+    white-space: nowrap;
+}
+
+.docent-prose blockquote {
+    margin: 1.5rem 0;
+    padding: 0.25rem 0 0.25rem 1.15rem;
+    border-left: 3px solid var(--docent-border-strong);
+    color: var(--docent-muted);
+    font-style: italic;
+}
+
+.docent-prose hr {
+    margin: 2.5rem 0;
+    border: 0;
+    border-top: 1px solid var(--docent-border);
+}
+
+.docent-prose img {
+    max-width: 100%;
+    border-radius: 0.6rem;
+    margin: 1.5rem 0;
+}
+
+/* Tables. */
+.docent-prose table {
+    width: 100%;
+    margin: 1.75rem 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.6rem;
+    overflow: hidden;
+}
+
+.docent-prose thead {
+    background-color: var(--docent-panel);
+}
+
+.docent-prose th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--docent-strong);
+}
+
+.docent-prose th,
+.docent-prose td {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--docent-border);
+}
+
+.docent-prose tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.docent-prose tbody tr:hover {
+    background-color: color-mix(in srgb, var(--docent-panel) 60%, transparent);
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Callouts
+| ---------------------------------------------------------------------------
+*/
+.docent-callout {
+    --callout: var(--docent-faint);
+    margin: 1.75rem 0;
+    padding: 1rem 1.1rem 1rem 3rem;
+    border-radius: 0.7rem;
+    border: 1px solid color-mix(in srgb, var(--callout) 30%, var(--docent-border));
+    background-color: color-mix(in srgb, var(--callout) 8%, var(--docent-bg));
+    position: relative;
+}
+
+.docent-callout::before {
+    content: '';
+    position: absolute;
+    left: 1rem;
+    top: 1.05rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    background-color: var(--callout);
+    -webkit-mask: var(--callout-icon) center / contain no-repeat;
+    mask: var(--callout-icon) center / contain no-repeat;
+}
+
+.docent-callout p {
+    margin: 0.4rem 0;
+}
+
+.docent-callout > *:first-child {
+    margin-top: 0;
+}
+
+.docent-callout > *:last-child {
+    margin-bottom: 0;
+}
+
+.docent-callout-title {
+    font-weight: 650;
+    color: var(--docent-strong);
+    margin-bottom: 0.2rem;
+}
+
+.docent-callout-note {
+    --callout: #64748b;
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
+}
+
+.docent-callout-tip {
+    --callout: #16a34a;
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z'/%3E%3C/svg%3E");
+}
+
+.docent-callout-info {
+    --callout: #2563eb;
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='12' y1='16' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'/%3E%3C/svg%3E");
+}
+
+.docent-callout-warning {
+    --callout: #d97706;
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'/%3E%3Cline x1='12' y1='9' x2='12' y2='13'/%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'/%3E%3C/svg%3E");
+}
+
+.docent-callout-danger {
+    --callout: #dc2626;
+    --callout-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='15' y1='9' x2='9' y2='15'/%3E%3Cline x1='9' y1='9' x2='15' y2='15'/%3E%3C/svg%3E");
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Cards — a responsive grid of linkable panels
+| ---------------------------------------------------------------------------
+| Authored as `::::cards` / `:::card`, usable on any page. A card with an href
+| is a full-panel link; without one it is a static panel. The grid collapses to
+| a single column on narrow viewports and steps up to its configured width.
+*/
+.docent-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin: 1.75rem 0;
+}
+
+@media (min-width: 640px) {
+    .docent-cards[data-columns='2'],
+    .docent-cards[data-columns='4'] {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .docent-cards[data-columns='3'] {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .docent-cards[data-columns='4'] {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.docent-card {
+    display: block;
+    padding: 1.25rem 1.35rem;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.8rem;
+    background-color: var(--docent-bg);
+    color: var(--docent-fg);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+a.docent-card:hover {
+    border-color: var(--docent-accent);
+    box-shadow: var(--docent-shadow);
+    transform: translateY(-1px);
+}
+
+/* Cards render inside prose; keep the link chrome off the whole panel. */
+.docent-prose a.docent-card,
+.docent-prose a.docent-card:hover {
+    color: var(--docent-fg);
+    font-weight: inherit;
+    text-decoration: none;
+}
+
+.docent-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.9rem;
+    border-radius: 0.6rem;
+    color: var(--docent-accent);
+    background-color: color-mix(in srgb, var(--docent-accent) 12%, transparent);
+}
+
+.docent-card-icon svg {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+.docent-card-title {
+    font-weight: 650;
+    font-size: 1rem;
+    color: var(--docent-strong);
+}
+
+.docent-card-body {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--docent-muted);
+}
+
+.docent-prose .docent-card-body > *:first-child {
+    margin-top: 0;
+}
+
+.docent-prose .docent-card-body > *:last-child {
+    margin-bottom: 0;
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Landing hero
+| ---------------------------------------------------------------------------
+*/
+.docent-cta-primary,
+.docent-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1.3rem;
+    border-radius: 0.65rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.docent-cta-primary {
+    background-color: var(--docent-accent);
+    color: #fff;
+    border: 1px solid var(--docent-accent);
+}
+
+.docent-cta-primary:hover {
+    opacity: 0.9;
+}
+
+.docent-cta-secondary {
+    color: var(--docent-strong);
+    border: 1px solid var(--docent-border-strong);
+    background-color: transparent;
+}
+
+.docent-cta-secondary:hover {
+    border-color: var(--docent-accent);
+    background-color: var(--docent-panel);
+}
+
+/* Prose on a landing page: the leading h1 is not hidden (there is no page
+   title above it), and content is comfortably centered. */
+.docent-landing-body > *:first-child {
+    margin-top: 0;
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Code cards
+| ---------------------------------------------------------------------------
+*/
+.docent-code {
+    margin: 1.75rem 0;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.7rem;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.dark .docent-code {
+    background-color: #24292e;
+}
+
+.docent-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.5rem 0.5rem 0.9rem;
+    background-color: var(--docent-panel);
+    border-bottom: 1px solid var(--docent-border);
+}
+
+.docent-code-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--docent-muted);
+    letter-spacing: 0.01em;
+}
+
+.docent-code-copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.4rem;
+    color: var(--docent-faint);
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.docent-code-copy:hover {
+    color: var(--docent-strong);
+    background-color: color-mix(in srgb, var(--docent-border) 50%, transparent);
+}
+
+.docent-code-copy svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.docent-code-copy .docent-copy-done {
+    display: none;
+    color: #16a34a;
+}
+
+.docent-code-copy.is-copied .docent-copy-idle {
+    display: none;
+}
+
+.docent-code-copy.is-copied .docent-copy-done {
+    display: block;
+}
+
+.docent-code pre.phiki {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    background: transparent !important;
+}
+
+.docent-code pre.phiki code {
+    display: block;
+    width: fit-content;
+    min-width: 100%;
+}
+
+/*
+ * Lines must stay inline: the preserved newline lives inside each `.line`
+ * span, and an inline-block would swallow it, leaving no break opportunity
+ * between lines (they'd render side by side).
+ */
+.docent-code .line {
+    display: inline;
+}
+
+/*
+ * Dual-theme: Phiki emits the light theme inline and the dark theme behind
+ * `--phiki-dark-*` custom properties. Inline styles outrank a class rule, so
+ * activating the dark palette requires `!important`; plain (uncoloured) tokens
+ * carry no variable and fall back to `inherit`.
+ */
+.dark .docent-code pre.phiki,
+.dark .docent-code pre.phiki span {
+    color: var(--phiki-dark-color, inherit) !important;
+    font-style: var(--phiki-dark-font-style, inherit) !important;
+    font-weight: var(--phiki-dark-font-weight, inherit) !important;
+    text-decoration: var(--phiki-dark-text-decoration, inherit) !important;
+}
+
+.docent-code-plain code {
+    color: var(--docent-fg);
+}
+
+/*
+| ---------------------------------------------------------------------------
+| Search palette highlight
+| ---------------------------------------------------------------------------
+*/
+.docent-snippet mark,
+.docent-prose mark {
+    background-color: color-mix(in srgb, var(--docent-accent) 22%, transparent);
+    color: inherit;
+    border-radius: 0.2rem;
+    padding: 0 0.1em;
+}
+
+/* Custom scrollbars for the sticky rails. */
+.docent-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--docent-border-strong) transparent;
+}
+
+.docent-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.docent-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--docent-border-strong);
+    border-radius: 999px;
+}
+
+.docent-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+@media print {
+    .docent-topbar,
+    .docent-sidebar,
+    .docent-rail,
+    .docent-pagination,
+    .docent-code-copy {
+        display: none !important;
+    }
+
+    .docent-main {
+        max-width: none;
+    }
+}

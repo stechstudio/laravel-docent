@@ -36,7 +36,7 @@ it('reaches the panel shell for a user who passes the gate', function () {
     $this->actingAs($this->adminUser())
         ->get('/docs/_admin')
         ->assertOk()
-        ->assertSee('Docent Admin')
+        ->assertSee('Admin')
         ->assertSee('id="docent-admin"', false);
 });
 

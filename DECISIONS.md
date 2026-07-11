@@ -105,6 +105,18 @@ Everything here is open for review/reversal — flag anything you disagree with.
   vs empty) may share a hash. The executor's original test demanded universal uniqueness — over-
   strict; rewritten to assert real invalidation incl. republish-newer-revision.
 
+- **Admin Phase B shipped** (B1 backend + B2 panel): 14 gated JSON endpoints (tree across both
+  stores incl. drafts, CRUD, publish/unpublish/revert, file-page override, revisions, live preview
+  through the real render pipeline with inline reference-check issues, uploads, registry metadata
+  for pickers) and a three-pane Alpine panel matching the reader's design language — page tree
+  with store/status chips, editor with directive-insert toolbar + front matter panel, debounced
+  live preview, revision slide-over, dark mode. Separate prebuilt bundles
+  (docent-admin.css/js, ~54/58KB) so reader pages load none of it. Browser-verified end to end:
+  guest/member 403, tree loads, DB page edit → live preview → save draft → publish → live.
+- **The B2 executor was cut off by the account's monthly API spend limit** ~85% through; I
+  finished the remainder (revisions slide-over, admin build scripts, asset allowlist, panel tests)
+  in the main session. Further subagent delegation is unavailable until the limit resets/raises.
+
 ## Post-v1 decisions (confirmed by Joseph, July 11)
 
 - **Admin UI stack: dependency-free Blade + Alpine + JSON endpoints** — consistent with the reader
