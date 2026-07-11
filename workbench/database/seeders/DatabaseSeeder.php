@@ -4,22 +4,23 @@ namespace Workbench\Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Workbench\Database\Factories\UserFactory;
+use Illuminate\Support\Facades\Hash;
+use Workbench\App\Models\User;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // UserFactory::new()->times(10)->create();
+        User::query()->updateOrCreate(
+            ['email' => 'admin@acme.test'],
+            ['name' => 'Ada Admin', 'password' => Hash::make('password')],
+        );
 
-        UserFactory::new()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        User::query()->updateOrCreate(
+            ['email' => 'member@acme.test'],
+            ['name' => 'Mel Member', 'password' => Hash::make('password')],
+        );
     }
 }
