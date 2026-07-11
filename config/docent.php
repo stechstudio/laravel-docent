@@ -103,10 +103,16 @@ return [
     | Theme
     |--------------------------------------------------------------------------
     |
-    | Reserved for the Milestone 8 UI (logo, colors).
+    | Brand the documentation UI. `accent` is a single hex colour that drives
+    | every accent in the interface (active nav, links, focus rings, search
+    | highlights). `logo` is a path or URL shown in the top bar; null falls
+    | back to a text wordmark built from the site name.
     |
     */
 
-    'theme' => [],
+    'theme' => [
+        'accent' => '#6366f1',
+        'logo' => null,
+    ],
 
 ];

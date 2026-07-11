@@ -15,6 +15,9 @@ use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
+use STS\Docent\Documents\Renderer\CodeBlockRenderer;
+use STS\Docent\Documents\Renderer\PhikiCodeBlockRenderer;
+use STS\Docent\Http\Controllers\AssetController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Navigation\NavigationBuilder;
@@ -32,6 +35,10 @@ final class DocentServiceProvider extends ServiceProvider
         $this->app->singleton(IntegrationRegistry::class, static fn (Application $app): IntegrationRegistry => new IntegrationRegistry(static fn (string $class): object => $app->make($class)));
 
         $this->app->singleton(DocumentParser::class, MarkdownDocumentParser::class);
+
+        $this->app->singleton(CodeBlockRenderer::class, static fn (Application $app): PhikiCodeBlockRenderer => new PhikiCodeBlockRenderer(
+            $app->make(DocentCache::class),
+        ));
 
         $this->app->singleton(DocumentationRepository::class, static fn (Application $app): FilesystemRepository => new FilesystemRepository(
             $app['config']->get('docent.filesystem.path') ?? $app->resourcePath('docs'),
@@ -55,6 +62,7 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocumentParser::class),
             $app->make(DocentCache::class),
             $app->make(NavigationBuilder::class),
+            $app->make(CodeBlockRenderer::class),
         ));
 
         $this->app->singleton(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
@@ -78,6 +86,7 @@ final class DocentServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/docent.php' => config_path('docent.php')], 'docent-config');
             $this->publishes([__DIR__.'/../resources/views' => resource_path('views/vendor/docent')], 'docent-views');
+            $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/docent')], 'docent-assets');
 
             $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class]);
         }
@@ -93,6 +102,10 @@ final class DocentServiceProvider extends ServiceProvider
             'middleware' => config('docent.route.middleware', ['web']),
         ], function (): void {
             Route::get('/', [PageController::class, 'home'])->name('docent.home');
+
+            Route::get('/_assets/{file}', AssetController::class)
+                ->where('file', '[A-Za-z0-9._-]+')
+                ->name('docent.asset');
 
             if (config('docent.search.enabled', true)) {
                 Route::get('/_search', SearchController::class)->name('docent.search');

@@ -1,7 +1,6 @@
 /vendor
 /node_modules
 composer.lock
-package-lock.json
 .phpunit.cache
 .phpunit.result.cache
 /coverage
@@ -9,8 +8,5 @@ package-lock.json
 .DS_Store
 /workbench/bootstrap/cache/*
 !/workbench/bootstrap/cache/.gitkeep
-/workbench/storage/framework/cache/data/*
-/workbench/storage/framework/sessions/*
-/workbench/storage/framework/views/*
-/workbench/storage/logs/*
+/workbench/storage
 /workbench/database/database.sqlite

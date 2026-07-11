@@ -74,10 +74,17 @@ final class Page
     }
 
     /**
+     * The viewer's table of contents: headings inside conditional blocks
+     * appear only when this viewer would see them on the page.
+     *
      * @return list<TocEntry>
      */
-    public function toc(): array
+    public function toc(?DocumentationContext $context = null): array
     {
-        return TableOfContents::build($this->document);
+        if ($context === null) {
+            return TableOfContents::build($this->document);
+        }
+
+        return (new TableOfContents($this->manager->registry(), $context))->buildFor($this->document);
     }
 }

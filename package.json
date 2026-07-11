@@ -1,0 +1,19 @@
+{
+    "name": "laravel-docent",
+    "private": true,
+    "type": "module",
+    "description": "Prebuilt CSS/JS for the Docent documentation UI. Shipped compiled; hosts need no build step.",
+    "scripts": {
+        "build:css": "tailwindcss -i ./resources/css/docent.css -o ./resources/dist/docent.css --minify",
+        "build:js": "esbuild ./resources/js/docent.js --bundle --minify --format=iife --outfile=./resources/dist/docent.js",
+        "build": "npm run build:css && npm run build:js",
+        "watch": "npm run build:css -- --watch"
+    },
+    "devDependencies": {
+        "@alpinejs/collapse": "^3.14.9",
+        "@tailwindcss/cli": "^4.1.0",
+        "alpinejs": "^3.14.9",
+        "esbuild": "^0.25.0",
+        "tailwindcss": "^4.1.0"
+    }
+}

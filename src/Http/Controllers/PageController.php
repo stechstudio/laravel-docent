@@ -48,14 +48,17 @@ final class PageController
         [$prev, $next] = $this->docent->prevNext($slug, $context);
 
         return view('docent::page', [
+            'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
             'homeUrl' => $this->docent->url(''),
+            'searchEnabled' => (bool) config('docent.search.enabled', true),
             'page' => $page,
             'title' => $page->title(),
             'description' => $page->description(),
+            'breadcrumb' => $this->docent->breadcrumb($slug, $context),
             'html' => $page->render($context),
             'navigation' => $this->docent->navigation($context),
-            'toc' => $page->toc(),
+            'toc' => $page->toc($context),
             'currentSlug' => $slug,
             'prev' => $prev,
             'next' => $next,

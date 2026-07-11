@@ -53,3 +53,21 @@ Everything here is open for review/reversal — flag anything you disagree with.
 17. **Workbench demo app is "Acme Ledger"**, a fictional SaaS with admin/member demo users
     (`/demo/login/admin`, `/demo/login/member`, `/demo/logout`) so authorization is demoable in a
     browser. `composer serve` boots it; docs live at `/docs`.
+18. **`docent:check` earned its keep immediately**: it flagged the workbench docs' relative links,
+    exposing that renderer and checker had no shared notion of link resolution. Fixed with
+    `Support\InternalLink` — file-path semantics (relative to the current page's directory,
+    `/docs/...`-rooted absolute, everything else external), used identically by both.
+19. **UI milestone review findings (fixed by me in browser verification)**:
+    - Phiki code lines rendered side-by-side (CSS `display: inline-block` on `.line` swallowed the
+      newline break opportunity) — lines are now plain inline.
+    - The "On this page" TOC ignored viewer context. Now context-aware: headings inside
+      `:::can`/`:::when`/`:::audience` blocks appear only for viewers who'd see the block
+      (regression-tested); with no context, conditional subtrees are skipped (leak-safe default).
+    - Task-list checkbox alignment; missing aria-label on the search trigger.
+20. **Code blocks use github-light/github-dark dual themes** (not always-dark like Mintlify) —
+    the executor shipped true dual-theme and it looks great, so I kept it over my original brief.
+21. **UI verified in a real browser** (dev-browser/Chromium): light+dark, ⌘K palette (ranking,
+    marks, Enter-to-navigate, Esc), permission-filtered sidebar for guest vs admin, Phiki
+    highlighting both themes, mobile slide-over nav, prev/next. Screenshots in ~/.dev-browser/tmp.
+22. **`package-lock.json` now tracked** (reproducible asset builds); `workbench/storage` ignored
+    (testbench build artifact).
