@@ -37,6 +37,54 @@ it('honors the columns attribute', function () {
     expect(docFind($doc, CardGroup::class)->columns)->toBe(3);
 });
 
+it('defaults invalid column values to 2', function () {
+    $doc = docParse("::::cards columns=\"zero\"\n:::card title=\"One\"\n:::\n::::");
+
+    expect(docFind($doc, CardGroup::class)->columns)->toBe(2);
+});
+
+it('nests three-colon cards inside a three-colon group via innermost-first closing', function () {
+    $doc = docParse(<<<'MD'
+    :::cards
+    :::card title="A"
+    Body A.
+    :::
+    :::card title="B"
+    Body B.
+    :::
+    :::
+
+    After the grid.
+    MD);
+
+    $group = docFind($doc, CardGroup::class);
+
+    // Both cards are children of the group, and the trailing prose is a
+    // sibling of the group — the final `:::` closed the group, not a card.
+    expect($group->children)->toHaveCount(2)
+        ->and(docFindAll($group, Card::class))->toHaveCount(2)
+        ->and($doc->children)->toHaveCount(2);
+});
+
+it('closes a four-colon group with a four-colon fence even when an inner card is unclosed', function () {
+    $doc = docParse(<<<'MD'
+    ::::cards
+    :::card title="A"
+    Body A.
+    ::::
+
+    After the grid.
+    MD);
+
+    $group = docFind($doc, CardGroup::class);
+
+    // The `::::` matches the group's opening fence length, implicitly
+    // finalizing the unclosed card instead of being swallowed by it.
+    expect($group)->not->toBeNull()
+        ->and(docFind($group, Card::class))->not->toBeNull()
+        ->and($doc->children)->toHaveCount(2);
+});
+
 it('parses a standalone card outside a group', function () {
     $doc = docParse(":::card title=\"Solo\" href=\"guides\"\nBody text.\n:::");
 
@@ -68,6 +116,18 @@ it('renders a card without href as a static panel and skips unknown icons', func
     expect($html)->toContain('<div class="docent-card">')
         ->not->toContain('<a class="docent-card"')
         ->not->toContain('docent-card-icon');
+});
+
+it('passes external card hrefs through verbatim', function () {
+    $doc = docParse(":::card title=\"Repo\" href=\"https://example.com/repo\"\nSource.\n:::");
+
+    $html = (new HtmlRenderer(
+        docRegistry(),
+        docContext(),
+        urlResolver: fn (string $slug): string => '/docs/'.$slug,
+    ))->render($doc);
+
+    expect($html)->toContain('href="https://example.com/repo"');
 });
 
 it('hides cards inside a failed authorization block and shows them when granted', function () {
@@ -113,4 +173,31 @@ it('indexes unconditional card text but never gated card text', function () {
 it('exposes the layout front matter accessor with a docs default', function () {
     expect(docParse('Plain page.')->frontMatter()->layout())->toBe('docs')
         ->and(docParse("---\nlayout: landing\n---\n\nHero.")->frontMatter()->layout())->toBe('landing');
+});
+
+it('parses hero cta buttons with a primary default and skips malformed entries', function () {
+    $doc = docParse(<<<'MD'
+    ---
+    layout: landing
+    hero:
+      cta:
+        - label: Get started
+          href: getting-started
+        - label: Concepts
+          href: concepts
+          style: secondary
+        - label: No href here
+    ---
+
+    Hero.
+    MD);
+
+    expect($doc->frontMatter()->heroCta())->toBe([
+        ['label' => 'Get started', 'href' => 'getting-started', 'style' => 'primary'],
+        ['label' => 'Concepts', 'href' => 'concepts', 'style' => 'secondary'],
+    ]);
+});
+
+it('returns no hero ctas when front matter has none', function () {
+    expect(docParse('Plain page.')->frontMatter()->heroCta())->toBe([]);
 });

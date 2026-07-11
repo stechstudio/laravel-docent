@@ -71,6 +71,24 @@ Everything here is open for review/reversal — flag anything you disagree with.
     highlighting both themes, mobile slide-over nav, prev/next. Screenshots in ~/.dev-browser/tmp.
 22. **`package-lock.json` now tracked** (reproducible asset builds); `workbench/storage` ignored
     (testbench build artifact).
+## Post-v1 build log
+
+- **Theming tokens shipped**: logo/logo_dark/logomark/favicon, font stacks + optional webfont href,
+  gray palette (slate/zinc/stone/neutral), radius (sharp/default/soft) — all runtime CSS-variable
+  remaps (Tailwind v4 utilities reference theme vars, so palette switching is a pure `:root`
+  override). Executor also fixed a latent cascade bug: the dynamic theme block now loads after the
+  stylesheet so config always wins.
+- **Landing + cards shipped**: `layout: landing` front matter (hero, CTAs, no sidebar), CardGroup/
+  Card AST nodes via `::::cards` fences. Directive closing matches fences by length,
+  CommonMark-fenced-code style: a closing fence finalizes the nearest open directive with the
+  same opening length (so `::::` closes the group even past an unclosed inner card), falling
+  back to the innermost open directive when nothing matches exactly — plain `:::` everywhere
+  still just works. Cards resolve hrefs through InternalLink, respect gate
+  wrapping in rendering/search/TOC, and docent:check validates hrefs, hero CTAs, and icon names
+  (new `unknown-icon` check; built-in inline-SVG icon set in Support\Icon).
+- The landing/cards executor was killed twice by infra interruptions mid-task; I completed the
+  final ~15% (dist rebuild, test suite, verification) directly.
+
 ## Post-v1 decisions (confirmed by Joseph, July 11)
 
 - **Admin UI stack: dependency-free Blade + Alpine + JSON endpoints** — consistent with the reader
