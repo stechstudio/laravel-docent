@@ -674,7 +674,10 @@ final class DocentManager
     /**
      * Registry metadata for the editor's node/reference pickers: conditions,
      * values, links, components, and audiences (name/label/description), plus
-     * the built-in icon names and every registered Gate ability.
+     * the built-in icon names and every registered Gate ability. Abilities
+     * carry a humanized `label` alongside the technical `name` so every picker
+     * shows "View reports", not `reports.view` — the stored value stays the
+     * technical name.
      *
      * @return array<string, mixed>
      */
@@ -683,8 +686,32 @@ final class DocentManager
         return [
             ...$this->registry->describe(),
             'icons' => Icon::names(),
-            'abilities' => array_keys(Gate::abilities()),
+            'abilities' => array_map(
+                fn (string $ability): array => ['name' => $ability, 'label' => $this->abilityLabel($ability)],
+                array_keys(Gate::abilities()),
+            ),
         ];
+    }
+
+    /**
+     * A human label for a technical gate ability: split on separators and
+     * camelCase, and lead with the verb when the name ends in one —
+     * `reports.view` → "View reports", `manage-billing` → "Manage billing".
+     */
+    private function abilityLabel(string $ability): string
+    {
+        $words = array_map(
+            strtolower(...),
+            preg_split('/[.\-_:\s]+|(?=[A-Z])/', $ability, -1, PREG_SPLIT_NO_EMPTY) ?: [],
+        );
+
+        $verbs = ['view', 'see', 'read', 'access', 'manage', 'edit', 'update', 'create', 'delete', 'export', 'download'];
+
+        if (count($words) > 1 && in_array(end($words), $verbs, true)) {
+            array_unshift($words, array_pop($words));
+        }
+
+        return Str::ucfirst(implode(' ', $words));
     }
 
     /**

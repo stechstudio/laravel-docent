@@ -170,7 +170,7 @@ function openGateEditor(editor, getPos, node, ctx, anchor) {
             (v) => setAttrs(editor, getPos, { arguments: splitArgs(v) }), { mono: true }),
         h('span', { class: 'dax-pop-label', style: 'padding:0 .1rem' }, 'Ability'),
         pickerList({
-            items: (ctx.meta().abilities || []).map((a) => ({ name: a, label: a })),
+            items: ctx.meta().abilities || [],
             current: node.attrs.ability,
             search: 'Search abilities…',
             empty: 'No gate abilities registered.',

@@ -1419,6 +1419,48 @@ li[data-checked='true'] .dax-li-content { color: var(--docent-faint); text-decor
 }
 .dark .dax-rail-danger, .dark .dax-rail-danger svg { color: #f87171; }
 
+/* The access rail's ability combobox: a dropdown under the free-text input
+   pairing each ability's humanized label with its technical name. */
+.dax-combo-panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    max-height: 15rem;
+    overflow-y: auto;
+    padding: 0.3rem;
+    background-color: var(--docent-bg);
+    border: 1px solid var(--docent-border);
+    border-radius: 0.65rem;
+    box-shadow: var(--docent-shadow);
+}
+
+.dax-combo-item {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.35rem 0.5rem;
+    text-align: left;
+    border-radius: 0.45rem;
+}
+
+.dax-combo-item:hover {
+    background-color: color-mix(in srgb, var(--docent-fg) 6%, transparent);
+}
+
+.dax-combo-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--docent-fg);
+}
+
+.dax-combo-name {
+    font-size: 0.68rem;
+    color: var(--docent-faint);
+}
+
 .dax-link {
     font-weight: 500;
     color: var(--docent-accent);

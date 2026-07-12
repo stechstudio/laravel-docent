@@ -249,3 +249,15 @@ Everything here is open for review/reversal — flag anything you disagree with.
   pages into directories (`billing/refunds`) — the new-page form now hints this.
 - Review findings: none blocking — executor work was clean (soft-delete/unique-slug interplay
   already handled by `DocentPage::write` `withTrashed()` upsert; verified).
+
+## Ability labels, properly this time (July 11, follow-up)
+
+- Round 2's "humanized abilities" only set `<option label>` on the rail's datalist — browsers
+  barely render those, and the editor's Gate pickers weren't touched at all. Joseph caught it.
+- Fix: labels are now computed server-side in `pickerMeta()` (`abilities` is `[{name, label}]`,
+  verb-first heuristic: `reports.view` → "View reports") so every consumer shares one source:
+  the toolbar Gate dropdown, the slash-menu Gate picker, the gate block's ability popover
+  (pickerList already rendered label + mono name once given objects), and the access rail —
+  whose datalist became a real combobox (label + technical name rows, filters on the segment
+  after the last comma so multi-ability entry composes). Stored values remain the technical
+  names. Future: a registration hook for custom labels if the heuristic isn't enough.

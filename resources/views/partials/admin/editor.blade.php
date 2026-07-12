@@ -91,9 +91,10 @@
                     <span class="dax-menu-item-title">Empty gate…</span>
                     <span class="dax-menu-item-desc">Choose the ability in the block header</span>
                 </button>
-                <template x-for="ability in meta.abilities" :key="ability">
-                    <button type="button" class="dax-menu-item" @click="insertGate(ability)">
-                        <span class="dax-menu-item-title"><code x-text="ability"></code></span>
+                <template x-for="ability in meta.abilities" :key="ability.name">
+                    <button type="button" class="dax-menu-item" @click="insertGate(ability.name)">
+                        <span class="dax-menu-item-title" x-text="ability.label"></span>
+                        <span class="dax-menu-item-desc"><code x-text="ability.name"></code></span>
                     </button>
                 </template>
             </div>

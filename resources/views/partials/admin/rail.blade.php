@@ -62,14 +62,24 @@
         <section>
             <h3 class="dax-rail-label">Access</h3>
             <div class="mt-2.5 space-y-3">
-                <label class="block space-y-1">
+                <div class="block space-y-1" @click.outside="abilityOpen = false">
                     <span class="dax-rail-field">Required ability</span>
-                    <input x-model="fm.authorize" @input="onEdit()" :disabled="readonly" list="dax-abilities" type="text" class="dax-input font-mono text-[12px]" placeholder="e.g. billing.manage">
-                    <datalist id="dax-abilities">
-                        <template x-for="ability in meta.abilities" :key="ability"><option :value="ability" :label="abilityLabel(ability)"></option></template>
-                    </datalist>
+                    <div class="relative">
+                        <input x-model="fm.authorize" @focus="abilityOpen = true" @input="abilityOpen = true; onEdit()"
+                               @keydown.escape.stop="abilityOpen = false" :disabled="readonly" type="text"
+                               class="dax-input font-mono text-[12px]" placeholder="e.g. billing.manage" autocomplete="off">
+                        <div x-show="abilityOpen && !readonly && filteredAbilities.length" x-cloak
+                             class="dax-combo-panel docent-scroll">
+                            <template x-for="a in filteredAbilities" :key="a.name">
+                                <button type="button" class="dax-combo-item" @click="pickAbility(a.name)">
+                                    <span class="dax-combo-label" x-text="a.label"></span>
+                                    <code class="dax-combo-name" x-text="a.name"></code>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
                     <p class="text-[11px] leading-snug text-[var(--docent-faint)]">Viewers without this gate get a 404 — the page also disappears from navigation and search for them.</p>
-                </label>
+                </div>
                 <label class="block space-y-1">
                     <span class="dax-rail-field">Audience</span>
                     <select x-model="fm.audience" @change="onEdit()" :disabled="readonly" class="dax-select text-[13px]">

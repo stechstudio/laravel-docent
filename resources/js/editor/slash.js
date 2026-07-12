@@ -65,7 +65,7 @@ function commands() {
             run: (e, r) => insertContainer(e, r, { type: 'docsCallout', attrs: { type: 'note' }, content: [{ type: 'paragraph' }] }) },
         { title: 'Gate', description: 'Show or hide by ability', icon: 'lock', group: 'Docent', keywords: 'can cannot permission authorize auth',
             run: (e, r, ctx, anchor) => pickThenContainer(e, r, anchor, {
-                items: (ctx.meta().abilities || []).map((a) => ({ name: a, label: a })), search: 'Search abilities…',
+                items: ctx.meta().abilities || [], search: 'Search abilities…',
                 empty: 'No gate abilities registered.',
                 build: (it) => ({ type: 'docsGate', attrs: { mode: 'can', ability: it.name, arguments: [] }, content: [{ type: 'paragraph' }] }),
             }) },

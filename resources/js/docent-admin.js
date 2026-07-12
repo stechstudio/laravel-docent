@@ -99,6 +99,9 @@ Alpine.data('docentAdmin', (config) => {
     revisions: [],
     revisionsLoading: false,
 
+    // Access rail ability combobox.
+    abilityOpen: false,
+
     // Group settings modal + its lazy icon picker.
     groupModalOpen: false,
     groupEditing: null,
@@ -325,20 +328,27 @@ Alpine.data('docentAdmin', (config) => {
     },
 
     /**
-     * A human label for a technical gate ability, shown alongside the raw
-     * name in the access picker: "reports.view" → "View reports".
+     * The access rail's ability combobox: free-text input (comma-separated
+     * technical names, exactly what front matter stores) with a dropdown of
+     * registered abilities showing their humanized labels. Filtering and
+     * picking operate on the segment after the last comma, so multi-ability
+     * entry composes naturally.
      */
-    abilityLabel(ability) {
-        const words = String(ability)
-            .split(/[.\-_:]+|(?=[A-Z])/)
-            .filter(Boolean)
-            .map((w) => w.toLowerCase());
-        const verbs = ['view', 'see', 'read', 'access', 'manage', 'edit', 'update', 'create', 'delete', 'export', 'download'];
-        if (words.length > 1 && verbs.includes(words[words.length - 1])) {
-            words.unshift(words.pop());
-        }
-        const label = words.join(' ');
-        return label.charAt(0).toUpperCase() + label.slice(1);
+    get filteredAbilities() {
+        const parts = String(this.fm.authorize || '').split(',');
+        const q = parts[parts.length - 1].trim().toLowerCase();
+        const list = this.meta.abilities || [];
+        return q
+            ? list.filter((a) => a.name.toLowerCase().includes(q) || a.label.toLowerCase().includes(q))
+            : list;
+    },
+
+    pickAbility(name) {
+        const parts = String(this.fm.authorize || '').split(',');
+        parts[parts.length - 1] = (parts.length > 1 ? ' ' : '') + name;
+        this.fm.authorize = parts.join(',');
+        this.abilityOpen = false;
+        this.onEdit();
     },
 
     treeTooltip(page) {
