@@ -7,7 +7,6 @@ namespace STS\Docent\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\View\View;
 use STS\Docent\DocentManager;
 use STS\Docent\Page;
 
@@ -21,18 +20,31 @@ final class PageController
         private readonly DocentManager $docent,
     ) {}
 
-    public function home(Request $request): View|Response|RedirectResponse
+    public function home(Request $request): Response|RedirectResponse
     {
         return $this->render($request, '');
     }
 
-    public function show(Request $request, string $slug): View|Response|RedirectResponse
+    public function show(Request $request, string $slug): Response|RedirectResponse
     {
         return $this->render($request, $slug);
     }
 
-    private function render(Request $request, string $slug): View|Response|RedirectResponse
+    private function render(Request $request, string $slug): Response|RedirectResponse
     {
+        $markdown = false;
+
+        if ($slug === 'index.md') {
+            $slug = '';
+            $markdown = true;
+        } elseif (str_ends_with($slug, '.md')) {
+            $slug = substr($slug, 0, -3);
+            $markdown = true;
+        } elseif (str_contains(strtolower((string) $request->header('Accept')), 'text/markdown')
+            && $request->prefers(['text/markdown', 'text/html']) === 'text/markdown') {
+            $markdown = true;
+        }
+
         $page = $this->docent->page($slug);
 
         if ($page === null) {
@@ -45,8 +57,16 @@ final class PageController
             return $this->denied();
         }
 
+        if ($markdown) {
+            return response($this->docent->agentMarkdown($page, $context), 200, [
+                'Content-Type' => 'text/markdown; charset=utf-8',
+                'X-Robots-Tag' => 'noindex, nofollow',
+                'Vary' => 'Accept',
+            ]);
+        }
+
         if ($page->isLanding()) {
-            return view('docent::landing', [
+            return response()->view('docent::landing', [
                 'docent' => $this->docent,
                 'siteName' => $this->docent->siteName(),
                 'homeUrl' => $this->docent->url(''),
@@ -57,12 +77,12 @@ final class PageController
                 'html' => $page->render($context),
                 'heroCta' => $page->heroCta(),
                 'landing' => true,
-            ]);
+            ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
         }
 
         [$prev, $next] = $this->docent->prevNext($slug, $context);
 
-        return view('docent::page', [
+        return response()->view('docent::page', [
             'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
             'homeUrl' => $this->docent->url(''),
@@ -77,7 +97,7 @@ final class PageController
             'currentSlug' => $slug,
             'prev' => $prev,
             'next' => $next,
-        ]);
+        ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
     }
 
     private function denied(): Response|RedirectResponse

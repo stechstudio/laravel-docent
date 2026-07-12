@@ -46,6 +46,11 @@ final class Page
         return $this->frontMatter()->description();
     }
 
+    public function searchExcluded(): bool
+    {
+        return $this->frontMatter()->searchExcluded();
+    }
+
     /**
      * The page layout: `docs` (default) or `landing`. The controller uses this
      * to pick the view and suppress the sidebar/TOC chrome.

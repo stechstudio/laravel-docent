@@ -22,6 +22,7 @@ use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
+use STS\Docent\Documents\Renderer\AgentMarkdownRenderer;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\HtmlRenderer;
 use STS\Docent\Documents\Renderer\TableOfContents;
@@ -30,6 +31,7 @@ use STS\Docent\Documents\Serializer\AstToTiptap;
 use STS\Docent\Documents\Serializer\MarkdownExporter;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Navigation\NavigationGroup;
+use STS\Docent\Navigation\NavigationItem;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
@@ -133,7 +135,7 @@ final class DocentManager
     }
 
     /**
-     * @return list<Navigation\NavigationItem|NavigationGroup>
+     * @return list<NavigationItem|NavigationGroup>
      */
     public function navigation(DocumentationContext $context): array
     {
@@ -141,7 +143,7 @@ final class DocentManager
     }
 
     /**
-     * @return array{0: ?Navigation\NavigationItem, 1: ?Navigation\NavigationItem}
+     * @return array{0: ?NavigationItem, 1: ?NavigationItem}
      */
     public function prevNext(string $slug, DocumentationContext $context): array
     {
@@ -180,6 +182,153 @@ final class DocentManager
         );
 
         return $renderer->render($document);
+    }
+
+    /**
+     * Render one page for agent-facing HTTP surfaces. The viewer fingerprint
+     * isolates cached output for different navigation scopes and users.
+     */
+    public function agentMarkdown(Page $page, DocumentationContext $context): string
+    {
+        $key = implode(':', [
+            'agent-page',
+            $this->repository->directoryHash(),
+            $this->viewerFingerprint($context),
+            sha1($page->slug),
+        ]);
+
+        return $this->cache->remember($key, function () use ($page, $context): string {
+            $renderer = new AgentMarkdownRenderer(
+                registry: $this->registry,
+                context: $context,
+                baseDir: $page->baseDir(),
+                routePrefix: (string) config('docent.route.prefix', 'docs'),
+                includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
+                markdownUrlResolver: fn (string $slug): string => $this->markdownUrl($slug),
+            );
+
+            return $renderer->render($page->document(), $page->title(), $page->description());
+        });
+    }
+
+    public function markdownUrl(string $slug): string
+    {
+        return route('docent.show', ['slug' => ($slug === '' ? 'index' : $slug).'.md']);
+    }
+
+    public function llmsUrl(bool $full = false): string
+    {
+        return route($full ? 'docent.llms-full' : 'docent.llms');
+    }
+
+    public function discoveryLinkHeader(): string
+    {
+        $index = parse_url($this->llmsUrl(), PHP_URL_PATH) ?: '/llms.txt';
+        $full = parse_url($this->llmsUrl(true), PHP_URL_PATH) ?: '/llms-full.txt';
+
+        return '<'.$index.'>; rel="llms-txt", <'.$full.'>; rel="llms-full-txt"';
+    }
+
+    public function llmsText(DocumentationContext $context): string
+    {
+        $navigation = $this->navigation($context);
+        $key = 'llms:'.$this->repository->directoryHash().':'.$this->viewerFingerprint($context);
+
+        return $this->cache->remember($key, function () use ($navigation): string {
+            $sections = [];
+            $root = array_values(array_filter($navigation, fn (object $node): bool => $node instanceof NavigationItem));
+
+            if ($root !== []) {
+                $sections[] = $this->llmsSection('Documentation', $root);
+            }
+
+            foreach ($navigation as $node) {
+                if ($node instanceof NavigationGroup) {
+                    $sections[] = $this->llmsSection($node->label, $this->flattenNavigation([$node]));
+                }
+            }
+
+            return '# '.$this->siteName()."\n\n> ".$this->siteDescription()."\n"
+                .($sections === [] ? '' : "\n".implode("\n\n", $sections)."\n");
+        });
+    }
+
+    public function llmsFullText(DocumentationContext $context): string
+    {
+        $navigation = $this->navigation($context);
+        $key = 'llms-full:'.$this->repository->directoryHash().':'.$this->viewerFingerprint($context);
+
+        return $this->cache->remember($key, function () use ($navigation, $context): string {
+            $pages = [];
+
+            foreach ($this->flattenNavigation($navigation) as $item) {
+                if ($item->searchExcluded) {
+                    continue;
+                }
+
+                $page = $this->page($item->slug);
+
+                if ($page !== null && $page->authorize($context)) {
+                    $pages[] = trim($this->agentMarkdown($page, $context));
+                }
+            }
+
+            return $pages === [] ? '' : implode("\n\n---\n\n", $pages)."\n";
+        });
+    }
+
+    public function siteDescription(): string
+    {
+        $description = config('docent.description');
+
+        return is_string($description) && trim($description) !== ''
+            ? trim($description)
+            : 'Application guides and help documentation for '.$this->siteName().'.';
+    }
+
+    /** @param list<NavigationItem|NavigationGroup> $nodes
+     * @return list<NavigationItem>
+     */
+    private function flattenNavigation(array $nodes): array
+    {
+        $items = [];
+
+        foreach ($nodes as $node) {
+            if ($node instanceof NavigationItem) {
+                $items[] = $node;
+            } else {
+                array_push($items, ...$node->items, ...$this->flattenNavigation($node->groups));
+            }
+        }
+
+        return $items;
+    }
+
+    /** @param list<NavigationItem> $items */
+    private function llmsSection(string $label, array $items): string
+    {
+        $lines = ['## '.$label];
+
+        foreach ($items as $item) {
+            $line = '- ['.$item->title.']('.$this->markdownUrl($item->slug).')';
+            $description = preg_replace('/\s+/', ' ', trim((string) $item->description));
+            $lines[] = $line.($description === '' ? '' : ': '.$description);
+        }
+
+        return implode("\n\n", $lines);
+    }
+
+    private function viewerFingerprint(DocumentationContext $context): string
+    {
+        $slugs = array_map(
+            static fn (NavigationItem $item): string => $item->slug,
+            $this->flattenNavigation($this->navigation($context)),
+        );
+        $user = $context->user;
+        $identifier = $user === null ? 'guest' : get_class($user).':'.(string) $user->getAuthIdentifier();
+        $parameters = json_encode($context->parameters, JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '';
+
+        return sha1(implode('|', $slugs).'|'.$identifier.'|'.($context->audience ?? '').'|'.$parameters);
     }
 
     public function partialDocument(string $name): ?Document

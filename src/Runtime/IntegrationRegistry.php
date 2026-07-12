@@ -168,6 +168,15 @@ final class IntegrationRegistry
     }
 
     /**
+     * Human-facing placeholder label used when agent markdown deliberately
+     * avoids resolving a viewer-specific dynamic value.
+     */
+    public function valueLabel(string $name): string
+    {
+        return $this->values[$name]->label ?? $name;
+    }
+
+    /**
      * Resolve an application link to a URL string. Returns null when not registered.
      *
      * @param  list<string>  $parameters

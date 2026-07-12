@@ -33,6 +33,7 @@ use STS\Docent\Http\Controllers\Admin\PreviewController;
 use STS\Docent\Http\Controllers\Admin\TreeController;
 use STS\Docent\Http\Controllers\Admin\UploadController;
 use STS\Docent\Http\Controllers\AssetController;
+use STS\Docent\Http\Controllers\LlmsController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Http\Controllers\UploadsController;
@@ -153,6 +154,9 @@ final class DocentServiceProvider extends ServiceProvider
             if (config('docent.admin.enabled', false) && config('docent.database.enabled', false)) {
                 $this->registerAdminRoutes();
             }
+
+            Route::get('/llms.txt', [LlmsController::class, 'index'])->name('docent.llms');
+            Route::get('/llms-full.txt', [LlmsController::class, 'full'])->name('docent.llms-full');
 
             Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('docent.show');
         });

@@ -190,7 +190,13 @@ final class NavigationBuilder
 
     private function item(PageReference $page): NavigationItem
     {
-        return new NavigationItem($page->title, $page->slug, ($this->urlResolver)($page->slug));
+        return new NavigationItem(
+            $page->title,
+            $page->slug,
+            ($this->urlResolver)($page->slug),
+            $page->description,
+            $page->searchExcluded,
+        );
     }
 
     /**

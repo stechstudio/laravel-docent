@@ -22,4 +22,6 @@ it('honors a custom route prefix from config', function () {
 
     $this->get('/handbook')->assertOk()->assertSee('Welcome home');
     $this->get('/handbook/guides/setup')->assertOk();
+    $this->get('/handbook/guides/setup.md')->assertOk()->assertHeader('Content-Type', 'text/markdown; charset=utf-8');
+    $this->get('/handbook/llms.txt')->assertOk();
 });

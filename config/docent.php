@@ -14,6 +14,9 @@ return [
 
     'name' => env('DOCENT_NAME', config('app.name').' Docs'),
 
+    // Used by llms.txt and available to host applications for metadata.
+    'description' => env('DOCENT_DESCRIPTION'),
+
     /*
     |--------------------------------------------------------------------------
     | Route

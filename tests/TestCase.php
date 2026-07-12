@@ -36,7 +36,7 @@ abstract class TestCase extends Orchestra
         Gate::define('reports.view', fn ($user) => (bool) ($user->is_admin ?? false));
 
         $app->make(IntegrationRegistry::class)
-            ->value('account.plan', fn () => 'Team Plan')
+            ->value('account.plan', fn () => 'Team Plan', 'Account plan')
             ->link('billing.settings', fn () => '/billing/settings')
             ->component('plan-usage', PlanUsageComponent::class)
             ->condition('beta-features', fn (DocumentationContext $context) => (bool) config('docent_test.beta', false))
