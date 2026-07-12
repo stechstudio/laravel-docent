@@ -10,3 +10,9 @@ composer.lock
 !/workbench/bootstrap/cache/.gitkeep
 /workbench/storage
 /workbench/database/database.sqlite
+
+# Internal working notes (kept local, not shipped)
+/DECISIONS.md
+/DESIGN.md
+/ROADMAP.md
+/handoff.md
