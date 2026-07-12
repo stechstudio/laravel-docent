@@ -99,7 +99,7 @@ Alpine.data('docentSearch', (searchUrl) => ({
 
     go(result) {
         if (!result) return;
-        window.location.href = result.heading ? `${result.url}#${result.heading}` : result.url;
+        window.location.href = result.anchor ? `${result.url}#${result.anchor}` : result.url;
     },
 
     enter() {

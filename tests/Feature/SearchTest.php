@@ -86,11 +86,13 @@ it('wraps matched terms in <mark> and escapes the surrounding text first', funct
         ->and($overview->snippet)->not->toContain('Invoices & receipts');
 });
 
-it('exposes the matched heading anchor for deep linking', function () {
-    // "Details" is the only h2 in guides/setup; a heading match exposes its anchor.
+it('exposes the matched heading text and anchor for deep linking', function () {
+    // "Details" is the only h2 in guides/setup; a heading match exposes both
+    // its display text (for the result title) and its anchor (for the #link).
     $setup = collect(searchAs($this, 'details'))->firstWhere('slug', 'guides/setup');
 
-    expect($setup?->heading)->toBe('details');
+    expect($setup?->heading)->toBe('Details')
+        ->and($setup?->anchor)->toBe('details');
 });
 
 // -- Leakage battery --------------------------------------------------------
@@ -145,7 +147,7 @@ it('respects search.exclude front matter', function () {
 it('returns JSON results with the echoed query', function () {
     $this->get('/docs/_search?q=billing')
         ->assertOk()
-        ->assertJsonStructure(['results' => [['slug', 'url', 'title', 'group', 'snippet', 'heading']], 'query'])
+        ->assertJsonStructure(['results' => [['slug', 'url', 'title', 'group', 'snippet', 'heading', 'anchor']], 'query'])
         ->assertJsonPath('query', 'billing');
 });
 

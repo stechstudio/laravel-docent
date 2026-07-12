@@ -7,8 +7,9 @@ namespace STS\Docent\Search;
 /**
  * A scored, viewer-visible search hit. The `snippet` is trusted HTML: the
  * matched terms are wrapped in `<mark>` after the surrounding text has already
- * been HTML-escaped. `heading` is the anchor slug of the best-matching heading
- * (or null), letting the UI deep-link to `#heading`.
+ * been HTML-escaped. When the best match landed on a section heading,
+ * `heading` carries its display text and `anchor` its slug, letting the UI
+ * show the section title and deep-link to `#anchor`.
  */
 final class SearchResult
 {
@@ -19,10 +20,11 @@ final class SearchResult
         public readonly string $group,
         public readonly string $snippet,
         public readonly ?string $heading,
+        public readonly ?string $anchor,
     ) {}
 
     /**
-     * @return array{slug: string, url: string, title: string, group: string, snippet: string, heading: ?string}
+     * @return array{slug: string, url: string, title: string, group: string, snippet: string, heading: ?string, anchor: ?string}
      */
     public function toArray(): array
     {
@@ -33,6 +35,7 @@ final class SearchResult
             'group' => $this->group,
             'snippet' => $this->snippet,
             'heading' => $this->heading,
+            'anchor' => $this->anchor,
         ];
     }
 }

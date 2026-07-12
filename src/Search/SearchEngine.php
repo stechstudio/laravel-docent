@@ -79,7 +79,7 @@ final class SearchEngine
      * token matches no field on this record).
      *
      * @param  list<string>  $tokens
-     * @return array{record: SearchRecord, score: float, heading: ?string}|null
+     * @return array{record: SearchRecord, score: float, heading: array{title: string, slug: string}|null}|null
      */
     private function score(SearchRecord $record, array $tokens, string $query): ?array
     {
@@ -98,11 +98,11 @@ final class SearchEngine
                 $matched = true;
             }
 
-            $headingSlug = $this->headingMatch($record->headings, $token);
+            $headingHit = $this->headingMatch($record->headings, $token);
 
-            if ($headingSlug !== null) {
+            if ($headingHit !== null) {
                 $score += self::WEIGHT_HEADING;
-                $heading ??= $headingSlug;
+                $heading ??= $headingHit;
                 $matched = true;
             }
 
@@ -147,8 +147,9 @@ final class SearchEngine
 
     /**
      * @param  list<string>  $tokens
+     * @param  array{title: string, slug: string}|null  $heading
      */
-    private function result(SearchRecord $record, array $tokens, ?string $heading): SearchResult
+    private function result(SearchRecord $record, array $tokens, ?array $heading): SearchResult
     {
         return new SearchResult(
             slug: $record->slug,
@@ -156,7 +157,8 @@ final class SearchEngine
             title: $record->title,
             group: $record->group,
             snippet: $this->snippet($record->body, $tokens),
-            heading: $heading,
+            heading: $heading['title'] ?? null,
+            anchor: $heading['slug'] ?? null,
         );
     }
 
@@ -269,11 +271,15 @@ final class SearchEngine
     /**
      * @param  list<array{title: string, slug: string}>  $headings
      */
-    private function headingMatch(array $headings, string $token): ?string
+    /**
+     * @param  list<array{title: string, slug: string}>  $headings
+     * @return array{title: string, slug: string}|null
+     */
+    private function headingMatch(array $headings, string $token): ?array
     {
         foreach ($headings as $heading) {
             if ($this->prefixPresent($this->tokenize($heading['title']), $token)) {
-                return $heading['slug'];
+                return $heading;
             }
         }
 

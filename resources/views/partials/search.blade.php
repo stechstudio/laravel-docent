@@ -27,7 +27,7 @@
 
                     {{-- Results --}}
                     <template x-for="(r, i) in results" :key="r.slug + '-' + i">
-                        <a :href="r.heading ? r.url + '#' + r.heading : r.url" @click.prevent="go(r)" @mouseenter="selected = i"
+                        <a :href="r.anchor ? r.url + '#' + r.anchor : r.url" @click.prevent="go(r)" @mouseenter="selected = i"
                            :data-selected="selected === i"
                            class="block rounded-lg px-3 py-2.5 transition"
                            :class="selected === i ? 'bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)]' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'">
