@@ -9,7 +9,7 @@
     <script defer src="{{ $docent->asset('docent.js') }}"></script>
     <style>{!! $docent->themeStyles() !!}</style>
 </head>
-<body data-widget-base="{{ $docent->widgetUrl() }}" class="docent-widget-frame min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
+<body data-widget-base="{{ $docent->widgetUrl() }}" data-widget-suggestions-url="{{ route('docent.widget.suggestions') }}" data-widget-slug="{{ $currentSlug }}" class="docent-widget-frame min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     <div x-data="docentWidgetSearch('{{ route('docent.search', ['mode' => 'widget']) }}')"
          @docent:widget-search.window="setQuery($event.detail.query)"
          class="flex min-h-screen flex-col">

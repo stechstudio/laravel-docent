@@ -12,7 +12,7 @@ Route::get('/', function (Request $request) {
     }
 
     return view('demo');
-});
+})->name('dashboard.overview');
 
 // Quick role switching for browsing the permission-aware docs.
 Route::get('/demo/login/{role}', function (string $role) {

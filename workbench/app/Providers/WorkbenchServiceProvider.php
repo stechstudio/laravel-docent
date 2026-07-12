@@ -50,6 +50,7 @@ class WorkbenchServiceProvider extends ServiceProvider
         Docent::value('account.plan', fn () => 'Team Plan', label: 'Account plan name')
             ->link('billing.settings', fn () => route('workbench.billing.settings'), label: 'Billing settings')
             ->component('plan-usage', PlanUsageComponent::class, label: 'Plan usage box')
-            ->condition('beta-features', fn (DocumentationContext $context) => (bool) session('beta', false), label: 'Beta program');
+            ->condition('beta-features', fn (DocumentationContext $context) => (bool) session('beta', false), label: 'Beta program')
+            ->suggest('dashboard.*', ['getting-started/quickstart', 'billing/payment-methods']);
     }
 }

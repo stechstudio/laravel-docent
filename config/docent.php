@@ -145,6 +145,7 @@ return [
         'offset' => 24,
         'launcher' => 'button',
         'icon' => 'book-open',
+        'preload' => false,
     ],
 
     /*

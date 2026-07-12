@@ -66,6 +66,8 @@ it('renders the explicit launcher component and validates its config', function 
         ->toContain('"mode":"push"')
         ->toContain('"position":"left"')
         ->toContain('"offset":18')
+        ->toContain('"preload":false')
+        ->toContain('\/_widget\/_suggestions')
         ->toContain('\\u003Csvg')
         ->not->toContain('not-a-real-icon')
         ->toContain('window.Docent=window.Docent||function');
@@ -98,7 +100,34 @@ it('serves the standalone widget runtime and registers routes before catch-all',
         ->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
 
     expect(Route::getRoutes()->getByName('docent.widget.home')?->uri())->toBe('docs/_widget')
+        ->and(Route::getRoutes()->getByName('docent.widget.suggestions')?->uri())->toBe('docs/_widget/_suggestions')
         ->and(Route::getRoutes()->getByName('docent.widget.show')?->uri())->toBe('docs/_widget/{slug}');
+});
+
+it('returns deduplicated contextual suggestions that the viewer may open', function () {
+    app(DocentManager::class)->suggest('billing.invoice', ['missing-page']);
+
+    $this->getJson('/docs/_widget/_suggestions?page=billing.invoice')
+        ->assertOk()
+        ->assertJsonPath('page', 'billing.invoice')
+        ->assertJsonCount(2, 'suggestions')
+        ->assertJsonPath('suggestions.0.slug', 'welcome')
+        ->assertJsonPath('suggestions.1.slug', 'guides/setup')
+        ->assertJsonMissing(['slug' => 'billing/secret'])
+        ->assertJsonMissing(['slug' => 'missing-page']);
+
+    $this->actingAs($this->adminUser())
+        ->getJson('/docs/_widget/_suggestions?page=billing.invoice')
+        ->assertOk()
+        ->assertJsonCount(3, 'suggestions')
+        ->assertJsonFragment(['slug' => 'billing/secret']);
+});
+
+it('returns no contextual suggestions without a matching host page', function () {
+    $this->getJson('/docs/_widget/_suggestions?page=reports.index')
+        ->assertOk()
+        ->assertJsonPath('page', 'reports.index')
+        ->assertJsonCount(0, 'suggestions');
 });
 
 it('does not retain widget mode across application request scopes', function () {
@@ -110,4 +139,26 @@ it('does not retain widget mode across application request scopes', function () 
     $this->app->forgetScopedInstances();
 
     expect(app(DocentManager::class)->url('guides/setup'))->toBe('http://localhost/docs/guides/setup');
+});
+
+it('filters explicit slug overrides through the same authorization gate', function () {
+    $guest = $this->getJson('/docs/_widget/_suggestions?slugs[]=welcome&slugs[]=billing/secret&slugs[]=missing-page')
+        ->assertOk()
+        ->assertJsonCount(1, 'suggestions')
+        ->assertJsonPath('suggestions.0.slug', 'welcome');
+
+    $this->actingAs($this->adminUser())
+        ->getJson('/docs/_widget/_suggestions?slugs[]=welcome&slugs[]=billing/secret')
+        ->assertOk()
+        ->assertJsonCount(2, 'suggestions');
+});
+
+it('seeds the launcher config with the current route name', function () {
+    Route::get('/host-page', fn () => Blade::render('<x-docent::widget />'))
+        ->name('host.dashboard')
+        ->middleware('web');
+
+    $this->get('/host-page')
+        ->assertOk()
+        ->assertSee('"page":"host.dashboard"', false);
 });

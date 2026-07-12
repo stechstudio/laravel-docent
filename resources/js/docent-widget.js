@@ -30,8 +30,17 @@
     let openState = false;
     let failed = false;
     let handshakeTimer = null;
-    let pendingMessage = null;
+    let pendingMessages = [];
     let returnFocus = null;
+    let pageHint = String(config.page || '');
+    let lastPageSent = null;
+    let overrideActive = false;
+
+    function analytics(event, detail) {
+        window.dispatchEvent(new CustomEvent('docent:analytics', {
+            detail: Object.assign({ event }, detail || {}),
+        }));
+    }
 
     function styles(element, declarations) {
         Object.assign(element.style, declarations);
@@ -76,7 +85,7 @@
         document.body.appendChild(launcher);
     }
 
-    function makePanel(slug) {
+    function makePanel(slug, preloading) {
         panel = document.createElement('div');
         panel.dataset.docentPanel = '';
         panel.setAttribute('role', 'dialog');
@@ -92,6 +101,7 @@
 
         applyPanelLayout();
         styles(panel, {
+            display: preloading ? 'none' : 'block',
             opacity: '0',
             transform: openingTransform(),
             pointerEvents: 'none',
@@ -100,12 +110,13 @@
             zIndex: '2147483000',
             transition: reducedMotion.matches ? 'none' : 'opacity 180ms ease, transform 220ms cubic-bezier(.22,.8,.24,1)',
         });
-        requestAnimationFrame(() => showPanel());
+        if (!preloading) requestAnimationFrame(() => showPanel());
 
         handshakeTimer = window.setTimeout(() => {
             if (ready) return;
             failed = true;
             close();
+            analytics('widget_failed');
         }, 3000);
     }
 
@@ -165,6 +176,7 @@
 
         returnFocus = document.activeElement;
         openState = true;
+        analytics('widget_opened', slug ? { slug: String(slug) } : {});
         if (launcher) {
             launcher.setAttribute('aria-expanded', 'true');
             launcher.style.transform = 'scale(.94)';
@@ -175,7 +187,7 @@
         }
 
         if (!panel) {
-            makePanel(slug);
+            makePanel(slug, false);
         } else {
             panel.style.display = 'block';
             applyPanelLayout();
@@ -183,6 +195,8 @@
             requestAnimationFrame(() => showPanel());
             if (slug) send({ docent: 'navigate', slug });
         }
+
+        if (pageHint && !overrideActive) send({ docent: 'page', page: pageHint });
 
         applyPush(true);
         window.setTimeout(() => {
@@ -194,6 +208,7 @@
     function close() {
         if (!openState) return;
         openState = false;
+        analytics('widget_closed');
         applyPush(false);
 
         if (launcher) {
@@ -229,10 +244,15 @@
 
     function send(message) {
         if (!iframe || !ready) {
-            pendingMessage = message;
+            if (message.docent === 'page') {
+                pendingMessages = pendingMessages.filter((pending) => pending.docent !== 'page');
+            }
+            pendingMessages.push(message);
             return;
         }
+        if (message.docent === 'page' && message.page === lastPageSent) return;
         iframe.contentWindow.postMessage(message, window.location.origin);
+        if (message.docent === 'page') lastPageSent = message.page;
     }
 
     function navigate(slug) {
@@ -245,12 +265,28 @@
         send({ docent: 'search', query: String(query || '') });
     }
 
+    function page(value) {
+        pageHint = String(value || '').trim();
+        overrideActive = false;
+        analytics('page_context_changed', { page: pageHint });
+        if (iframe) send({ docent: 'page', page: pageHint });
+    }
+
+    function suggestOverride(slugs) {
+        const list = Array.isArray(slugs) ? slugs.map(String).filter(Boolean) : [];
+        overrideActive = true;
+        analytics('suggestions_overridden', { slugs: list });
+        send({ docent: 'suggest', slugs: list });
+    }
+
     function command(name, value) {
         if (name === 'open') open();
         else if (name === 'close') close();
         else if (name === 'toggle') toggle();
         else if (name === 'navigate') navigate(value);
         else if (name === 'search') search(value);
+        else if (name === 'page') page(value);
+        else if (name === 'suggest') suggestOverride(value);
     }
 
     window.Docent = command;
@@ -261,16 +297,20 @@
         const message = event.data || {};
         if (message.docent === 'ready') {
             ready = true;
+            lastPageSent = null;
             window.clearTimeout(handshakeTimer);
-            if (pendingMessage) {
-                const pending = pendingMessage;
-                pendingMessage = null;
-                send(pending);
-            } else {
-                send({ docent: 'focus' });
+            analytics('widget_ready');
+            const messages = pendingMessages;
+            pendingMessages = [];
+            messages.forEach(send);
+            if (pageHint && !overrideActive && !messages.some((message) => message.docent === 'page' || message.docent === 'suggest')) {
+                send({ docent: 'page', page: pageHint });
             }
+            if (openState) send({ docent: 'focus' });
         } else if (message.docent === 'close') {
             close();
+        } else if (message.docent === 'event' && typeof message.event === 'string') {
+            analytics(message.event, message.detail);
         }
     });
 
@@ -297,4 +337,12 @@
     });
 
     makeLauncher();
+
+    if (config.preload !== false) {
+        const preload = () => {
+            if (!panel && !openState && !failed) makePanel('', true);
+        };
+        if ('requestIdleCallback' in window) window.requestIdleCallback(preload, { timeout: 2000 });
+        else window.setTimeout(preload, 1500);
+    }
 })();

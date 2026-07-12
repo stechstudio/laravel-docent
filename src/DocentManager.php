@@ -119,6 +119,14 @@ final class DocentManager
         return $this;
     }
 
+    /** @param list<string> $slugs */
+    public function suggest(string $pattern, array $slugs): self
+    {
+        $this->registry->suggest($pattern, $slugs);
+
+        return $this;
+    }
+
     public function registry(): IntegrationRegistry
     {
         return $this->registry;
@@ -308,14 +316,57 @@ final class DocentManager
         return [
             'docsUrl' => $this->fullUrl(''),
             'widgetUrl' => $this->widgetUrl(),
+            'suggestionsUrl' => route('docent.widget.suggestions'),
+            'page' => \Illuminate\Support\Facades\Route::currentRouteName(),
             'assetUrl' => $this->asset('docent-widget.js'),
             'mode' => $mode,
             'position' => $position,
             'offset' => $offset,
             'launcher' => $launcher,
+            'preload' => (bool) config('docent.widget.preload', false),
             'icon' => $iconMarkup,
             'accent' => $this->accent(),
         ];
+    }
+
+    /**
+     * Resolve contextual suggestions without exposing missing or unauthorized
+     * pages to the current viewer.
+     *
+     * @return list<array{slug: string, title: string, description: ?string, url: string}>
+     */
+    public function widgetSuggestions(string $hostPage, DocumentationContext $context): array
+    {
+        return $this->authorizedSuggestions($this->registry->suggestionsFor(trim($hostPage)), $context);
+    }
+
+    /**
+     * Filter explicit slugs (e.g. a client-side override) through the same
+     * authorization gate, so no suggestion surface can leak a gated page.
+     *
+     * @param  list<string>  $slugs
+     * @return list<array{slug: string, title: string, description: ?string, url: string}>
+     */
+    public function authorizedSuggestions(array $slugs, DocumentationContext $context): array
+    {
+        $suggestions = [];
+
+        foreach (array_slice(array_values(array_unique($slugs)), 0, 5) as $slug) {
+            $page = $this->page($slug);
+
+            if ($page === null || ! $page->authorize($context)) {
+                continue;
+            }
+
+            $suggestions[] = [
+                'slug' => $slug,
+                'title' => $page->title(),
+                'description' => $page->description(),
+                'url' => $this->widgetUrl($slug),
+            ];
+        }
+
+        return $suggestions;
     }
 
     /** @param list<NavigationItem|NavigationGroup> $nodes

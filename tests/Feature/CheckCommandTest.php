@@ -92,3 +92,11 @@ it('does not fail on warnings unless strict', function () {
     expect($strict)->toBe(1);
     expect($output)->toContain('missing-title');
 });
+
+it('flags suggestions that point at nonexistent pages', function () {
+    app(\STS\Docent\DocentManager::class)->suggest('billing.*', ['missing-page']);
+
+    $this->artisan('docent:check')
+        ->expectsOutputToContain('missing-page')
+        ->assertFailed();
+});

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace STS\Docent\Runtime;
 
 use Closure;
+use Illuminate\Support\Str;
+use InvalidArgumentException;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\Registered\RegisteredAudience;
 use STS\Docent\Runtime\Registered\RegisteredComponent;
@@ -36,6 +38,9 @@ final class IntegrationRegistry
 
     /** @var array<string, RegisteredAudience> */
     private array $audiences = [];
+
+    /** @var array<string, list<string>> */
+    private array $suggestions = [];
 
     /** @var Closure(class-string): object */
     private Closure $classResolver;
@@ -96,6 +101,60 @@ final class IntegrationRegistry
         $this->audiences[$name] = new RegisteredAudience($name, $resolver, $label, $description);
 
         return $this;
+    }
+
+    /**
+     * Register documentation pages to suggest for a host application's page
+     * identifier. Patterns use Laravel's simple wildcard matching.
+     *
+     * @param  list<string>  $slugs
+     */
+    public function suggest(string $pattern, array $slugs): self
+    {
+        $pattern = trim($pattern);
+
+        if ($pattern === '') {
+            throw new InvalidArgumentException('A Docent suggestion pattern cannot be empty.');
+        }
+
+        $normalized = [];
+
+        foreach ($slugs as $slug) {
+            if (! is_string($slug) || trim($slug, " \t\n\r\0\x0B/") === '') {
+                throw new InvalidArgumentException('Docent suggestion slugs must be non-empty strings.');
+            }
+
+            $normalized[] = trim($slug, '/');
+        }
+
+        $this->suggestions[$pattern] = array_values(array_unique($normalized));
+
+        return $this;
+    }
+
+    /**
+     * Merged suggestions for a host page identifier, in registration order,
+     * deduplicated, and capped so the widget section stays scannable.
+     *
+     * @return list<string>
+     */
+    public function suggestionsFor(string $page): array
+    {
+        $slugs = [];
+
+        foreach ($this->suggestions as $pattern => $suggestions) {
+            if (Str::is($pattern, $page)) {
+                array_push($slugs, ...$suggestions);
+            }
+        }
+
+        return array_slice(array_values(array_unique($slugs)), 0, 5);
+    }
+
+    /** @return array<string, list<string>> */
+    public function suggestions(): array
+    {
+        return $this->suggestions;
     }
 
     public function hasCondition(string $name): bool

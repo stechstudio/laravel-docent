@@ -69,5 +69,9 @@
     </main>
 
     <x-docent::widget />
+    {{-- The launcher captures the current route name itself; no Docent('page') call needed. --}}
+    <script>
+        window.addEventListener('docent:analytics', ({ detail }) => console.debug('Docent widget', detail));
+    </script>
 </body>
 </html>

@@ -39,6 +39,7 @@ use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Http\Controllers\UploadsController;
 use STS\Docent\Http\Controllers\WidgetController;
+use STS\Docent\Http\Controllers\WidgetSuggestionsController;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
@@ -166,6 +167,7 @@ final class DocentServiceProvider extends ServiceProvider
 
             if (config('docent.widget.enabled', false)) {
                 Route::get('/_widget', [WidgetController::class, 'home'])->name('docent.widget.home');
+                Route::get('/_widget/_suggestions', WidgetSuggestionsController::class)->name('docent.widget.suggestions');
                 Route::get('/_widget/{slug}', [WidgetController::class, 'show'])
                     ->where('slug', '.*')->name('docent.widget.show');
             }

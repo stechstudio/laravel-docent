@@ -59,6 +59,33 @@ it('reports registration existence', function () {
         ->and($registry->hasCondition('missing'))->toBeFalse();
 });
 
+it('matches and deduplicates contextual suggestion patterns in registration order', function () {
+    $registry = new IntegrationRegistry;
+    $registry->suggest('billing.*', ['billing/overview', 'billing/payment-methods'])
+        ->suggest('*.settings', ['billing/payment-methods', 'account/profile']);
+
+    expect($registry->suggestionsFor('billing.settings'))->toBe([
+        'billing/overview',
+        'billing/payment-methods',
+        'account/profile',
+    ])->and($registry->suggestionsFor('reports.index'))->toBe([]);
+});
+
+it('caps merged suggestions at five', function () {
+    $registry = new IntegrationRegistry;
+    $registry->suggest('a.*', ['one', 'two', 'three'])
+        ->suggest('a.b', ['four', 'five', 'six', 'seven']);
+
+    expect($registry->suggestionsFor('a.b'))->toBe(['one', 'two', 'three', 'four', 'five']);
+});
+
+it('rejects empty suggestion patterns and slugs', function () {
+    expect(fn () => (new IntegrationRegistry)->suggest('', ['welcome']))
+        ->toThrow(InvalidArgumentException::class)
+        ->and(fn () => (new IntegrationRegistry)->suggest('*', ['']))
+        ->toThrow(InvalidArgumentException::class);
+});
+
 final class RegistryTestComponent implements DocumentationComponent
 {
     public function render(DocumentationContext $context, array $attributes): string

@@ -3,6 +3,11 @@ import collapse from '@alpinejs/collapse';
 
 Alpine.plugin(collapse);
 
+function widgetAnalytics(event, detail = {}) {
+    if (window.parent === window) return;
+    window.parent.postMessage({ docent: 'event', event, detail }, window.location.origin);
+}
+
 /* ---------------------------------------------------------------------------
  * Theme store — dark mode toggle. The initial class is set by a tiny blocking
  * script in <head> (FOUC-free); this only keeps the toggle button in sync and
@@ -134,6 +139,7 @@ Alpine.data('docentWidgetSearch', (searchUrl) => ({
 
     async fetch(query) {
         const sequence = ++this._seq;
+        widgetAnalytics('search_submitted', { query });
         try {
             const separator = searchUrl.includes('?') ? '&' : '?';
             const response = await fetch(`${searchUrl}${separator}q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
@@ -161,7 +167,9 @@ Alpine.data('docentWidgetSearch', (searchUrl) => ({
     },
 
     go(result) {
-        if (result) window.location.href = this.href(result);
+        if (!result) return;
+        widgetAnalytics('search_result_clicked', { query: this.query.trim(), slug: result.slug });
+        window.location.href = this.href(result);
     },
 
     enter() {
@@ -172,6 +180,56 @@ Alpine.data('docentWidgetSearch', (searchUrl) => ({
         this.query = String(query || '');
         this.onInput();
         this.$nextTick(() => this.$refs.input && this.$refs.input.focus());
+    },
+}));
+
+/* ---------------------------------------------------------------------------
+ * Contextual suggestions on the widget home screen.
+ * ------------------------------------------------------------------------- */
+Alpine.data('docentWidgetSuggestions', (suggestionsUrl) => ({
+    suggestions: [],
+    page: '',
+    _sequence: 0,
+
+    async load(page) {
+        this.page = String(page || '').trim();
+
+        if (this.page === '') {
+            this.suggestions = [];
+            return;
+        }
+
+        await this.fetchSuggestions(`page=${encodeURIComponent(this.page)}`);
+    },
+
+    async loadSlugs(slugs) {
+        const list = Array.isArray(slugs) ? slugs.map(String).filter(Boolean) : [];
+
+        if (list.length === 0) {
+            this.suggestions = [];
+            return;
+        }
+
+        await this.fetchSuggestions(list.map((slug) => `slugs[]=${encodeURIComponent(slug)}`).join('&'));
+    },
+
+    async fetchSuggestions(queryString) {
+        const sequence = ++this._sequence;
+
+        try {
+            const separator = suggestionsUrl.includes('?') ? '&' : '?';
+            const response = await fetch(`${suggestionsUrl}${separator}${queryString}`, {
+                headers: { Accept: 'application/json' },
+            });
+            const data = await response.json();
+            if (sequence === this._sequence) this.suggestions = data.suggestions || [];
+        } catch (error) {
+            if (sequence === this._sequence) this.suggestions = [];
+        }
+    },
+
+    track(suggestion) {
+        widgetAnalytics('suggestion_clicked', { page: this.page, slug: suggestion.slug });
     },
 }));
 
@@ -324,6 +382,10 @@ function bootWidgetFrame() {
             window.location.href = slug ? `${base.replace(/\/$/, '')}/${slug.split('/').map(encodeURIComponent).join('/')}` : base;
         } else if (message.docent === 'search') {
             window.dispatchEvent(new CustomEvent('docent:widget-search', { detail: { query: message.query || '' } }));
+        } else if (message.docent === 'page') {
+            window.dispatchEvent(new CustomEvent('docent:widget-page', { detail: { page: message.page || '' } }));
+        } else if (message.docent === 'suggest') {
+            window.dispatchEvent(new CustomEvent('docent:widget-suggest', { detail: { slugs: message.slugs || [] } }));
         } else if (message.docent === 'focus') {
             const input = document.querySelector('[data-docent-widget-search]');
             if (input) input.focus();
@@ -331,8 +393,8 @@ function bootWidgetFrame() {
     });
     window.setTimeout(() => {
         send({ docent: 'ready' });
-        const input = document.querySelector('[data-docent-widget-search]');
-        if (input) input.focus();
+        const slug = document.body.dataset.widgetSlug || '';
+        if (slug) widgetAnalytics('article_viewed', { slug });
     }, 0);
 }
 
