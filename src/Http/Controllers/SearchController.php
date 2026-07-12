@@ -23,6 +23,10 @@ final class SearchController
 
     public function __invoke(Request $request): JsonResponse
     {
+        if ($request->string('mode')->toString() === 'widget' && config('docent.widget.enabled', false)) {
+            $this->docent->enableWidgetMode();
+        }
+
         $query = $request->string('q')->toString();
 
         $results = $this->engine->search($query, $this->docent->contextFor($request));

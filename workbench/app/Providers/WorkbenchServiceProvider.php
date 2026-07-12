@@ -20,6 +20,8 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.database.enabled' => true,
             // Demo the admin panel (gated below to the account owner).
             'docent.admin.enabled' => true,
+            // Dogfood the same-origin help widget on the demo dashboard.
+            'docent.widget.enabled' => true,
         ]);
 
         // Try a different feel — theming tokens are pure config, no rebuild:

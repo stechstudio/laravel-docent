@@ -6,9 +6,10 @@
     "scripts": {
         "build:css": "tailwindcss -i ./resources/css/docent.css -o ./resources/dist/docent.css --minify",
         "build:js": "esbuild ./resources/js/docent.js --bundle --minify --format=iife --outfile=./resources/dist/docent.js",
+        "build:widget-js": "esbuild ./resources/js/docent-widget.js --bundle --minify --format=iife --outfile=./resources/dist/docent-widget.js",
         "build:admin-css": "tailwindcss -i ./resources/css/docent-admin.css -o ./resources/dist/docent-admin.css --minify",
         "build:admin-js": "esbuild ./resources/js/docent-admin.js --bundle --minify --format=iife --outfile=./resources/dist/docent-admin.js",
-        "build": "npm run build:css && npm run build:js && npm run build:admin-css && npm run build:admin-js",
+        "build": "npm run build:css && npm run build:js && npm run build:widget-js && npm run build:admin-css && npm run build:admin-js",
         "watch": "npm run build:css -- --watch"
     },
     "devDependencies": {

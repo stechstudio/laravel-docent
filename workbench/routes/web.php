@@ -1,11 +1,18 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Workbench\App\Models\User;
 
-// The demo app is the docs site.
-Route::get('/', fn () => redirect('/docs'));
+// A small host-app dashboard for dogfooding the in-app help widget.
+Route::get('/', function (Request $request) {
+    if ($request->string('mode')->toString() === 'push') {
+        config()->set('docent.widget.mode', 'push');
+    }
+
+    return view('demo');
+});
 
 // Quick role switching for browsing the permission-aware docs.
 Route::get('/demo/login/{role}', function (string $role) {

@@ -130,6 +130,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | In-app Help Widget
+    |--------------------------------------------------------------------------
+    |
+    | Render the launcher explicitly with <x-docent::widget />. The iframe is
+    | same-origin and therefore inherits the docs route middleware and viewer.
+    |
+    */
+
+    'widget' => [
+        'enabled' => false,
+        'mode' => 'overlay',
+        'position' => 'right',
+        'offset' => 24,
+        'launcher' => 'button',
+        'icon' => 'book-open',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Cache
     |--------------------------------------------------------------------------
     |

@@ -17,6 +17,7 @@ final class AssetController
     private const TYPES = [
         'docent.css' => 'text/css',
         'docent.js' => 'text/javascript',
+        'docent-widget.js' => 'text/javascript',
         'docent-admin.css' => 'text/css',
         'docent-admin.js' => 'text/javascript',
     ];

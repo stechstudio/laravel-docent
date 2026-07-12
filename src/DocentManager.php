@@ -34,6 +34,7 @@ use STS\Docent\Navigation\NavigationGroup;
 use STS\Docent\Navigation\NavigationItem;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
+use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\DocentCache;
 use STS\Docent\Support\GrayPalette;
@@ -62,6 +63,7 @@ final class DocentManager
         private readonly NavigationBuilder $navigation,
         private readonly CodeBlockRenderer $codeBlockRenderer,
         private readonly FilesystemRepository $filesystem,
+        private readonly DocumentationMode $mode,
     ) {}
 
     /** @var array<string, string> */
@@ -286,6 +288,36 @@ final class DocentManager
             : 'Application guides and help documentation for '.$this->siteName().'.';
     }
 
+    /** @return array<string, mixed> */
+    public function widgetConfig(): array
+    {
+        $mode = config('docent.widget.mode') === 'push' ? 'push' : 'overlay';
+        $position = config('docent.widget.position') === 'left' ? 'left' : 'right';
+        $launcher = config('docent.widget.launcher') === 'none' ? 'none' : 'button';
+        $offset = max(0, (int) config('docent.widget.offset', 24));
+        $icon = (string) config('docent.widget.icon', 'book-open');
+
+        if (Icon::has($icon)) {
+            $iconMarkup = Icon::svg($icon);
+        } elseif (str_starts_with($icon, '/') || preg_match('#^https?://#i', $icon) === 1) {
+            $iconMarkup = '<img src="'.e($icon).'" alt="" />';
+        } else {
+            $iconMarkup = Icon::svg('book-open');
+        }
+
+        return [
+            'docsUrl' => $this->fullUrl(''),
+            'widgetUrl' => $this->widgetUrl(),
+            'assetUrl' => $this->asset('docent-widget.js'),
+            'mode' => $mode,
+            'position' => $position,
+            'offset' => $offset,
+            'launcher' => $launcher,
+            'icon' => $iconMarkup,
+            'accent' => $this->accent(),
+        ];
+    }
+
     /** @param list<NavigationItem|NavigationGroup> $nodes
      * @return list<NavigationItem>
      */
@@ -368,7 +400,28 @@ final class DocentManager
 
     public function url(string $slug): string
     {
+        if ($this->mode->widget()) {
+            return $this->widgetUrl($slug);
+        }
+
+        return $this->fullUrl($slug);
+    }
+
+    public function fullUrl(string $slug): string
+    {
         return $slug === '' ? route('docent.home') : route('docent.show', $slug);
+    }
+
+    public function widgetUrl(string $slug = ''): string
+    {
+        return $slug === ''
+            ? route('docent.widget.home')
+            : route('docent.widget.show', ['slug' => $slug]);
+    }
+
+    public function enableWidgetMode(): void
+    {
+        $this->mode->enableWidget();
     }
 
     /**

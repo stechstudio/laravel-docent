@@ -108,6 +108,74 @@ Alpine.data('docentSearch', (searchUrl) => ({
 }));
 
 /* ---------------------------------------------------------------------------
+ * Compact, inline search used inside the same-origin widget frame.
+ * ------------------------------------------------------------------------- */
+Alpine.data('docentWidgetSearch', (searchUrl) => ({
+    query: '',
+    results: [],
+    selected: 0,
+    loading: false,
+    searched: false,
+    _timer: null,
+    _seq: 0,
+
+    onInput() {
+        clearTimeout(this._timer);
+        const query = this.query.trim();
+        if (query === '') {
+            this.results = [];
+            this.searched = false;
+            this.loading = false;
+            return;
+        }
+        this.loading = true;
+        this._timer = setTimeout(() => this.fetch(query), 150);
+    },
+
+    async fetch(query) {
+        const sequence = ++this._seq;
+        try {
+            const separator = searchUrl.includes('?') ? '&' : '?';
+            const response = await fetch(`${searchUrl}${separator}q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
+            const data = await response.json();
+            if (sequence !== this._seq) return;
+            this.results = data.results || [];
+            this.selected = 0;
+            this.searched = true;
+        } catch (error) {
+            if (sequence !== this._seq) return;
+            this.results = [];
+            this.searched = true;
+        } finally {
+            if (sequence === this._seq) this.loading = false;
+        }
+    },
+
+    move(delta) {
+        if (this.results.length === 0) return;
+        this.selected = (this.selected + delta + this.results.length) % this.results.length;
+    },
+
+    href(result) {
+        return result.anchor ? `${result.url}#${result.anchor}` : result.url;
+    },
+
+    go(result) {
+        if (result) window.location.href = this.href(result);
+    },
+
+    enter() {
+        this.go(this.results[this.selected]);
+    },
+
+    setQuery(query) {
+        this.query = String(query || '');
+        this.onInput();
+        this.$nextTick(() => this.$refs.input && this.$refs.input.focus());
+    },
+}));
+
+/* ---------------------------------------------------------------------------
  * Global shortcuts: Cmd/Ctrl-K and "/" open search.
  * ------------------------------------------------------------------------- */
 document.addEventListener('keydown', (e) => {
@@ -234,10 +302,48 @@ function enhance() {
     normalizeKbd();
 }
 
+function bootWidgetFrame() {
+    if (!document.documentElement.hasAttribute('data-docent-widget') || window.parent === window) return;
+
+    const send = (message) => window.parent.postMessage(message, window.location.origin);
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('[data-docent-widget-close]')) send({ docent: 'close' });
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            send({ docent: 'close' });
+        }
+    }, true);
+    window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin || event.source !== window.parent) return;
+        const message = event.data || {};
+        if (message.docent === 'navigate') {
+            const slug = String(message.slug || '').replace(/^\/+|\/+$/g, '');
+            const base = document.body.dataset.widgetBase || window.location.pathname.replace(/\/_widget(?:\/.*)?$/, '/_widget');
+            window.location.href = slug ? `${base.replace(/\/$/, '')}/${slug.split('/').map(encodeURIComponent).join('/')}` : base;
+        } else if (message.docent === 'search') {
+            window.dispatchEvent(new CustomEvent('docent:widget-search', { detail: { query: message.query || '' } }));
+        } else if (message.docent === 'focus') {
+            const input = document.querySelector('[data-docent-widget-search]');
+            if (input) input.focus();
+        }
+    });
+    window.setTimeout(() => {
+        send({ docent: 'ready' });
+        const input = document.querySelector('[data-docent-widget-search]');
+        if (input) input.focus();
+    }, 0);
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', enhance);
+    document.addEventListener('DOMContentLoaded', () => {
+        enhance();
+        bootWidgetFrame();
+    });
 } else {
     enhance();
+    bootWidgetFrame();
 }
 
 window.Alpine = Alpine;

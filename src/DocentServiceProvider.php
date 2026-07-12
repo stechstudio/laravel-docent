@@ -6,6 +6,7 @@ namespace STS\Docent;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\AboutCommand;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -37,7 +38,9 @@ use STS\Docent\Http\Controllers\LlmsController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Http\Controllers\UploadsController;
+use STS\Docent\Http\Controllers\WidgetController;
 use STS\Docent\Navigation\NavigationBuilder;
+use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
@@ -50,6 +53,8 @@ final class DocentServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/docent.php', 'docent');
 
         $this->app->singleton(IntegrationRegistry::class, static fn (Application $app): IntegrationRegistry => new IntegrationRegistry(static fn (string $class): object => $app->make($class)));
+
+        $this->app->scoped(DocumentationMode::class, static fn (): DocumentationMode => new DocumentationMode);
 
         $this->app->singleton(DocumentParser::class, MarkdownDocumentParser::class);
 
@@ -87,10 +92,12 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocumentationRepository::class),
             $app->make(IntegrationRegistry::class),
             $app->make(DocentCache::class),
-            static fn (string $slug): string => $slug === '' ? route('docent.home') : route('docent.show', $slug),
+            static fn (string $slug): string => $app->make(DocumentationMode::class)->widget()
+                ? route($slug === '' ? 'docent.widget.home' : 'docent.widget.show', $slug === '' ? [] : ['slug' => $slug])
+                : ($slug === '' ? route('docent.home') : route('docent.show', $slug)),
         ));
 
-        $this->app->singleton(DocentManager::class, static fn (Application $app): DocentManager => new DocentManager(
+        $this->app->scoped(DocentManager::class, static fn (Application $app): DocentManager => new DocentManager(
             $app->make(IntegrationRegistry::class),
             $app->make(DocumentationRepository::class),
             $app->make(DocumentParser::class),
@@ -98,15 +105,16 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(NavigationBuilder::class),
             $app->make(CodeBlockRenderer::class),
             $app->make(FilesystemRepository::class),
+            $app->make(DocumentationMode::class),
         ));
 
-        $this->app->singleton(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
+        $this->app->scoped(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
             $app->make(DocumentationRepository::class),
             $app->make(DocentCache::class),
             $app->make(DocentManager::class),
         ));
 
-        $this->app->singleton(SearchEngine::class, static fn (Application $app): SearchEngine => new SearchEngine(
+        $this->app->scoped(SearchEngine::class, static fn (Application $app): SearchEngine => new SearchEngine(
             $app->make(SearchIndexer::class),
             $app->make(DocentManager::class),
         ));
@@ -117,6 +125,7 @@ final class DocentServiceProvider extends ServiceProvider
         $this->registerRoutes();
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'docent');
+        Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'docent');
 
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/docent.php' => config_path('docent.php')], 'docent-config');
@@ -153,6 +162,12 @@ final class DocentServiceProvider extends ServiceProvider
 
             if (config('docent.admin.enabled', false) && config('docent.database.enabled', false)) {
                 $this->registerAdminRoutes();
+            }
+
+            if (config('docent.widget.enabled', false)) {
+                Route::get('/_widget', [WidgetController::class, 'home'])->name('docent.widget.home');
+                Route::get('/_widget/{slug}', [WidgetController::class, 'show'])
+                    ->where('slug', '.*')->name('docent.widget.show');
             }
 
             Route::get('/llms.txt', [LlmsController::class, 'index'])->name('docent.llms');

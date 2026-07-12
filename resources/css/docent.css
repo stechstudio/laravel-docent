@@ -50,3 +50,31 @@
 
 /* Shared visual layer (prose, callouts, cards, code, hero, scrollbars). */
 @import './shared/prose.css';
+
+@layer components {
+    .docent-widget-frame {
+        min-width: 0;
+        overflow-x: hidden;
+    }
+
+    .docent-widget-header {
+        box-shadow: 0 1px 0 rgb(15 23 42 / 0.02);
+    }
+
+    .docent-widget-results {
+        z-index: 50;
+    }
+
+    .docent-widget-prose {
+        font-size: 0.9375rem;
+        line-height: 1.7;
+    }
+
+    .docent-widget-prose h2 {
+        margin-top: 2rem;
+    }
+
+    .docent-widget-prose h3 {
+        margin-top: 1.5rem;
+    }
+}
