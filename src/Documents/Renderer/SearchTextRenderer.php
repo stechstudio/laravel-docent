@@ -28,6 +28,7 @@ use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 
 /**
@@ -86,6 +87,7 @@ final class SearchTextRenderer
             $node instanceof Accordion => $node->title."\n".$this->renderChildren($node)."\n\n",
             $node instanceof Tab => $node->label."\n".$this->renderChildren($node)."\n\n",
             $node instanceof Frame => ($node->caption ?? '')."\n".$this->renderChildren($node)."\n\n",
+            $node instanceof Video => ($node->caption ?? '')."\n\n",
 
             $node instanceof CodeBlock => $node->code."\n\n",
             $node instanceof ListItem => $this->renderChildren($node)."\n",

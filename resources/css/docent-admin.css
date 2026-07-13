@@ -851,6 +851,13 @@
 .dax-node-tabs { --dax-accent: #2563eb; }
 .dax-node-tab { --dax-accent: #60a5fa; margin: 0.55rem; }
 .dax-node-frame { --dax-accent: #d97706; }
+.dax-node-code-group { --dax-accent: #475569; }
+
+.dax-widget-video .dax-widget-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
 .dax-node-meta {
     max-width: 22rem;

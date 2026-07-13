@@ -611,6 +611,71 @@ export function DocsFrame() {
     });
 }
 
+export function DocsVideo() {
+    return Node.create({
+        name: 'docsVideo',
+        group: 'block',
+        atom: true,
+        selectable: true,
+        addAttributes: () => ({ url: { default: '' }, caption: { default: null } }),
+        parseHTML: () => [{ tag: 'div[data-docs-video]' }],
+        renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-docs-video': '' })],
+        addNodeView() {
+            return ({ node, editor, getPos }) => {
+                const dom = h('div', { class: 'dax-node dax-widget dax-widget-video', contenteditable: 'false' });
+                let current = node;
+                const paint = () => {
+                    dom.innerHTML = '';
+                    dom.append(
+                        h('span', { class: 'dax-widget-ic', html: ui('image', 16) }),
+                        h('span', { class: 'dax-widget-label' }, [
+                            h('span', { class: 'dax-widget-kind' }, 'Video'),
+                            h('span', { class: 'dax-widget-name' }, current.attrs.caption || current.attrs.url || 'No URL'),
+                        ]),
+                        h('span', { class: 'dax-node-actions' }, [
+                            editButton(() => openVideoEditor(editor, getPos, current, dom)),
+                            deleteButton(() => deleteNode(editor, getPos)),
+                        ]),
+                    );
+                };
+                paint();
+                return {
+                    dom,
+                    update(updated) {
+                        if (updated.type !== node.type) return false;
+                        current = updated;
+                        paint();
+                        return true;
+                    },
+                    stopEvent: () => true,
+                    ignoreMutation: () => true,
+                };
+            };
+        },
+    });
+}
+
+function openVideoEditor(editor, getPos, node, anchor) {
+    const panel = h('div', { class: 'dax-pop-body' });
+    panel.append(
+        popHeader('Video'),
+        field('URL', node.attrs.url || '', (value) => setAttrs(editor, getPos, { url: value.trim() }), {
+            mono: true, placeholder: 'https://www.youtube.com/watch?v=…',
+        }),
+        field('Caption (optional)', node.attrs.caption || '', (value) => setAttrs(editor, getPos, {
+            caption: value.trim() === '' ? null : value,
+        })),
+    );
+    openPopover(anchor, panel);
+}
+
+export function DocsCodeGroup() {
+    return contentComponent({
+        name: 'docsCodeGroup', content: 'codeBlock*', tag: 'data-docs-code-group', label: 'Code group', icon: 'code',
+        accentClass: 'dax-node-code-group', child: { type: 'codeBlock', label: 'code block', attrs: { language: null, filename: null, title: null } },
+    });
+}
+
 /* --- docsValue (inline atom) ----------------------------------------------- */
 
 export function DocsValue(context) {
@@ -889,20 +954,21 @@ export function DocsHtml() {
     });
 }
 
-/* --- codeBlock (extended: language + title header) ------------------------- */
+/* --- codeBlock (extended metadata header) ---------------------------------- */
 
 export function DocsCodeBlock() {
     return CodeBlock.extend({
         addAttributes() {
             return {
                 language: { default: null },
+                filename: { default: null },
                 title: { default: null },
             };
         },
         addNodeView() {
             // The READER's code-card chrome (.docent-code + header) so the
-            // block looks identical in Write and Preview; language and title
-            // are edited inline through blended header inputs. No client-side
+            // block looks identical in Write and Preview; metadata is edited
+            // inline through blended header inputs. No client-side
             // highlighting — the preview shows the real Phiki render.
             return ({ node, editor, getPos }) => {
                 const dom = h('div', { class: 'docent-code dax-nv-code' });
@@ -912,12 +978,17 @@ export function DocsCodeBlock() {
                     value: node.attrs.language || '',
                     oninput: (e) => setAttrs(editor, getPos, { language: e.target.value.trim() === '' ? null : e.target.value.trim() }),
                 });
+                const filenameInput = h('input', {
+                    type: 'text', class: 'dax-code-title', placeholder: 'filename', spellcheck: 'false',
+                    value: node.attrs.filename || '',
+                    oninput: (e) => setAttrs(editor, getPos, { filename: e.target.value.trim() === '' ? null : e.target.value }),
+                });
                 const titleInput = h('input', {
-                    type: 'text', class: 'dax-code-title', placeholder: 'filename (optional)', spellcheck: 'false',
+                    type: 'text', class: 'dax-code-title', placeholder: 'title', spellcheck: 'false',
                     value: node.attrs.title || '',
                     oninput: (e) => setAttrs(editor, getPos, { title: e.target.value.trim() === '' ? null : e.target.value }),
                 });
-                head.append(langInput, titleInput);
+                head.append(langInput, filenameInput, titleInput);
                 const pre = h('pre', { class: 'dax-code-pre' });
                 const code = document.createElement('code');
                 pre.appendChild(code);
@@ -928,6 +999,7 @@ export function DocsCodeBlock() {
                     update(updated) {
                         if (updated.type !== node.type) return false;
                         if (document.activeElement !== langInput) langInput.value = updated.attrs.language || '';
+                        if (document.activeElement !== filenameInput) filenameInput.value = updated.attrs.filename || '';
                         if (document.activeElement !== titleInput) titleInput.value = updated.attrs.title || '';
                         return true;
                     },
@@ -963,6 +1035,8 @@ export function docentNodes(context) {
         DocsTabs(),
         DocsTab(),
         DocsFrame(),
+        DocsVideo(),
+        DocsCodeGroup(),
         DocsValue(context),
         DocsAppLink(context),
         DocsInclude(context),

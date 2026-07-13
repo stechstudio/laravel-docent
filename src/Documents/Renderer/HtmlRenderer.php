@@ -17,6 +17,7 @@ use STS\Docent\Documents\Ast\Callout;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
@@ -47,11 +48,13 @@ use STS\Docent\Documents\Ast\TableSection;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\Icon;
 use STS\Docent\Support\InternalLink;
+use STS\Docent\Support\VideoSource;
 
 /**
  * Renders a Docent AST to context-aware HTML.
@@ -126,6 +129,8 @@ final class HtmlRenderer
             $node instanceof Tabs => $this->renderTabs($node),
             $node instanceof Tab => $this->renderTab($node),
             $node instanceof Frame => $this->renderFrame($node),
+            $node instanceof Video => $this->renderVideo($node),
+            $node instanceof CodeGroup => $this->renderCodeGroup($node),
             $node instanceof AuthorizationBlock => $this->authorizationVisible($node, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof ConditionBlock => $this->conditionVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof AudienceBlock => $this->audienceVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
@@ -321,6 +326,62 @@ final class HtmlRenderer
         }
 
         return null;
+    }
+
+    private function renderVideo(Video $node): string
+    {
+        $source = VideoSource::parse($node->url);
+        $caption = $node->caption !== null && $node->caption !== ''
+            ? '<figcaption>'.e($node->caption).'</figcaption>'
+            : '';
+
+        if ($source === null) {
+            $label = $node->caption !== null && $node->caption !== '' ? $node->caption : 'Video';
+
+            return '<figure class="docent-video docent-video-unsupported"><a href="'.e($node->url).'">'
+                .e($label).'</a>'.$caption.'</figure>';
+        }
+
+        if ($source->isFile()) {
+            return '<figure class="docent-video"><div class="docent-video-shell">'
+                .'<video controls preload="metadata"><source src="'.e($source->url).'" type="'.e($source->mimeType).'" /></video>'
+                .'</div>'.$caption.'</figure>';
+        }
+
+        $label = $node->caption !== null && $node->caption !== '' ? $node->caption : 'Video';
+
+        return '<figure class="docent-video" data-docent-video data-embed-url="'.e((string) $source->embedUrl).'" '
+            .'x-data="docentVideo()"><div class="docent-video-shell">'
+            .'<button type="button" class="docent-video-facade" x-show="! loaded" x-on:click="load()" '
+            .'aria-label="'.e('Play '.$label).'"><span class="docent-video-play" aria-hidden="true"></span>'
+            .'<span class="docent-video-facade-label">'.e($label).'</span></button>'
+            .'<template x-if="loaded"><iframe x-bind:src="$root.dataset.embedUrl" title="'.e($label).'" '
+            .'allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></template>'
+            .'</div>'.$caption.'</figure>';
+    }
+
+    private function renderCodeGroup(CodeGroup $node): string
+    {
+        $blocks = array_values(array_filter($node->children, static fn (Node $child): bool => $child instanceof CodeBlock));
+        $id = 'docent-code-group-'.(++$this->componentIndex);
+        $labels = '';
+        $panels = '';
+
+        foreach ($blocks as $index => $block) {
+            $label = $block->label();
+            $labels .= '<button type="button" role="tab" id="'.$id.'-tab-'.$index.'" '
+                .'aria-controls="'.$id.'-panel-'.$index.'" x-bind:aria-selected="active === '.$index.'" '
+                .'x-bind:tabindex="active === '.$index.' ? 0 : -1" x-on:click="activate('.$index.')" '
+                .'x-on:keydown="onKeydown($event, '.$index.')">'.e($label).'</button>';
+            $panels .= '<div class="docent-tab-panel docent-code-group-panel" role="tabpanel" '
+                .'id="'.$id.'-panel-'.$index.'" aria-labelledby="'.$id.'-tab-'.$index.'" '
+                .'data-label="'.e($label).'" x-show="active === '.$index.'" x-cloak>'
+                .$this->codeBlockRenderer->render($block).'</div>';
+        }
+
+        return '<div class="docent-tabs docent-code-group" data-docent-code-group x-data="docentTabs('.count($blocks).')">'
+            .'<div class="docent-tab-list" role="tablist" aria-label="Code examples">'.$labels.'</div>'
+            .'<div class="docent-tab-panels">'.$panels.'</div></div>';
     }
 
     private function renderInclude(IncludeNode $node): string

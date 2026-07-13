@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace STS\Docent\Validation\Checks;
 
+use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\Image;
 use STS\Docent\Documents\Ast\Node;
@@ -11,6 +13,8 @@ use STS\Docent\Documents\Ast\Step;
 use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Tabs;
+use STS\Docent\Documents\Ast\Video;
+use STS\Docent\Support\VideoSource;
 use STS\Docent\Validation\Check;
 use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\Issue;
@@ -50,6 +54,24 @@ final class ContentComponentCheck implements Check
 
         if ($node instanceof Frame && ! $this->containsImage($node)) {
             yield Issue::warning('frame-without-image', $slug, 'The frame does not contain an image.', $node->line);
+        }
+
+        if ($node instanceof Video && trim($node->url) === '') {
+            yield Issue::warning('video-missing-source', $slug, 'The video directive does not have a URL.', $node->line);
+        } elseif ($node instanceof Video && VideoSource::parse($node->url) === null) {
+            yield Issue::warning('video-unrecognized-source', $slug, 'The video URL is not a recognized provider or playable file.', $node->line);
+        }
+
+        if ($node instanceof CodeGroup && ! $this->hasDirectChild($node, CodeBlock::class)) {
+            yield Issue::warning('empty-code-group', $slug, 'The code group does not contain any code blocks.', $node->line);
+        }
+
+        if ($node instanceof CodeGroup) {
+            foreach ($node->children as $child) {
+                if (! $child instanceof CodeBlock) {
+                    yield Issue::error('invalid-code-group', $slug, 'A code group may contain only fenced code blocks.', $child->line ?? $node->line);
+                }
+            }
         }
 
         foreach ($node->children as $child) {

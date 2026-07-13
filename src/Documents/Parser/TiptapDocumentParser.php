@@ -18,6 +18,7 @@ use STS\Docent\Documents\Ast\CalloutType;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
@@ -46,6 +47,7 @@ use STS\Docent\Documents\Ast\TableSection;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Parser\Markdown\TokenSyntax;
@@ -131,6 +133,8 @@ final class TiptapDocumentParser implements DocumentParser
             'docsTabs' => $this->withBlocks(new Tabs, $node),
             'docsTab' => $this->withBlocks(new Tab($this->stringAttr($node, 'label')), $node),
             'docsFrame' => $this->withBlocks(new Frame($this->nullableStringAttr($node, 'caption')), $node),
+            'docsVideo' => new Video($this->stringAttr($node, 'url'), $this->nullableStringAttr($node, 'caption')),
+            'docsCodeGroup' => $this->withBlocks(new CodeGroup, $node),
             'docsInclude' => new IncludeNode($this->stringAttr($node, 'name')),
             'docsComponent' => new ComponentNode($this->stringAttr($node, 'name'), $this->attributesAttr($node)),
             'docsHtml' => new HtmlBlock($this->stringAttr($node, 'html')),
@@ -167,18 +171,20 @@ final class TiptapDocumentParser implements DocumentParser
     {
         $language = $this->nullableStringAttr($node, 'language');
         $title = $this->nullableStringAttr($node, 'title');
+        $filename = $this->nullableStringAttr($node, 'filename');
 
-        return new CodeBlock($this->textContent($node), $language, $this->codeInfo($language, $title));
+        return new CodeBlock($this->textContent($node), $language, $this->codeInfo($language, $filename, $title));
     }
 
     /**
-     * Rebuild the fence info string from the split language + title so the
-     * exported markdown fence matches what the markdown parser originally read.
+     * Rebuild the fence info string from the split language and label metadata
+     * so the exported markdown fence matches what the parser originally read.
      */
-    private function codeInfo(?string $language, ?string $title): ?string
+    private function codeInfo(?string $language, ?string $filename, ?string $title): ?string
     {
         $parts = array_filter([
             $language,
+            $filename !== null ? 'filename="'.$filename.'"' : null,
             $title !== null ? 'title="'.$title.'"' : null,
         ], static fn (?string $part): bool => $part !== null && $part !== '');
 

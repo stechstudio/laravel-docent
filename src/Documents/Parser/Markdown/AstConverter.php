@@ -42,6 +42,7 @@ use STS\Docent\Documents\Ast\CalloutType;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\Emphasis;
@@ -71,6 +72,7 @@ use STS\Docent\Documents\Ast\TableSection;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Parser\Markdown\Node\ComponentBlock;
@@ -210,6 +212,8 @@ final class AstConverter
             'tabs' => new Tabs($line),
             'tab' => new Tab($attributes['label'] ?? $shorthand ?? '', $line),
             'frame' => new Frame($attributes['caption'] ?? $shorthand, $line),
+            'video' => new Video($attributes['url'] ?? $shorthand ?? '', $attributes['caption'] ?? null, $line),
+            'code-group' => new CodeGroup($line),
             default => new Callout(
                 CalloutType::tryFromName($node->name) ?? CalloutType::Note,
                 $attributes['title'] ?? $shorthand,

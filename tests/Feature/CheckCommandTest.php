@@ -149,9 +149,32 @@ it('reports invalid and empty content component structures in draft checks', fun
     :::frame caption="No screenshot"
     Text only.
     :::
+
+    :::video
+    :::
+
+    :::video https://example.com/watch/123
+    :::
+
+    ::::code-group
+    ::::
+
+    ::::code-group
+    This is not a fenced code block.
+    ::::
     MD);
 
     $checks = array_column(app(DocentManager::class)->draftIssues('components', $document), 'check');
 
-    expect($checks)->toContain('orphan-step', 'orphan-tab', 'empty-steps', 'empty-tabs', 'frame-without-image');
+    expect($checks)->toContain(
+        'orphan-step',
+        'orphan-tab',
+        'empty-steps',
+        'empty-tabs',
+        'frame-without-image',
+        'video-missing-source',
+        'video-unrecognized-source',
+        'empty-code-group',
+        'invalid-code-group',
+    );
 });

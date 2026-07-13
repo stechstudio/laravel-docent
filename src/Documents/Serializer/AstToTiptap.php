@@ -14,6 +14,7 @@ use STS\Docent\Documents\Ast\Callout;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
@@ -44,6 +45,7 @@ use STS\Docent\Documents\Ast\TableSection;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
 
@@ -120,6 +122,8 @@ final class AstToTiptap
             $node instanceof Tabs => ['type' => 'docsTabs', 'content' => $this->blocks($node->children)],
             $node instanceof Tab => ['type' => 'docsTab', 'attrs' => ['label' => $node->label], 'content' => $this->blocks($node->children)],
             $node instanceof Frame => ['type' => 'docsFrame', 'attrs' => ['caption' => $node->caption], 'content' => $this->blocks($node->children)],
+            $node instanceof Video => ['type' => 'docsVideo', 'attrs' => ['url' => $node->url, 'caption' => $node->caption]],
+            $node instanceof CodeGroup => ['type' => 'docsCodeGroup', 'content' => $this->blocks($node->children)],
             $node instanceof IncludeNode => ['type' => 'docsInclude', 'attrs' => ['name' => $node->name]],
             $node instanceof ComponentNode => ['type' => 'docsComponent', 'attrs' => ['name' => $node->name, 'attributes' => (object) $node->attributes]],
             default => ['type' => 'paragraph', 'content' => $this->inlines([$node])],
@@ -133,18 +137,9 @@ final class AstToTiptap
     {
         return [
             'type' => 'codeBlock',
-            'attrs' => ['language' => $node->language, 'title' => $this->codeTitle($node)],
+            'attrs' => ['language' => $node->language, 'title' => $node->title(), 'filename' => $node->filename()],
             'content' => $node->code === '' ? [] : [['type' => 'text', 'text' => $node->code]],
         ];
-    }
-
-    private function codeTitle(CodeBlock $node): ?string
-    {
-        if ($node->info !== null && preg_match('/title="([^"]*)"/', $node->info, $m) === 1) {
-            return $m[1];
-        }
-
-        return null;
     }
 
     /**

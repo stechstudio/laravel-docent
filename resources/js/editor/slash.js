@@ -96,6 +96,13 @@ function commands() {
             ] }) },
         { title: 'Frame', description: 'Present an image with a caption', icon: 'image', group: 'Docent', keywords: 'figure screenshot lightbox caption',
             run: (e, r) => insertContainer(e, r, { type: 'docsFrame', attrs: { caption: null }, content: [{ type: 'paragraph' }] }) },
+        { title: 'Video', description: 'Embed a provider or self-hosted video', icon: 'image', group: 'Docent', keywords: 'youtube vimeo loom mp4 media',
+            run: (e, r) => insertBlock(e, r, { type: 'docsVideo', attrs: { url: '', caption: null } }) },
+        { title: 'Code group', description: 'Tabbed code examples', icon: 'code', group: 'Docent', keywords: 'tabs snippets languages terminal',
+            run: (e, r) => insertContainer(e, r, { type: 'docsCodeGroup', content: [
+                { type: 'codeBlock', attrs: { language: 'php', filename: null, title: null } },
+                { type: 'codeBlock', attrs: { language: 'bash', filename: null, title: 'Terminal' } },
+            ] }) },
         { title: 'Include', description: 'Embed a reusable partial', icon: 'include', group: 'Docent', keywords: 'partial snippet reuse',
             run: (e, r) => insertBlock(e, r, { type: 'docsInclude', attrs: { name: '' } }) },
         { title: 'Component', description: 'Embed a registered component', icon: 'component', group: 'Docent', keywords: 'widget embed',

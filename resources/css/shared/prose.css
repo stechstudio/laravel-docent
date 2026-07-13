@@ -577,11 +577,106 @@ a.docent-card:hover {
     cursor: zoom-in;
 }
 
-.docent-frame figcaption {
+.docent-frame figcaption,
+.docent-video figcaption {
     margin-top: 0.6rem;
     color: var(--docent-muted);
     font-size: 0.85rem;
     text-align: center;
+}
+
+.docent-video {
+    margin: 1.75rem 0;
+}
+
+.docent-video-shell {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.8rem;
+    background-color: var(--docent-panel);
+}
+
+.docent-video-shell iframe,
+.docent-video-shell video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    object-fit: contain;
+}
+
+.docent-video-facade {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 0.8rem;
+    width: 100%;
+    border: 0;
+    background-color: transparent;
+    color: var(--docent-strong);
+    cursor: pointer;
+    font: inherit;
+}
+
+.docent-video-facade:hover .docent-video-play {
+    border-color: var(--docent-accent);
+    color: var(--docent-accent);
+}
+
+.docent-video-play {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    border: 1px solid var(--docent-border-strong);
+    border-radius: 999px;
+    background-color: var(--docent-bg);
+    color: var(--docent-muted);
+}
+
+.docent-video-play::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 52%;
+    border-block: 0.5rem solid transparent;
+    border-left: 0.8rem solid currentColor;
+    transform: translate(-40%, -50%);
+}
+
+.docent-video-facade-label {
+    max-width: min(80%, 34rem);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.docent-video-unsupported {
+    padding: 1rem;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.7rem;
+    background-color: var(--docent-panel);
+}
+
+.docent-code-group-panel {
+    padding: 0;
+}
+
+.docent-code-group .docent-code {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+}
+
+.docent-code-group .docent-code-header {
+    justify-content: flex-end;
+}
+
+.docent-code-group .docent-code-label {
+    display: none;
 }
 
 .docent-lightbox {

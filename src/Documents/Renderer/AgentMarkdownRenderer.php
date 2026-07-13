@@ -15,6 +15,8 @@ use STS\Docent\Documents\Ast\BulletList;
 use STS\Docent\Documents\Ast\Callout;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
+use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
@@ -34,6 +36,7 @@ use STS\Docent\Documents\Ast\Strong;
 use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Serializer\MarkdownExporter;
@@ -169,6 +172,14 @@ final class AgentMarkdownRenderer
 
         if ($node instanceof Frame) {
             return $this->frame($node);
+        }
+
+        if ($node instanceof Video) {
+            return [$this->video($node)];
+        }
+
+        if ($node instanceof CodeGroup) {
+            return $this->codeGroup($node);
         }
 
         $copy = clone $node;
@@ -336,6 +347,33 @@ final class AgentMarkdownRenderer
         $paragraph->appendChild($strong);
 
         return $paragraph;
+    }
+
+    private function video(Video $node): Paragraph
+    {
+        $paragraph = new Paragraph($node->line);
+        $link = new Link($this->absoluteUrl($node->url), line: $node->line);
+        $link->appendChild(new Text($node->caption !== null && $node->caption !== '' ? $node->caption : 'Video', $node->line));
+        $paragraph->appendChild($link);
+
+        return $paragraph;
+    }
+
+    /** @return list<Node> */
+    private function codeGroup(CodeGroup $node): array
+    {
+        $children = [];
+
+        foreach ($node->children as $block) {
+            if (! $block instanceof CodeBlock) {
+                continue;
+            }
+
+            $children[] = $this->label($block->label(), $block->line);
+            $children[] = clone $block;
+        }
+
+        return $children;
     }
 
     private function applicationLink(AppLink $node): ?string

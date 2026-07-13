@@ -25,6 +25,7 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
         'note', 'tip', 'info', 'warning', 'danger',
         'cards', 'card',
         'steps', 'step', 'accordion', 'tabs', 'tab', 'frame',
+        'video', 'code-group',
     ];
 
     public function tryStart(Cursor $cursor, MarkdownParserStateInterface $parserState): ?BlockStart

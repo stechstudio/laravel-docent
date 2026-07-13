@@ -53,8 +53,9 @@ Your account is on the **{{ value:account.plan }}** plan.
 Directories become navigation groups (customize with a `_group.yml`), `_partials/` holds reusable fragments for `:::include`, and callouts use the same fence syntax: `:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`.
 
 Task-focused guides can also use `:::steps` with titled `:::step` items,
-collapsible `:::accordion` answers, `:::tabs` with labeled `:::tab` panels, and
-`:::frame caption="…"` around screenshots. These remain readable in search,
+collapsible `:::accordion` answers, `:::tabs` with labeled `:::tab` panels,
+`:::frame caption="…"` around screenshots, click-to-load `:::video` embeds, and
+`::::code-group` blocks for related examples. These remain readable in search,
 print, and agent-facing Markdown; headings inside accordions and tabs keep their
 normal deep links and table-of-contents entries.
 

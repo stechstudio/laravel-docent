@@ -48,6 +48,7 @@ final class DocentCache
         Documents\Ast\Card::class,
         Documents\Ast\CardGroup::class,
         Documents\Ast\CodeBlock::class,
+        Documents\Ast\CodeGroup::class,
         Documents\Ast\ComponentNode::class,
         Documents\Ast\ConditionBlock::class,
         Documents\Ast\DynamicValue::class,
@@ -78,6 +79,7 @@ final class DocentCache
         Documents\Ast\Tabs::class,
         Documents\Ast\Text::class,
         Documents\Ast\ThematicBreak::class,
+        Documents\Ast\Video::class,
     ];
 
     public function __construct(

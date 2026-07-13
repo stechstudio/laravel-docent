@@ -15,6 +15,7 @@ use STS\Docent\Documents\Ast\Callout;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
@@ -45,6 +46,7 @@ use STS\Docent\Documents\Ast\TableSection;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use Symfony\Component\Yaml\Yaml;
 
@@ -132,6 +134,7 @@ final class MarkdownExporter
             $node instanceof Steps, $node instanceof Step,
             $node instanceof Accordion, $node instanceof Tabs,
             $node instanceof Tab, $node instanceof Frame => $this->directive($node),
+            $node instanceof Video, $node instanceof CodeGroup => $this->directive($node),
             default => '',
         };
     }
@@ -346,6 +349,9 @@ final class MarkdownExporter
             $node instanceof Tabs => 'tabs',
             $node instanceof Tab => 'tab'.($node->label !== '' ? ' '.$node->label : ''),
             $node instanceof Frame => 'frame'.($node->caption !== null ? ' caption="'.$node->caption.'"' : ''),
+            $node instanceof Video => 'video'.($node->url !== '' ? ' '.$node->url : '')
+                .($node->caption !== null ? ' caption="'.$node->caption.'"' : ''),
+            $node instanceof CodeGroup => 'code-group',
             default => '',
         };
     }
@@ -366,7 +372,9 @@ final class MarkdownExporter
      */
     private function fenceLength(Node $node): int
     {
-        $inner = 2;
+        // Code groups conventionally use four colons so their container is
+        // visually distinct from the fenced code blocks they collect.
+        $inner = $node instanceof CodeGroup ? 3 : 2;
 
         foreach ($this->nestedDirectives($node) as $directive) {
             $inner = max($inner, $this->fenceLength($directive));
@@ -409,7 +417,9 @@ final class MarkdownExporter
             || $node instanceof Accordion
             || $node instanceof Tabs
             || $node instanceof Tab
-            || $node instanceof Frame;
+            || $node instanceof Frame
+            || $node instanceof Video
+            || $node instanceof CodeGroup;
     }
 
     /**

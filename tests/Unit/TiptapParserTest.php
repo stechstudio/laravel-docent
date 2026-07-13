@@ -15,6 +15,7 @@ use STS\Docent\Documents\Ast\CalloutType;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\CodeBlock;
+use STS\Docent\Documents\Ast\CodeGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
@@ -40,6 +41,7 @@ use STS\Docent\Documents\Ast\TableSection;
 use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
+use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
 
@@ -187,6 +189,10 @@ it('parses every docs* block node', function () {
         ['type' => 'docsAccordion', 'attrs' => ['title' => 'Question'], 'content' => [['type' => 'paragraph']]],
         ['type' => 'docsTabs', 'content' => [['type' => 'docsTab', 'attrs' => ['label' => 'iOS'], 'content' => [['type' => 'paragraph']]]]],
         ['type' => 'docsFrame', 'attrs' => ['caption' => 'Screenshot'], 'content' => [['type' => 'paragraph', 'content' => [['type' => 'image', 'attrs' => ['src' => '/shot.png', 'alt' => 'Shot']]]]]],
+        ['type' => 'docsVideo', 'attrs' => ['url' => 'https://youtu.be/demo_123', 'caption' => 'Walkthrough']],
+        ['type' => 'docsCodeGroup', 'content' => [
+            ['type' => 'codeBlock', 'attrs' => ['language' => 'php', 'filename' => 'routes/web.php', 'title' => 'Route'], 'content' => [['type' => 'text', 'text' => 'Route::get();']]],
+        ]],
     ]);
 
     $gate = docFind($doc, AuthorizationBlock::class);
@@ -208,7 +214,10 @@ it('parses every docs* block node', function () {
         ->and(docFind($doc, Accordion::class)->title)->toBe('Question')
         ->and(docFind($doc, Tabs::class))->not->toBeNull()
         ->and(docFind($doc, Tab::class)->label)->toBe('iOS')
-        ->and(docFind($doc, Frame::class)->caption)->toBe('Screenshot');
+        ->and(docFind($doc, Frame::class)->caption)->toBe('Screenshot')
+        ->and(docFind($doc, Video::class)->caption)->toBe('Walkthrough')
+        ->and(docFind($doc, CodeGroup::class))->not->toBeNull()
+        ->and(docFind($doc, CodeBlock::class)->info)->toBe('php filename="routes/web.php" title="Route"');
 });
 
 it('parses cards containing cards containing paragraphs (nesting)', function () {

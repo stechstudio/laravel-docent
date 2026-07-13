@@ -339,6 +339,14 @@ Alpine.data('docentFrame', () => ({
     },
 }));
 
+Alpine.data('docentVideo', () => ({
+    loaded: false,
+
+    load() {
+        this.loaded = true;
+    },
+}));
+
 /* ---------------------------------------------------------------------------
  * Global shortcuts: Cmd/Ctrl-K and "/" open search.
  * ------------------------------------------------------------------------- */

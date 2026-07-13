@@ -77,3 +77,31 @@ Keep battery optimization disabled for time-sensitive approval requests.
 Open **Reports**, choose an export, and select the date range you need.
 :::
 :::
+
+## Watch a walkthrough
+
+Provider videos stay quiet until someone presses play, so opening this guide
+does not contact the video host.
+
+:::video https://www.youtube.com/watch?v=dQw4w9WgXcQ caption="See how to reconcile a ledger"
+:::
+
+Self-hosted clips use the browser's standard video controls.
+
+:::video /demo/reconciling.mp4 caption="Reconciling a ledger in 90 seconds"
+:::
+
+## Compare code examples
+
+Use a code group when readers need the same task in more than one language or
+tool. Each example remains available in print, search, and agent-readable
+Markdown.
+
+::::code-group
+```php filename="routes/web.php"
+Route::get('/billing', BillingController::class);
+```
+```bash title="Terminal"
+php artisan route:list --path=billing
+```
+::::
