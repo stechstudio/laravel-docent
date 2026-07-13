@@ -52,6 +52,7 @@ Alpine.data('docentAdmin', (config) => {
     _extraFm: {},
     store: null,
     readonly: false,
+    locked: false,
     shadowed: false,
     published: false,
     hasUnpublishedChanges: false,
@@ -318,6 +319,10 @@ Alpine.data('docentAdmin', (config) => {
         return null;
     },
 
+    isLockedSlug(slug) {
+        return this.tree.some((page) => page.slug === slug && page.locked === true);
+    },
+
     /**
      * The home page's slug is the empty string, which cannot travel as a URL
      * path segment — it goes over the wire as the reserved `_home` alias
@@ -357,6 +362,7 @@ Alpine.data('docentAdmin', (config) => {
         if (page.store === 'database' && page.published === false) bits.push('draft — not published');
         if (page.store === 'database' && page.published && page.hasUnpublishedChanges) bits.push('has unpublished edits');
         if (page.shadowed) bits.push(page.store === 'database' ? 'overrides a repository file' : 'overridden by a database copy');
+        if (page.locked) bits.push('locked in the repository');
         if (page.hidden) bits.push('hidden from navigation');
         return bits.join(' · ');
     },
@@ -392,8 +398,9 @@ Alpine.data('docentAdmin', (config) => {
         try {
             const data = await this.api('GET', `${this.base}/api/pages/${this.apiSlug(slug)}`);
             this.applyDetail(data);
-            this.view = 'write';
+            this.view = this.locked ? 'preview' : 'write';
             this.previewStale = true;
+            if (this.locked) this.runPreviewNow();
         } catch (e) {
             this.clearEditor();
         } finally {
@@ -407,6 +414,7 @@ Alpine.data('docentAdmin', (config) => {
         this.title = data.title || '';
         this.store = data.store;
         this.readonly = data.readonly === true;
+        this.locked = data.locked === true;
         this.shadowed = this.tree.some((p) => p.slug === data.slug && p.shadowed);
         this.published = data.published === true;
         this.hasUnpublishedChanges = data.hasUnpublishedChanges === true;
@@ -438,6 +446,7 @@ Alpine.data('docentAdmin', (config) => {
         this.title = '';
         this.store = null;
         this.readonly = false;
+        this.locked = false;
         this.previewHtml = '';
         this.previewIssues = [];
         this.saveIssues = [];
@@ -460,6 +469,10 @@ Alpine.data('docentAdmin', (config) => {
             this.toast('A slug and title are required.', 'error');
             return;
         }
+        if (this.isLockedSlug(slug)) {
+            this.toast('This page is locked in the repository and cannot be replaced.', 'error');
+            return;
+        }
         this.newPageOpen = false;
         if (this.overlayMode) this.sidebar = false;
         this.view = 'write';
@@ -469,6 +482,7 @@ Alpine.data('docentAdmin', (config) => {
         this.title = title;
         this.store = 'database';
         this.readonly = false;
+        this.locked = false;
         this.shadowed = false;
         this.published = false;
         this.hasUnpublishedChanges = false;
@@ -561,11 +575,12 @@ Alpine.data('docentAdmin', (config) => {
     /* --- Override / delete --------------------------------------------- */
 
     editOverridePrompt() {
+        if (this.locked) return;
         this.overridePromptOpen = true;
     },
 
     async override() {
-        if (this.slug === null) return;
+        if (this.slug === null || this.locked) return;
         this.overridePromptOpen = false;
         try {
             const data = await this.api('POST', `${this.base}/api/pages/${this.apiSlug(this.slug)}/override`);

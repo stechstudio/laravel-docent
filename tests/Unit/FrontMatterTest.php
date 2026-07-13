@@ -15,6 +15,7 @@ it('parses typed front matter accessors', function () {
     audience: billing-admin
     order: 3
     hidden: true
+    locked: true
     search:
       exclude: true
     redirect: billing/old
@@ -31,6 +32,7 @@ it('parses typed front matter accessors', function () {
         ->and($fm->audience())->toBe('billing-admin')
         ->and($fm->order())->toBe(3)
         ->and($fm->hidden())->toBeTrue()
+        ->and($fm->locked())->toBeTrue()
         ->and($fm->searchExcluded())->toBeTrue()
         ->and($fm->redirect())->toBe('billing/old')
         ->and($fm->get('title'))->toBe('Payment Methods')
@@ -45,6 +47,7 @@ it('defaults sensibly when front matter is absent', function () {
     expect($fm->title())->toBeNull()
         ->and($fm->order())->toBeNull()
         ->and($fm->hidden())->toBeFalse()
+        ->and($fm->locked())->toBeFalse()
         ->and($fm->searchExcluded())->toBeFalse()
         ->and($fm->all())->toBe([]);
 });

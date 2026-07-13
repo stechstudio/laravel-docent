@@ -9,6 +9,7 @@ use STS\Docent\Validation\Checks\DuplicateSlugCheck;
 use STS\Docent\Validation\Checks\FrontMatterCheck;
 use STS\Docent\Validation\Checks\HeadingHierarchyCheck;
 use STS\Docent\Validation\Checks\IncludeCycleCheck;
+use STS\Docent\Validation\Checks\LockedPageShadowedCheck;
 use STS\Docent\Validation\Checks\MissingImageCheck;
 use STS\Docent\Validation\Checks\MissingIncludeCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
@@ -54,6 +55,7 @@ final class DocsChecker
             new HeadingHierarchyCheck,
             new UnknownIconCheck,
             new UnknownSuggestionCheck,
+            new LockedPageShadowedCheck,
             new ShadowedPageCheck,
         ]);
     }

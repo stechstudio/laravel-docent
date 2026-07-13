@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use STS\Docent\Content\Models\DocentPage;
+use STS\Docent\DocentManager;
 
 /**
  * Shared page-resolution and slug-validation helpers for the admin controllers.
@@ -58,6 +59,13 @@ trait InteractsWithPages
             throw ValidationException::withMessages([
                 'slug' => 'The slug must be lowercase alphanumeric segments separated by slashes or hyphens.',
             ]);
+        }
+    }
+
+    protected function assertUnlocked(string $slug, DocentManager $docent): void
+    {
+        if ($docent->filesystemSlugLocked($slug)) {
+            abort(403, "The repository page '{$slug}' is locked and cannot be changed in Docent admin.");
         }
     }
 

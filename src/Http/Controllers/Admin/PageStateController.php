@@ -21,6 +21,7 @@ final class PageStateController
     public function publish(string $slug, DocentManager $docent): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
+        $this->assertUnlocked($slug, $docent);
         $this->findPageOrFail($slug)->publish();
 
         return response()->json($docent->adminDetail($slug));
@@ -29,6 +30,7 @@ final class PageStateController
     public function unpublish(string $slug, DocentManager $docent): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
+        $this->assertUnlocked($slug, $docent);
         $this->findPageOrFail($slug)->unpublish();
 
         return response()->json($docent->adminDetail($slug));
@@ -37,6 +39,7 @@ final class PageStateController
     public function revert(string $slug, int $revision, DocentManager $docent): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
+        $this->assertUnlocked($slug, $docent);
 
         $page = $this->findPageOrFail($slug);
         $target = $page->revisions()->whereKey($revision)->firstOr(fn () => abort(404));
@@ -49,6 +52,7 @@ final class PageStateController
     public function override(string $slug, Request $request, DocentManager $docent): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
+        $this->assertUnlocked($slug, $docent);
 
         if ($this->pageQuery()->where('slug', $slug)->exists()) {
             abort(409, 'A database page already exists for this slug.');

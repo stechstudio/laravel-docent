@@ -21,7 +21,7 @@ use Symfony\Component\Yaml\Yaml;
  *   file beginning with `_` is excluded from pages; `_partials/` files are
  *   reachable as includes via {@see partial()}.
  */
-final class FilesystemRepository implements DocumentationRepository
+final class FilesystemRepository implements DocumentationRepository, LockAwareRepository
 {
     public function __construct(
         private readonly string $path,
@@ -46,6 +46,20 @@ final class FilesystemRepository implements DocumentationRepository
         $relative = $this->partialMap()[$name] ?? null;
 
         return $relative === null ? null : $this->source($name, $relative);
+    }
+
+    public function pageLocked(string $slug): bool
+    {
+        $relative = $this->pageMap()[$slug] ?? null;
+
+        return $relative !== null && $this->relativeLocked($relative);
+    }
+
+    public function partialLocked(string $name): bool
+    {
+        $relative = $this->partialMap()[$name] ?? null;
+
+        return $relative !== null && $this->relativeLocked($relative);
     }
 
     public function groupMeta(string $directory): ?array
@@ -125,7 +139,30 @@ final class FilesystemRepository implements DocumentationRepository
             searchExcluded: $frontMatter->searchExcluded(),
             description: $frontMatter->description(),
             directory: $this->directoryOf($relative),
+            locked: $this->relativeLocked($relative),
         );
+    }
+
+    private function relativeLocked(string $relative): bool
+    {
+        if ((new FrontMatter($this->frontMatterOf($relative)))->locked()) {
+            return true;
+        }
+
+        $directory = $this->directoryOf($relative);
+
+        while (true) {
+            if (($this->groupMeta($directory)['locked'] ?? false) === true) {
+                return true;
+            }
+
+            if ($directory === '') {
+                return false;
+            }
+
+            $parent = str_replace('\\', '/', dirname($directory));
+            $directory = $parent === '.' ? '' : $parent;
+        }
     }
 
     private function source(string $slug, string $relative): DocumentSource

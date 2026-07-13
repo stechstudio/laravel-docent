@@ -127,13 +127,18 @@
                                 <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
                             </span>
 
+                            <span x-show="locked" x-cloak class="inline-flex items-center gap-1.5 rounded-md border border-[var(--docent-border)] bg-[var(--docent-panel)] px-2 py-1 text-[11px] font-semibold text-[var(--docent-muted)]">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                                Locked
+                            </span>
+
                             <div class="ml-auto flex items-center gap-2.5">
                                 <span x-show="dirty && !readonly" class="inline-flex items-center gap-1.5 text-xs text-[var(--docent-muted)]">
                                     <span class="inline-block h-1.5 w-1.5 rounded-full bg-amber-500"></span>Unsaved
                                 </span>
                                 <span x-show="!dirty && lastSaved && !readonly" x-cloak class="text-xs text-[var(--docent-faint)]" x-text="'Saved ' + relativeTime(lastSaved)"></span>
 
-                                <template x-if="readonly">
+                                <template x-if="readonly && !locked">
                                     <button type="button" class="dax-btn dax-btn-primary text-[13px]" @click="editOverridePrompt()">Edit this page</button>
                                 </template>
                                 <template x-if="!readonly">
@@ -153,10 +158,17 @@
                         </div>
 
                         {{-- Read-only notice (repository pages) --}}
-                        <div x-show="readonly" x-cloak class="flex-none border-b border-[var(--docent-border)] bg-[var(--docent-panel)]/60 px-4 py-2 sm:px-6">
+                        <div x-show="readonly && !locked" x-cloak class="flex-none border-b border-[var(--docent-border)] bg-[var(--docent-panel)]/60 px-4 py-2 sm:px-6">
                             <p class="flex items-center gap-2 text-[13px] text-[var(--docent-muted)]">
                                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 This page lives in your repository and is read-only here. <button type="button" class="dax-link" @click="editOverridePrompt()">Edit a copy</button>
+                            </p>
+                        </div>
+
+                        <div x-show="locked" x-cloak class="flex-none border-b border-[var(--docent-border)] bg-[var(--docent-panel)]/60 px-4 py-2 sm:px-6">
+                            <p class="flex items-center gap-2 text-[13px] text-[var(--docent-muted)]">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-none"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                                This page is maintained in the repository and can't be edited here.
                             </p>
                         </div>
 

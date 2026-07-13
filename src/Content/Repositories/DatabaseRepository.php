@@ -23,7 +23,7 @@ use Symfony\Component\Yaml\Yaml;
  * path — `''` at the root. Section-landing base-dir semantics (a section index
  * resolving links against its own directory) are revisited in Phase B.
  */
-final class DatabaseRepository implements DocumentationRepository
+final class DatabaseRepository implements DocumentationRepository, StoredPageRepository
 {
     public function __construct(
         private readonly ?string $connection = null,
@@ -58,8 +58,18 @@ final class DatabaseRepository implements DocumentationRepository
                 searchExcluded: $frontMatter->searchExcluded(),
                 description: $frontMatter->description(),
                 directory: $this->baseDirOf($page->slug),
+                locked: false,
             );
         }
+    }
+
+    public function storedSlugs(): array
+    {
+        return DocentPage::on($this->connection)
+            ->pluck('slug')
+            ->reject(fn (string $slug): bool => str_starts_with($slug, '_groups/'))
+            ->values()
+            ->all();
     }
 
     public function partial(string $name): ?DocumentSource

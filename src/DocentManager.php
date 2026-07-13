@@ -317,7 +317,7 @@ final class DocentManager
             'docsUrl' => $this->fullUrl(''),
             'widgetUrl' => $this->widgetUrl(),
             'suggestionsUrl' => route('docent.widget.suggestions'),
-            'page' => \Illuminate\Support\Facades\Route::currentRouteName(),
+            'page' => Route::currentRouteName(),
             'assetUrl' => $this->asset('docent-widget.js'),
             'mode' => $mode,
             'position' => $position,
@@ -632,7 +632,7 @@ final class DocentManager
      *
      * @return list<array{
      *     slug: string, title: string, group: string, store: string,
-     *     shadowed: bool, published: bool|null, hasUnpublishedChanges: bool|null, hidden: bool
+     *     shadowed: bool, published: bool|null, hasUnpublishedChanges: bool|null, hidden: bool, locked: bool
      * }>
      */
     public function adminTree(): array
@@ -669,6 +669,7 @@ final class DocentManager
                 'published' => $page->isPublished(),
                 'hasUnpublishedChanges' => $page->hasUnpublishedChanges(),
                 'hidden' => $frontMatter->hidden(),
+                'locked' => ($files[$page->slug] ?? null)?->locked ?? false,
             ];
         }
 
@@ -682,6 +683,7 @@ final class DocentManager
                 'published' => null,
                 'hasUnpublishedChanges' => null,
                 'hidden' => $reference->hidden,
+                'locked' => $reference->locked,
             ];
         }
 
@@ -697,6 +699,12 @@ final class DocentManager
      */
     public function adminDetail(string $slug): ?array
     {
+        if ($this->filesystem->pageLocked($slug)) {
+            $source = $this->filesystem->find($slug);
+
+            return $source === null ? null : $this->filesystemDetail($slug, $source);
+        }
+
         $page = DocentPage::on($this->databaseConnection())->where('slug', $slug)->first();
 
         if ($page !== null) {
@@ -706,6 +714,15 @@ final class DocentManager
         $source = $this->filesystem->find($slug);
 
         return $source === null ? null : $this->filesystemDetail($slug, $source);
+    }
+
+    public function filesystemSlugLocked(string $slug): bool
+    {
+        if (str_starts_with($slug, '_partials/')) {
+            return $this->filesystem->partialLocked(substr($slug, strlen('_partials/')));
+        }
+
+        return $this->filesystem->pageLocked($slug);
     }
 
     /**
@@ -851,7 +868,9 @@ final class DocentManager
      */
     public function exportMarkdown(string $slug): ?string
     {
-        $page = DocentPage::on($this->databaseConnection())->where('slug', $slug)->first();
+        $page = $this->filesystemSlugLocked($slug)
+            ? null
+            : DocentPage::on($this->databaseConnection())->where('slug', $slug)->first();
 
         if ($page !== null) {
             $frontMatter = $page->front_matter ?? ['title' => $page->title];
@@ -989,6 +1008,7 @@ final class DocentManager
                 ],
             )->all(),
             'store' => 'database',
+            'locked' => false,
         ];
     }
 
@@ -1008,6 +1028,7 @@ final class DocentManager
             'format' => $source->format,
             'store' => 'filesystem',
             'readonly' => true,
+            'locked' => $this->filesystemSlugLocked($slug),
         ];
     }
 

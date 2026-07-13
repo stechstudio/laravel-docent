@@ -23,5 +23,6 @@ final class PageReference
         public readonly bool $searchExcluded,
         public readonly ?string $description,
         public readonly string $directory = '',
+        public readonly bool $locked = false,
     ) {}
 }

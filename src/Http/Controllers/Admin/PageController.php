@@ -34,6 +34,7 @@ final class PageController
     {
         $slug = $request->string('slug')->toString();
         $this->assertValidSlug($slug);
+        $this->assertUnlocked($slug, $docent);
 
         if ($this->pageQuery()->where('slug', $slug)->exists()) {
             throw ValidationException::withMessages([
@@ -59,6 +60,7 @@ final class PageController
     {
         $slug = $this->resolveSlug($slug);
         $this->assertValidSlug($slug);
+        $this->assertUnlocked($slug, $docent);
 
         [$content, $frontMatter, $format] = $this->payload($request, $docent);
 
@@ -67,9 +69,10 @@ final class PageController
         return $this->detailResponse($docent, $slug, $content, $frontMatter, $format);
     }
 
-    public function destroy(string $slug): JsonResponse
+    public function destroy(string $slug, DocentManager $docent): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
+        $this->assertUnlocked($slug, $docent);
         $this->findPageOrFail($slug)->delete();
 
         return response()->json(['deleted' => true]);

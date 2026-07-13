@@ -25,6 +25,12 @@ final class CompositeRepository implements DocumentationRepository
     public function find(string $slug): ?DocumentSource
     {
         foreach ($this->children as $child) {
+            if ($child instanceof LockAwareRepository && $child->pageLocked($slug)) {
+                return $child->find($slug);
+            }
+        }
+
+        foreach ($this->children as $child) {
             if (($source = $child->find($slug)) !== null) {
                 return $source;
             }
@@ -36,9 +42,14 @@ final class CompositeRepository implements DocumentationRepository
     public function all(): iterable
     {
         $seen = [];
+        $lockedOwners = $this->lockedPageOwners();
 
-        foreach ($this->children as $child) {
+        foreach ($this->children as $index => $child) {
             foreach ($child->all() as $reference) {
+                if (isset($lockedOwners[$reference->slug]) && $lockedOwners[$reference->slug] !== $index) {
+                    continue;
+                }
+
                 if (isset($seen[$reference->slug])) {
                     continue;
                 }
@@ -52,6 +63,12 @@ final class CompositeRepository implements DocumentationRepository
 
     public function partial(string $name): ?DocumentSource
     {
+        foreach ($this->children as $child) {
+            if ($child instanceof LockAwareRepository && $child->partialLocked($name)) {
+                return $child->partial($name);
+            }
+        }
+
         foreach ($this->children as $child) {
             if (($source = $child->partial($name)) !== null) {
                 return $source;
@@ -88,7 +105,109 @@ final class CompositeRepository implements DocumentationRepository
      */
     public function shadowed(): array
     {
+        $slugSets = $this->slugSets();
+        $lockedOwners = $this->lockedPageOwners();
+
+        $shadowed = [];
+
+        foreach ($slugSets as $index => $slugs) {
+            foreach ($slugs as $slug => $_) {
+                if (isset($lockedOwners[$slug])) {
+                    continue;
+                }
+
+                foreach ($slugSets as $laterIndex => $laterSlugs) {
+                    if ($laterIndex > $index && isset($laterSlugs[$slug])) {
+                        $shadowed[$slug] = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return array_keys($shadowed);
+    }
+
+    /**
+     * Locked slugs that also exist in another repository. The locked source is
+     * served, but the ignored row remains useful drift for `docent:check` to
+     * surface.
+     *
+     * @return list<string>
+     */
+    public function lockedShadowed(): array
+    {
         $slugSets = array_map(
+            static function (DocumentationRepository $child): array {
+                $slugs = [];
+
+                $stored = $child instanceof StoredPageRepository
+                    ? $child->storedSlugs()
+                    : array_map(static fn ($reference): string => $reference->slug, [...$child->all()]);
+
+                foreach ($stored as $slug) {
+                    $slugs[$slug] = true;
+                }
+
+                return $slugs;
+            },
+            $this->children,
+        );
+        $shadowed = [];
+
+        foreach ($this->lockedPageOwners() as $slug => $owner) {
+            foreach ($slugSets as $index => $slugs) {
+                if ($index !== $owner && isset($slugs[$slug])) {
+                    $shadowed[] = $slug;
+                    break;
+                }
+            }
+        }
+
+        foreach ($slugSets as $index => $slugs) {
+            foreach ($slugs as $slug => $_) {
+                if (! str_starts_with($slug, '_partials/')) {
+                    continue;
+                }
+
+                $name = substr($slug, strlen('_partials/'));
+
+                foreach ($this->children as $ownerIndex => $child) {
+                    if ($ownerIndex !== $index && $child instanceof LockAwareRepository && $child->partialLocked($name)) {
+                        $shadowed[] = $slug;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($shadowed));
+    }
+
+    /** @return array<string, int> */
+    private function lockedPageOwners(): array
+    {
+        $owners = [];
+
+        foreach ($this->children as $index => $child) {
+            if (! $child instanceof LockAwareRepository) {
+                continue;
+            }
+
+            foreach ($child->all() as $reference) {
+                if ($reference->locked) {
+                    $owners[$reference->slug] = $index;
+                }
+            }
+        }
+
+        return $owners;
+    }
+
+    /** @return list<array<string, true>> */
+    private function slugSets(): array
+    {
+        return array_map(
             static function (DocumentationRepository $child): array {
                 $slugs = [];
 
@@ -100,20 +219,5 @@ final class CompositeRepository implements DocumentationRepository
             },
             $this->children,
         );
-
-        $shadowed = [];
-
-        foreach ($slugSets as $index => $slugs) {
-            foreach ($slugs as $slug => $_) {
-                foreach ($slugSets as $laterIndex => $laterSlugs) {
-                    if ($laterIndex > $index && isset($laterSlugs[$slug])) {
-                        $shadowed[$slug] = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return array_keys($shadowed);
     }
 }

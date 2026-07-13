@@ -26,7 +26,7 @@
             <p class="px-0.5 text-[11px] leading-snug text-[var(--docent-faint)]">A slash files the page into a group — <span class="font-medium text-[var(--docent-muted)]">billing/refunds</span> lands under <span class="font-medium text-[var(--docent-muted)]">Billing</span>.</p>
             <div class="flex items-center justify-end gap-1.5">
                 <button type="button" @click="newPageOpen = false" class="dax-btn dax-btn-ghost text-xs">Cancel</button>
-                <button type="button" @click="confirmNewPage()" class="dax-btn dax-btn-primary text-xs">Create</button>
+                <button type="button" @click="confirmNewPage()" :disabled="isLockedSlug(newSlug.trim().toLowerCase())" class="dax-btn dax-btn-primary text-xs">Create</button>
             </div>
         </div>
     </div>
@@ -67,6 +67,9 @@
                                         <svg x-show="page.store === 'database'" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                                     </span>
                                     <span class="dax-tree-title" x-text="page.title"></span>
+                                    <span x-show="page.locked" class="flex-none text-[var(--docent-faint)]" aria-label="Locked" title="Locked in repository">
+                                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                                    </span>
                                     {{-- Status dot: amber draft, blue unpublished changes, red shadow conflict --}}
                                     <span x-show="treeDot(page)" class="dax-tree-dot" :class="treeDot(page)"></span>
                                 </button>

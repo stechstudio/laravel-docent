@@ -61,6 +61,11 @@ final class FrontMatter
         return (bool) $this->get('hidden', false);
     }
 
+    public function locked(): bool
+    {
+        return $this->get('locked', false) === true;
+    }
+
     public function searchExcluded(): bool
     {
         return (bool) $this->get('search.exclude', false);

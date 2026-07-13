@@ -52,6 +52,8 @@ Your account is on the **{{ value:account.plan }}** plan.
 
 Directories become navigation groups (customize with a `_group.yml`), `_partials/` holds reusable fragments for `:::include`, and callouts use the same fence syntax: `:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`.
 
+When the database-backed admin is enabled, editors can normally create an editable copy of a repository page. Add `locked: true` to a page's front matter when the repository version must always win. The same key in `_group.yml` locks every repository page and partial below that directory; a page-level `locked: false` cannot weaken the group lock. Locked pages remain visible in the admin as rendered, read-only content.
+
 ## Connecting your application
 
 Documentation never contains raw PHP or Blade. Instead, your app registers stable, allowlisted integrations, typically in a service provider:
