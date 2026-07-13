@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace STS\Docent\Navigation;
 
 use Closure;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use STS\Docent\Content\PageReference;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\DocentCache;
+use STS\Docent\Support\Icon;
 
 /**
  * Builds the sidebar navigation in two stages: a globally cacheable skeleton
@@ -39,11 +41,180 @@ final class NavigationBuilder
     }
 
     /**
+     * Partition the global tree into the default documentation area and each
+     * viewer-visible promoted top-level directory.
+     *
+     * @return list<NavigationSection>
+     */
+    public function sections(DocumentationContext $context, string $currentSlug = ''): array
+    {
+        $skeleton = $this->skeleton();
+        $defaultChildren = [];
+        $promoted = [];
+
+        foreach ($skeleton['children'] as $segment => $node) {
+            if (($node['section'] ?? false) === true) {
+                $promoted[$segment] = $node;
+            } else {
+                $defaultChildren[$segment] = $node;
+            }
+        }
+
+        $sections = [];
+        $defaultNavigation = $this->filterLevel([
+            'items' => $skeleton['items'],
+            'children' => $defaultChildren,
+        ], $context);
+
+        if ($defaultNavigation !== []) {
+            $sections[] = $this->section(
+                (string) config('docent.navigation.default_section', 'Documentation'),
+                null,
+                $defaultNavigation,
+            );
+        }
+
+        foreach ($this->sortGroups($promoted) as $node) {
+            $navigation = $this->filterLevel($node, $context);
+
+            if ($navigation !== []) {
+                $sections[] = $this->section($node['label'], $node['directory'], $navigation);
+            }
+        }
+
+        $activeDirectory = null;
+
+        foreach ($sections as $section) {
+            if ($section->directory !== null
+                && ($currentSlug === $section->directory || str_starts_with($currentSlug, $section->directory.'/'))
+                && ($activeDirectory === null || strlen($section->directory) > strlen($activeDirectory))) {
+                $activeDirectory = $section->directory;
+            }
+        }
+
+        return array_map(
+            static fn (NavigationSection $section): NavigationSection => new NavigationSection(
+                $section->label,
+                $section->directory,
+                $section->url,
+                $section->navigation,
+                $activeDirectory === null ? $section->directory === null : $section->directory === $activeDirectory,
+            ),
+            $sections,
+        );
+    }
+
+    /**
+     * @return list<NavigationItem|NavigationGroup>
+     */
+    public function sectionNavigation(string $slug, DocumentationContext $context): array
+    {
+        foreach ($this->sections($context, $slug) as $section) {
+            if ($section->active) {
+                return $section->navigation;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Resolve configured persistent sidebar links for the current viewer.
+     *
+     * @return list<NavigationLink>
+     */
+    public function links(DocumentationContext $context, string $currentSlug = ''): array
+    {
+        return $this->resolveLinks(config('docent.navigation.links', []), $context, $currentSlug);
+    }
+
+    /**
+     * Resolve configured top-bar utility links (GitHub, Discord, a status
+     * page) for the current viewer. Same entry shape as {@see links()},
+     * different placement.
+     *
+     * @return list<NavigationLink>
+     */
+    public function topbarLinks(DocumentationContext $context, string $currentSlug = ''): array
+    {
+        return $this->resolveLinks(config('docent.navigation.topbar', []), $context, $currentSlug);
+    }
+
+    /**
+     * @return list<NavigationLink>
+     */
+    private function resolveLinks(mixed $configured, DocumentationContext $context, string $currentSlug): array
+    {
+        if (! is_array($configured) || $configured === []) {
+            return [];
+        }
+
+        // Built on first `page` target only: resolving page visibility means
+        // sweeping the repository, which most configurations never need.
+        $pages = null;
+
+        $links = [];
+
+        foreach ($configured as $definition) {
+            if (! is_array($definition)) {
+                continue;
+            }
+
+            $label = trim((string) ($definition['label'] ?? ''));
+            $targets = array_values(array_filter(
+                ['url', 'page', 'route'],
+                static fn (string $target): bool => isset($definition[$target]) && is_string($definition[$target]) && trim($definition[$target]) !== '',
+            ));
+
+            if ($label === '' || count($targets) !== 1) {
+                continue;
+            }
+
+            $ability = $definition['can'] ?? null;
+
+            if (is_string($ability) && trim($ability) !== '' && ! $context->can(trim($ability))) {
+                continue;
+            }
+
+            $target = $targets[0];
+            $value = trim($definition[$target]);
+            $external = false;
+            $active = false;
+
+            if ($target === 'page') {
+                $pages ??= $this->pageMap();
+                $page = $pages[$value] ?? null;
+
+                if ($page === null || ! $this->visible($page, $context)) {
+                    continue;
+                }
+
+                $url = ($this->urlResolver)($value);
+                $active = $currentSlug === $value;
+            } elseif ($target === 'route') {
+                if (! Route::has($value)) {
+                    continue;
+                }
+
+                $url = route($value);
+            } else {
+                $url = $value;
+                $external = preg_match('#^(?:(?:https?:)?//|[a-z][a-z0-9+.-]*:)#i', $url) === 1;
+            }
+
+            [$icon, $iconIsImage] = $this->linkIcon($definition['icon'] ?? null);
+            $links[] = new NavigationLink($label, $url, $icon, $iconIsImage, $external, $active);
+        }
+
+        return $links;
+    }
+
+    /**
      * @return array{0: ?NavigationItem, 1: ?NavigationItem}
      */
     public function prevNext(string $slug, DocumentationContext $context): array
     {
-        $flat = $this->flatten($this->filtered($context));
+        $flat = $this->flatten($this->sectionNavigation($slug, $context));
 
         foreach ($flat as $index => $item) {
             if ($item->slug === $slug) {
@@ -96,6 +267,8 @@ final class NavigationBuilder
                         'label' => $meta['label'] ?? Str::headline($segment),
                         'icon' => $meta['icon'] ?? null,
                         'order' => $meta['order'] ?? null,
+                        'directory' => $accumulated,
+                        'section' => ($meta['section'] ?? false) === true,
                         'items' => [],
                         'children' => [],
                     ];
@@ -197,6 +370,51 @@ final class NavigationBuilder
             $page->description,
             $page->searchExcluded,
         );
+    }
+
+    /** @return array<string, PageReference> */
+    private function pageMap(): array
+    {
+        $pages = [];
+
+        foreach ($this->repository->all() as $page) {
+            $pages[$page->slug] = $page;
+        }
+
+        return $pages;
+    }
+
+    /**
+     * @param  list<NavigationItem|NavigationGroup>  $navigation
+     */
+    private function section(string $label, ?string $directory, array $navigation): NavigationSection
+    {
+        return new NavigationSection(
+            $label,
+            $directory,
+            $this->flatten($navigation)[0]->url,
+            $navigation,
+        );
+    }
+
+    /** @return array{0: ?string, 1: bool} */
+    private function linkIcon(mixed $icon): array
+    {
+        if (! is_string($icon) || trim($icon) === '') {
+            return [null, false];
+        }
+
+        $icon = trim($icon);
+
+        if (Icon::has($icon)) {
+            return [$icon, false];
+        }
+
+        if (str_starts_with($icon, '/') || preg_match('#^https?://#i', $icon) === 1) {
+            return [$icon, true];
+        }
+
+        return [null, false];
     }
 
     /**

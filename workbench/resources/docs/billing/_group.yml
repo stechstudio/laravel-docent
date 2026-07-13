@@ -1,3 +1,4 @@
 label: Billing
 order: 2
 icon: credit-card
+section: true

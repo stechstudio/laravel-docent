@@ -25,6 +25,8 @@ final class WidgetController
             'siteName' => $this->docent->siteName(),
             'searchEnabled' => (bool) config('docent.search.enabled', true),
             'navigation' => $this->docent->navigation($context),
+            'navigationLinks' => $this->docent->navigationLinks($context),
+            'sections' => $this->docent->navigationSections($context),
             'currentSlug' => '',
             'fullDocsUrl' => $this->docent->fullUrl(''),
             'title' => null,

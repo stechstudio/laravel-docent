@@ -59,7 +59,35 @@
                     </span>
                 </a>
 
+                @if(count($sections ?? []) > 1)
+                    <nav class="docent-scroll min-w-0 max-w-2xl overflow-x-auto max-lg:hidden" aria-label="Documentation sections">
+                        <ul class="flex items-center gap-1" role="list">
+                            @foreach($sections as $section)
+                                <li class="shrink-0">
+                                    <a href="{{ $section->url }}" @if($section->active) aria-current="page" @endif
+                                       class="flex rounded-md px-3 py-2 text-sm transition {{ $section->active
+                                           ? 'bg-slate-100 text-slate-950 dark:bg-slate-800 dark:text-white'
+                                           : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-white' }}">
+                                        {{ $section->label }}
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </nav>
+                @endif
+
                 <div class="ml-auto flex items-center gap-2">
+                    @foreach(($topbarLinks ?? []) as $topbarLink)
+                        <a href="{{ $topbarLink->url }}" @if($topbarLink->external) target="_blank" rel="noopener" @endif
+                           aria-label="{{ $topbarLink->label }}" title="{{ $topbarLink->label }}"
+                           class="inline-flex h-9 min-w-9 items-center justify-center rounded-md px-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 max-lg:hidden dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                            @if($topbarIcon = $topbarLink->iconMarkup())
+                                <span class="inline-flex [&_img]:size-5 [&_svg]:size-5" aria-hidden="true">{!! $topbarIcon !!}</span>
+                            @else
+                                <span class="text-sm font-medium">{{ $topbarLink->label }}</span>
+                            @endif
+                        </a>
+                    @endforeach
                     @if($searchEnabled)
                         <button type="button" @click="$dispatch('docent:search-open')" aria-label="Search documentation"
                                 class="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400 transition hover:border-slate-300 hover:text-slate-500 sm:w-64 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
@@ -104,7 +132,12 @@
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
-                    @include('docent::partials.navigation')
+                    @include('docent::partials.section-switcher')
+                    @if(count($sections ?? []) > 1)
+                        <div class="h-6"></div>
+                    @endif
+                    {{-- The drawer replaces the top bar entirely, so its utility links join the pinned list here. --}}
+                    @include('docent::partials.navigation', ['navigationLinks' => array_merge($topbarLinks ?? [], $navigationLinks ?? [])])
                 </aside>
             </div>
 

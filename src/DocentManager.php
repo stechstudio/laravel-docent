@@ -32,6 +32,8 @@ use STS\Docent\Documents\Serializer\MarkdownExporter;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Navigation\NavigationGroup;
 use STS\Docent\Navigation\NavigationItem;
+use STS\Docent\Navigation\NavigationLink;
+use STS\Docent\Navigation\NavigationSection;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\DocumentationMode;
@@ -153,6 +155,38 @@ final class DocentManager
     }
 
     /**
+     * @return list<NavigationSection>
+     */
+    public function navigationSections(DocumentationContext $context, string $currentSlug = ''): array
+    {
+        return $this->navigation->sections($context, $currentSlug);
+    }
+
+    /**
+     * @return list<NavigationItem|NavigationGroup>
+     */
+    public function sectionNavigation(string $slug, DocumentationContext $context): array
+    {
+        return $this->navigation->sectionNavigation($slug, $context);
+    }
+
+    /**
+     * @return list<NavigationLink>
+     */
+    public function navigationLinks(DocumentationContext $context, string $currentSlug = ''): array
+    {
+        return $this->navigation->links($context, $currentSlug);
+    }
+
+    /**
+     * @return list<NavigationLink>
+     */
+    public function topbarLinks(DocumentationContext $context, string $currentSlug = ''): array
+    {
+        return $this->navigation->topbarLinks($context, $currentSlug);
+    }
+
+    /**
      * @return array{0: ?NavigationItem, 1: ?NavigationItem}
      */
     public function prevNext(string $slug, DocumentationContext $context): array
@@ -241,20 +275,29 @@ final class DocentManager
 
     public function llmsText(DocumentationContext $context): string
     {
-        $navigation = $this->navigation($context);
+        $navigationSections = $this->navigationSections($context);
         $key = 'llms:'.$this->repository->directoryHash().':'.$this->viewerFingerprint($context);
 
-        return $this->cache->remember($key, function () use ($navigation): string {
+        return $this->cache->remember($key, function () use ($navigationSections): string {
             $sections = [];
-            $root = array_values(array_filter($navigation, fn (object $node): bool => $node instanceof NavigationItem));
 
-            if ($root !== []) {
-                $sections[] = $this->llmsSection('Documentation', $root);
-            }
+            // Within each section, ungrouped pages sit under the section's own
+            // heading and every top-level group keeps its own — a sectionless
+            // site reads exactly as it did before sections existed.
+            foreach ($navigationSections as $section) {
+                $root = array_values(array_filter(
+                    $section->navigation,
+                    static fn (object $node): bool => $node instanceof NavigationItem,
+                ));
 
-            foreach ($navigation as $node) {
-                if ($node instanceof NavigationGroup) {
-                    $sections[] = $this->llmsSection($node->label, $this->flattenNavigation([$node]));
+                if ($root !== []) {
+                    $sections[] = $this->llmsSection($section->label, $root);
+                }
+
+                foreach ($section->navigation as $node) {
+                    if ($node instanceof NavigationGroup) {
+                        $sections[] = $this->llmsSection($node->label, $this->flattenNavigation([$node]));
+                    }
                 }
             }
 
@@ -265,21 +308,23 @@ final class DocentManager
 
     public function llmsFullText(DocumentationContext $context): string
     {
-        $navigation = $this->navigation($context);
+        $navigationSections = $this->navigationSections($context);
         $key = 'llms-full:'.$this->repository->directoryHash().':'.$this->viewerFingerprint($context);
 
-        return $this->cache->remember($key, function () use ($navigation, $context): string {
+        return $this->cache->remember($key, function () use ($navigationSections, $context): string {
             $pages = [];
 
-            foreach ($this->flattenNavigation($navigation) as $item) {
-                if ($item->searchExcluded) {
-                    continue;
-                }
+            foreach ($navigationSections as $section) {
+                foreach ($this->flattenNavigation($section->navigation) as $item) {
+                    if ($item->searchExcluded) {
+                        continue;
+                    }
 
-                $page = $this->page($item->slug);
+                    $page = $this->page($item->slug);
 
-                if ($page !== null && $page->authorize($context)) {
-                    $pages[] = trim($this->agentMarkdown($page, $context));
+                    if ($page !== null && $page->authorize($context)) {
+                        $pages[] = trim($this->agentMarkdown($page, $context));
+                    }
                 }
             }
 

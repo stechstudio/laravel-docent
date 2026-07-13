@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Artisan;
 use STS\Docent\Content\Repositories\DocumentationRepository;
+use STS\Docent\DocentManager;
 
 /**
  * Point the repository at a fixture tree and run the check command, returning
@@ -94,9 +95,36 @@ it('does not fail on warnings unless strict', function () {
 });
 
 it('flags suggestions that point at nonexistent pages', function () {
-    app(\STS\Docent\DocentManager::class)->suggest('billing.*', ['missing-page']);
+    app(DocentManager::class)->suggest('billing.*', ['missing-page']);
 
     $this->artisan('docent:check')
         ->expectsOutputToContain('missing-page')
+        ->assertFailed();
+});
+
+it('warns about nested and empty promoted sections', function () {
+    [$exit, $output] = check('section-warn-docs');
+
+    expect($exit)->toBe(0)
+        ->and($output)->toContain('invalid-section-depth')
+        ->and($output)->toContain('empty-section');
+});
+
+it('validates persistent navigation link targets and icons', function () {
+    config()->set('docent.navigation.links', [
+        ['label' => 'Missing page', 'page' => 'does-not-exist', 'icon' => 'not-a-real-icon'],
+        ['label' => 'Missing route', 'route' => 'does.not.exist'],
+        ['label' => 'Ambiguous', 'url' => 'https://example.com', 'page' => 'index'],
+    ]);
+    config()->set('docent.navigation.topbar', [
+        ['label' => 'Bad repo link', 'page' => 'also-does-not-exist'],
+    ]);
+
+    $this->artisan('docent:check')
+        ->expectsOutputToContain('unknown-navigation-page')
+        ->expectsOutputToContain('unknown-navigation-route')
+        ->expectsOutputToContain('invalid-navigation-link')
+        ->expectsOutputToContain('unknown-icon')
+        ->expectsOutputToContain('navigation.topbar.0')
         ->assertFailed();
 });

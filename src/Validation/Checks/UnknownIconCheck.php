@@ -20,6 +20,27 @@ final class UnknownIconCheck implements Check
 {
     public function run(CheckContext $context): iterable
     {
+        foreach (['links', 'topbar'] as $list) {
+            $links = config('docent.navigation.'.$list, []);
+
+            if (! is_array($links)) {
+                continue;
+            }
+
+            foreach ($links as $index => $link) {
+                $icon = is_array($link) ? ($link['icon'] ?? null) : null;
+
+                if (is_string($icon) && $icon !== '' && ! $this->valid($icon)) {
+                    yield Issue::warning(
+                        'unknown-icon',
+                        'navigation.'.$list.'.'.((int) $index),
+                        'Unknown navigation link icon "'.$icon.'".',
+                        1,
+                    );
+                }
+            }
+        }
+
         foreach ($context->pages() as $page) {
             $document = $context->document($page->slug);
 
@@ -33,5 +54,12 @@ final class UnknownIconCheck implements Check
                 }
             }
         }
+    }
+
+    private function valid(string $icon): bool
+    {
+        return Icon::has($icon)
+            || str_starts_with($icon, '/')
+            || preg_match('#^https?://#i', $icon) === 1;
     }
 }

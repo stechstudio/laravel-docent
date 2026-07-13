@@ -16,6 +16,19 @@ it('renders a landing page without sidebar or toc, with hero and resolved ctas',
         ->assertDontSee('docent-toc', false);
 });
 
+it('keeps section tabs and topbar links in the landing header', function () {
+    config()->set('docent.navigation.topbar', [
+        ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
+    ]);
+
+    $this->actingAs($this->adminUser())
+        ->get('/docs/welcome')
+        ->assertOk()
+        ->assertSee('aria-label="Documentation sections"', false)
+        ->assertSee('aria-label="GitHub"', false)
+        ->assertSee('href="https://github.com/acme/acme"', false);
+});
+
 it('renders regular pages with the sidebar unchanged', function () {
     $this->get('/docs/guides/setup')
         ->assertOk()

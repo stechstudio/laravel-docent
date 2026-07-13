@@ -83,7 +83,8 @@ it('publishes a permission-filtered llms index in navigation order', function ()
 
     expect($admin)
         ->toContain('Secret Billing')
-        ->toContain('## Reports');
+        ->toContain('## Reports')
+        ->and(strpos($admin, '## Documentation'))->toBeLessThan(strpos($admin, '## Reports'));
 });
 
 it('publishes a leak-safe full corpus and excludes search-excluded pages', function () {
@@ -103,7 +104,8 @@ it('publishes a leak-safe full corpus and excludes search-excluded pages', funct
     expect($admin)
         ->toContain('You can manage billing')
         ->toContain('Only billing admins')
-        ->not->toContain('flibbertigibbet');
+        ->not->toContain('flibbertigibbet')
+        ->and(strpos($admin, '# Secret Billing'))->toBeLessThan(strpos($admin, '# Reports'));
 });
 
 it('advertises both llms files on html pages', function () {

@@ -22,6 +22,14 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.admin.enabled' => true,
             // Dogfood the same-origin help widget on the demo dashboard.
             'docent.widget.enabled' => true,
+            'docent.navigation.links' => [
+                ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://example.com/support'],
+                ['label' => 'Quickstart', 'icon' => 'rocket-launch', 'page' => 'getting-started/quickstart'],
+                ['label' => 'Billing settings', 'icon' => 'wrench', 'route' => 'workbench.billing.settings', 'can' => 'billing.manage'],
+            ],
+            'docent.navigation.topbar' => [
+                ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/stechstudio/laravel-docent'],
+            ],
         ]);
 
         // Try a different feel — theming tokens are pure config, no rebuild:

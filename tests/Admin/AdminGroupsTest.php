@@ -1,6 +1,7 @@
 <?php
 
 use STS\Docent\Content\Models\DocentPage;
+use STS\Docent\DocentManager;
 
 beforeEach(function () {
     $this->actingAs($this->adminUser());
@@ -94,4 +95,21 @@ it('never exposes _groups rows in the admin tree or reader navigation', function
     // Not reachable as a reader page, and never leaked into the sidebar markup.
     $this->get('/docs/_groups/billing')->assertNotFound();
     $this->get('/docs')->assertOk()->assertDontSee('_groups');
+});
+
+it('lets section metadata emerge from a database group override without admin ui', function () {
+    DocentPage::write('_groups/guides', '', [
+        'label' => 'Guides area',
+        'order' => 1,
+        'section' => true,
+    ]);
+
+    $sections = app(DocentManager::class)->navigationSections(
+        $this->contextFor($this->adminUser()),
+        'guides/setup',
+    );
+
+    expect(array_map(fn ($section) => $section->label, $sections))
+        ->toBe(['Documentation', 'Guides area', 'Reports'])
+        ->and($sections[1]->active)->toBeTrue();
 });

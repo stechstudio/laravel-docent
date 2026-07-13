@@ -130,6 +130,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Navigation
+    |--------------------------------------------------------------------------
+    |
+    | Top-level directories whose `_group.yml` contains `section: true` become
+    | switchable documentation areas. Everything else remains in the default
+    | section. Persistent links appear above the sidebar on every section and
+    | may target an external URL, a documentation page, or a named route.
+    | Topbar links use the same shape but render as icon buttons on the right
+    | side of the top bar, beside the theme toggle — the conventional spot for
+    | a repository or community link.
+    |
+    */
+
+    'navigation' => [
+        'default_section' => 'Documentation',
+        'links' => [
+            // ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://example.com/support'],
+            // ['label' => 'Setup guide', 'icon' => 'rocket-launch', 'page' => 'getting-started/setup'],
+            // ['label' => 'Admin console', 'icon' => 'wrench', 'route' => 'admin.dashboard', 'can' => 'admin'],
+        ],
+        'topbar' => [
+            // ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | In-app Help Widget
     |--------------------------------------------------------------------------
     |

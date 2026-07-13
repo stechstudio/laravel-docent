@@ -29,7 +29,7 @@ interface DocumentationRepository
     /**
      * Parsed `_group.yml` metadata for a directory, or null when absent.
      *
-     * @return array{label?: string, order?: int, icon?: string, locked?: bool}|null
+     * @return array{label?: string, order?: int, icon?: string, locked?: bool, section?: bool}|null
      */
     public function groupMeta(string $directory): ?array;
 

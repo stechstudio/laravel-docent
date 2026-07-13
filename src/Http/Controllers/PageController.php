@@ -76,11 +76,14 @@ final class PageController
                 'description' => $page->description(),
                 'html' => $page->render($context),
                 'heroCta' => $page->heroCta(),
+                'sections' => $this->docent->navigationSections($context, $slug),
+                'topbarLinks' => $this->docent->topbarLinks($context, $slug),
                 'landing' => true,
             ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
         }
 
         [$prev, $next] = $this->docent->prevNext($slug, $context);
+        $sections = $this->docent->navigationSections($context, $slug);
 
         return response()->view('docent::page', [
             'docent' => $this->docent,
@@ -92,7 +95,10 @@ final class PageController
             'description' => $page->description(),
             'breadcrumb' => $this->docent->breadcrumb($slug, $context),
             'html' => $page->render($context),
-            'navigation' => $this->docent->navigation($context),
+            'navigation' => $this->docent->sectionNavigation($slug, $context),
+            'navigationLinks' => $this->docent->navigationLinks($context, $slug),
+            'topbarLinks' => $this->docent->topbarLinks($context, $slug),
+            'sections' => $sections,
             'toc' => $page->toc($context),
             'currentSlug' => $slug,
             'prev' => $prev,

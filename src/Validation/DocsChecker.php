@@ -12,6 +12,8 @@ use STS\Docent\Validation\Checks\IncludeCycleCheck;
 use STS\Docent\Validation\Checks\LockedPageShadowedCheck;
 use STS\Docent\Validation\Checks\MissingImageCheck;
 use STS\Docent\Validation\Checks\MissingIncludeCheck;
+use STS\Docent\Validation\Checks\NavigationLinkCheck;
+use STS\Docent\Validation\Checks\NavigationSectionCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
@@ -55,6 +57,8 @@ final class DocsChecker
             new HeadingHierarchyCheck,
             new UnknownIconCheck,
             new UnknownSuggestionCheck,
+            new NavigationSectionCheck,
+            new NavigationLinkCheck,
             new LockedPageShadowedCheck,
             new ShadowedPageCheck,
         ]);

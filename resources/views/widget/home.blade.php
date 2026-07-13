@@ -32,10 +32,42 @@
             </div>
         </section>
 
+        @if($navigationLinks !== [])
+            <section class="mb-7">
+                <div class="mb-2.5 flex items-center gap-3">
+                    <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Helpful links</h2>
+                    <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
+                </div>
+                <ul class="grid gap-1" role="list">
+                    @foreach($navigationLinks as $link)
+                        <li>
+                            <a href="{{ $link->url }}" @if($link->external) target="_blank" rel="noopener" @endif
+                               class="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white">
+                                @if($linkIcon = $link->iconMarkup())
+                                    <span class="inline-flex shrink-0 [&_img]:size-4 [&_svg]:size-4" aria-hidden="true">{!! $linkIcon !!}</span>
+                                @endif
+                                <span class="min-w-0 flex-1 truncate">{{ $link->label }}</span>
+                                @if($link->external && ($externalIcon = \STS\Docent\Support\Icon::svg('arrow-top-right-on-square')))
+                                    <span class="inline-flex shrink-0 text-slate-400 [&_svg]:size-4" aria-hidden="true">{!! $externalIcon !!}</span>
+                                @endif
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
+
         <nav class="docent-widget-nav" aria-label="Documentation">
-            <ul class="space-y-5">
-                @foreach($navigation as $node)
-                    @include('docent::widget.nav-node', ['node' => $node, 'depth' => 0])
+            <ul class="space-y-5" role="list">
+                @foreach($sections as $section)
+                    <li>
+                        <p class="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{{ $section->label }}</p>
+                        <ul class="space-y-1" role="list">
+                            @foreach($section->navigation as $node)
+                                @include('docent::widget.nav-node', ['node' => $node, 'depth' => 1])
+                            @endforeach
+                        </ul>
+                    </li>
                 @endforeach
             </ul>
         </nav>

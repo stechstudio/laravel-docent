@@ -17,6 +17,38 @@ it('renders compact widget home chrome with widget navigation', function () {
         ->assertDontSee('On this page');
 });
 
+it('renders visible sections as flat top-level widget groups', function () {
+    $response = $this->actingAs($this->adminUser())
+        ->get('/docs/_widget')
+        ->assertOk()
+        ->assertSeeInOrder(['Documentation', 'Reports'])
+        ->assertDontSee('aria-label="Documentation sections"', false);
+
+    expect(substr_count($response->getContent(), '>Reports</p>'))->toBe(1);
+});
+
+it('keeps pinned page links inside the widget and external links in a new tab', function () {
+    config()->set('docent.navigation.links', [
+        ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://support.example.com'],
+        ['label' => 'Setup guide', 'icon' => 'rocket-launch', 'page' => 'guides/setup'],
+    ]);
+    // Topbar utility links are docs-site chrome and stay out of the panel.
+    config()->set('docent.navigation.topbar', [
+        ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
+    ]);
+
+    $response = $this->get('/docs/_widget')
+        ->assertOk()
+        ->assertSeeInOrder(['Suggested for this page', 'Helpful links', 'Documentation'])
+        ->assertSee('href="http://localhost/docs/_widget/guides/setup"', false)
+        ->assertSee('href="https://support.example.com"', false)
+        ->assertSee('target="_blank" rel="noopener"', false)
+        ->assertDontSee('href="https://github.com/acme/acme"', false);
+
+    expect($response->getContent())
+        ->not->toMatch('/href="http:\/\/localhost\/docs\/_widget\/guides\/setup"[^>]*target="_top"/');
+});
+
 it('renders articles in widget chrome and keeps internal links sticky', function () {
     $this->get('/docs/_widget/welcome')
         ->assertOk()
