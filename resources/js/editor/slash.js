@@ -83,6 +83,19 @@ function commands() {
             run: (e, r) => insertContainer(e, r, { type: 'docsCards', attrs: { columns: 2 }, content: [
                 { type: 'docsCard', attrs: { title: 'New card', icon: null, href: null }, content: [{ type: 'paragraph' }] },
             ] }) },
+        { title: 'Steps', description: 'A numbered sequence of instructions', icon: 'list-ordered', group: 'Docent', keywords: 'procedure guide sequence',
+            run: (e, r) => insertContainer(e, r, { type: 'docsSteps', content: [
+                { type: 'docsStep', attrs: { title: 'New step' }, content: [{ type: 'paragraph' }] },
+            ] }) },
+        { title: 'Accordion', description: 'A collapsible answer or detail', icon: 'callout', group: 'Docent', keywords: 'disclosure faq question collapse',
+            run: (e, r) => insertContainer(e, r, { type: 'docsAccordion', attrs: { title: 'Question' }, content: [{ type: 'paragraph' }] }) },
+        { title: 'Tabs', description: 'Switch between labeled content panels', icon: 'cards', group: 'Docent', keywords: 'platform option panel',
+            run: (e, r) => insertContainer(e, r, { type: 'docsTabs', content: [
+                { type: 'docsTab', attrs: { label: 'First tab' }, content: [{ type: 'paragraph' }] },
+                { type: 'docsTab', attrs: { label: 'Second tab' }, content: [{ type: 'paragraph' }] },
+            ] }) },
+        { title: 'Frame', description: 'Present an image with a caption', icon: 'image', group: 'Docent', keywords: 'figure screenshot lightbox caption',
+            run: (e, r) => insertContainer(e, r, { type: 'docsFrame', attrs: { caption: null }, content: [{ type: 'paragraph' }] }) },
         { title: 'Include', description: 'Embed a reusable partial', icon: 'include', group: 'Docent', keywords: 'partial snippet reuse',
             run: (e, r) => insertBlock(e, r, { type: 'docsInclude', attrs: { name: '' } }) },
         { title: 'Component', description: 'Embed a registered component', icon: 'component', group: 'Docent', keywords: 'widget embed',

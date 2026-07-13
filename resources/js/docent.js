@@ -234,6 +234,112 @@ Alpine.data('docentWidgetSuggestions', (suggestionsUrl) => ({
 }));
 
 /* ---------------------------------------------------------------------------
+ * Content components.
+ * ------------------------------------------------------------------------- */
+Alpine.data('docentAccordion', () => ({
+    open: false,
+
+    toggle() {
+        this.open = !this.open;
+    },
+
+    reveal(id) {
+        if (!id || !this.$root.querySelector(`#${CSS.escape(id)}`)) return;
+        this.open = true;
+        this.$nextTick(() => document.getElementById(id)?.scrollIntoView());
+    },
+}));
+
+Alpine.data('docentTabs', (count) => ({
+    active: 0,
+    count,
+
+    activate(index, focus = false) {
+        if (index < 0 || index >= this.count) return;
+        this.active = index;
+        if (focus) this.$nextTick(() => this.$root.querySelectorAll('[role="tab"]')[index]?.focus());
+    },
+
+    onKeydown(event, index) {
+        let next = null;
+        if (event.key === 'ArrowRight') next = (index + 1) % this.count;
+        if (event.key === 'ArrowLeft') next = (index - 1 + this.count) % this.count;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = this.count - 1;
+        if (next === null) return;
+        event.preventDefault();
+        this.activate(next, true);
+    },
+
+    reveal(id) {
+        if (!id) return;
+        const target = this.$root.querySelector(`#${CSS.escape(id)}`);
+        if (!target) return;
+        const panels = Array.from(this.$root.querySelectorAll('[role="tabpanel"]'));
+        const index = panels.findIndex((panel) => panel.contains(target) || panel === target);
+        if (index < 0) return;
+        this.active = index;
+        this.$nextTick(() => target.scrollIntoView());
+    },
+}));
+
+Alpine.data('docentFrame', () => ({
+    open: false,
+    previousFocus: null,
+
+    init() {
+        const image = this.$root.querySelector('.docent-frame-content img');
+        if (!image) return;
+        image.tabIndex = 0;
+        image.setAttribute('role', 'button');
+        image.setAttribute('aria-label', 'Open image preview');
+        image.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            this.openImage();
+        });
+    },
+
+    openFromImage(event) {
+        if (!event.target.closest('.docent-frame-content img')) return;
+        this.openImage();
+    },
+
+    openImage() {
+        this.previousFocus = document.activeElement;
+        this.open = true;
+        document.body.style.overflow = 'hidden';
+        this.$nextTick(() => this.$refs.dialog?.focus());
+    },
+
+    close() {
+        if (!this.open) return;
+        this.open = false;
+        document.body.style.overflow = '';
+        this.$nextTick(() => this.previousFocus?.focus?.());
+    },
+
+    trap(event) {
+        if (!this.open || !this.$refs.dialog) return;
+        const focusable = Array.from(this.$refs.dialog.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])'));
+        if (focusable.length === 0) {
+            event.preventDefault();
+            this.$refs.dialog.focus();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    },
+}));
+
+/* ---------------------------------------------------------------------------
  * Global shortcuts: Cmd/Ctrl-K and "/" open search.
  * ------------------------------------------------------------------------- */
 document.addEventListener('keydown', (e) => {
@@ -360,6 +466,14 @@ function enhance() {
     normalizeKbd();
 }
 
+function revealCurrentAnchor() {
+    const id = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+    if (!id) return;
+    window.dispatchEvent(new CustomEvent('docent:reveal-anchor', { detail: id }));
+}
+
+window.addEventListener('hashchange', revealCurrentAnchor);
+
 function bootWidgetFrame() {
     if (!document.documentElement.hasAttribute('data-docent-widget') || window.parent === window) return;
 
@@ -369,6 +483,8 @@ function bootWidgetFrame() {
     });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
+            const lightbox = document.querySelector('.docent-lightbox');
+            if (lightbox && getComputedStyle(lightbox).display !== 'none') return;
             event.preventDefault();
             send({ docent: 'close' });
         }
@@ -410,3 +526,4 @@ if (document.readyState === 'loading') {
 
 window.Alpine = Alpine;
 Alpine.start();
+window.setTimeout(revealCurrentAnchor, 0);

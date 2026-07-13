@@ -6,6 +6,7 @@ namespace STS\Docent\Documents\Renderer;
 
 use Closure;
 use Illuminate\Contracts\Support\Htmlable;
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AppLinkKind;
 use STS\Docent\Documents\Ast\AudienceBlock;
@@ -20,6 +21,7 @@ use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\HardBreak;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\HtmlBlock;
@@ -33,12 +35,16 @@ use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\SoftBreak;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Table;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\TableRow;
 use STS\Docent\Documents\Ast\TableSection;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
@@ -60,6 +66,8 @@ final class HtmlRenderer
 
     /** @var list<string> */
     private array $includeStack = [];
+
+    private int $componentIndex = 0;
 
     /**
      * @param  array<string, mixed>  $options  allow_html (bool), debug (bool), route_resolver (Closure)
@@ -112,6 +120,12 @@ final class HtmlRenderer
             $node instanceof Callout => $this->renderCallout($node),
             $node instanceof CardGroup => $this->renderCardGroup($node),
             $node instanceof Card => $this->renderCard($node),
+            $node instanceof Steps => $this->renderSteps($node),
+            $node instanceof Step => $this->renderStep($node),
+            $node instanceof Accordion => $this->renderAccordion($node),
+            $node instanceof Tabs => $this->renderTabs($node),
+            $node instanceof Tab => $this->renderTab($node),
+            $node instanceof Frame => $this->renderFrame($node),
             $node instanceof AuthorizationBlock => $this->authorizationVisible($node, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof ConditionBlock => $this->conditionVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof AudienceBlock => $this->audienceVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
@@ -214,6 +228,99 @@ final class HtmlRenderer
         }
 
         return '<div class="docent-card">'.$inner.'</div>';
+    }
+
+    private function renderSteps(Steps $node): string
+    {
+        return '<ol class="docent-steps">'.$this->renderChildren($node).'</ol>';
+    }
+
+    private function renderStep(Step $node): string
+    {
+        return '<li class="docent-step"><div class="docent-step-marker" aria-hidden="true"></div>'
+            .'<div class="docent-step-content"><div class="docent-step-title">'.e($node->title).'</div>'
+            .$this->renderChildren($node).'</div></li>';
+    }
+
+    private function renderAccordion(Accordion $node): string
+    {
+        $id = 'docent-accordion-'.(++$this->componentIndex);
+
+        return '<div class="docent-accordion" data-docent-accordion x-data="docentAccordion()" '
+            .'x-on:docent:reveal-anchor.window="reveal($event.detail)">'
+            .'<button type="button" class="docent-accordion-trigger" id="'.$id.'-trigger" '
+            .'aria-controls="'.$id.'-panel" x-bind:aria-expanded="open" x-on:click="toggle()">'
+            .'<span>'.e($node->title).'</span><span class="docent-accordion-chevron" aria-hidden="true">'
+            .(Icon::svg('chevron-down') ?? '').'</span></button>'
+            .'<div class="docent-accordion-panel" id="'.$id.'-panel" role="region" x-cloak '
+            .'aria-labelledby="'.$id.'-trigger" x-show="open">'
+            .'<div class="docent-accordion-content">'.$this->renderChildren($node).'</div></div></div>';
+    }
+
+    private function renderTabs(Tabs $node): string
+    {
+        $tabs = array_values(array_filter($node->children, static fn (Node $child): bool => $child instanceof Tab));
+        $id = 'docent-tabs-'.(++$this->componentIndex);
+        $labels = '';
+        $panels = '';
+
+        foreach ($tabs as $index => $tab) {
+            $labels .= '<button type="button" role="tab" id="'.$id.'-tab-'.$index.'" '
+                .'aria-controls="'.$id.'-panel-'.$index.'" x-bind:aria-selected="active === '.$index.'" '
+                .'x-bind:tabindex="active === '.$index.' ? 0 : -1" x-on:click="activate('.$index.')" '
+                .'x-on:keydown="onKeydown($event, '.$index.')">'.e($tab->label).'</button>';
+            $panels .= '<div class="docent-tab-panel" role="tabpanel" id="'.$id.'-panel-'.$index.'" '
+                .'aria-labelledby="'.$id.'-tab-'.$index.'" data-label="'.e($tab->label).'" x-show="active === '.$index.'" x-cloak>'
+                .$this->renderChildren($tab).'</div>';
+        }
+
+        return '<div class="docent-tabs" data-docent-tabs x-data="docentTabs('.count($tabs).')" '
+            .'x-on:docent:reveal-anchor.window="reveal($event.detail)">'
+            .'<div class="docent-tab-list" role="tablist" aria-label="Content options">'.$labels.'</div>'
+            .'<div class="docent-tab-panels">'.$panels.'</div></div>';
+    }
+
+    private function renderTab(Tab $node): string
+    {
+        return '<section class="docent-tab-panel"><div class="docent-tab-label">'.e($node->label).'</div>'
+            .$this->renderChildren($node).'</section>';
+    }
+
+    private function renderFrame(Frame $node): string
+    {
+        $image = $this->firstImage($node);
+        $lightbox = '';
+
+        if ($image !== null) {
+            $lightbox = '<div class="docent-lightbox" role="dialog" aria-modal="true" aria-label="Image preview" x-cloak '
+                .'x-show="open" x-on:click.self="close()" x-on:keydown.escape.window="close()" x-ref="dialog" tabindex="-1">'
+                .'<button type="button" class="docent-lightbox-close" aria-label="Close image preview" x-on:click="close()">'
+                .(Icon::svg('x-mark') ?? '&times;').'</button>'
+                .'<img src="'.e($image->url).'" alt="'.e($image->alt).'" /></div>';
+        }
+
+        $caption = $node->caption !== null && $node->caption !== ''
+            ? '<figcaption>'.e($node->caption).'</figcaption>'
+            : '';
+
+        return '<figure class="docent-frame" data-docent-frame x-data="docentFrame()" '
+            .'x-on:click="openFromImage($event)" x-on:keydown.tab.window="trap($event)">'
+            .'<div class="docent-frame-content">'.$this->renderChildren($node).'</div>'.$caption.$lightbox.'</figure>';
+    }
+
+    private function firstImage(Node $node): ?Image
+    {
+        foreach ($node->children as $child) {
+            if ($child instanceof Image) {
+                return $child;
+            }
+
+            if (($image = $this->firstImage($child)) !== null) {
+                return $image;
+            }
+        }
+
+        return null;
     }
 
     private function renderInclude(IncludeNode $node): string

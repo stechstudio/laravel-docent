@@ -509,6 +509,108 @@ function openCardEditor(editor, getPos, node, ctx, anchor) {
     const pop = openPopover(anchor, panel);
 }
 
+/* --- content components --------------------------------------------------- */
+
+function addContainerChild(editor, getPos, type, attrs = {}) {
+    editor.chain().focus().command(({ tr, state }) => {
+        const pos = typeof getPos === 'function' ? getPos() : null;
+        if (pos == null) return false;
+        const parent = tr.doc.nodeAt(pos);
+        const childType = state.schema.nodes[type];
+        if (!parent || !childType) return false;
+        const child = childType.createAndFill(attrs);
+        if (!child) return false;
+        tr.insert(pos + parent.nodeSize - 1, child);
+        return true;
+    }).run();
+}
+
+function contentComponent({ name, content, tag, label, icon, accentClass, attr = null, child = null }) {
+    return Node.create({
+        name,
+        group: 'block',
+        content,
+        defining: true,
+        addAttributes: () => attr ? { [attr.name]: { default: attr.default } } : {},
+        parseHTML: () => [{ tag: `[${tag}]` }],
+        renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { [tag]: '' }), 0],
+        addNodeView() {
+            return ({ node, editor, getPos }) => containerView({
+                editor, getPos, node, accentClass,
+                renderHead: (head, n, { anchor }) => {
+                    const value = attr ? n.attrs[attr.name] : null;
+                    head.append(
+                        pill(icon, [label, value ? h('span', { class: 'dax-node-meta' }, value) : null]),
+                        h('span', { class: 'dax-node-actions' }, [
+                            attr ? editButton(() => openContentMeta(editor, getPos, n, attr, label, anchor)) : null,
+                            child ? h('button', {
+                                type: 'button', class: 'dax-node-btn', title: `Add ${child.label}`,
+                                'aria-label': `Add ${child.label}`, html: ui('plus', 14),
+                                onmousedown: (event) => event.preventDefault(),
+                                onclick: () => addContainerChild(editor, getPos, child.type, child.attrs),
+                            }) : null,
+                            deleteButton(() => deleteNode(editor, getPos)),
+                        ]),
+                    );
+                },
+            });
+        },
+    });
+}
+
+function openContentMeta(editor, getPos, node, attr, label, anchor) {
+    const panel = h('div', { class: 'dax-pop-body' });
+    panel.append(
+        popHeader(label),
+        field(attr.label, node.attrs[attr.name] || '', (value) => setAttrs(editor, getPos, {
+            [attr.name]: value.trim() === '' ? attr.default : value,
+        }), { placeholder: attr.placeholder || '' }),
+    );
+    openPopover(anchor, panel);
+}
+
+export function DocsSteps() {
+    return contentComponent({
+        name: 'docsSteps', content: 'docsStep+', tag: 'data-docs-steps', label: 'Steps', icon: 'list-ordered',
+        accentClass: 'dax-node-steps', child: { type: 'docsStep', label: 'step', attrs: { title: 'New step' } },
+    });
+}
+
+export function DocsStep() {
+    return contentComponent({
+        name: 'docsStep', content: 'block+', tag: 'data-docs-step', label: 'Step', icon: 'list-ordered',
+        accentClass: 'dax-node-step', attr: { name: 'title', default: '', label: 'Title', placeholder: 'Install the package' },
+    });
+}
+
+export function DocsAccordion() {
+    return contentComponent({
+        name: 'docsAccordion', content: 'block+', tag: 'data-docs-accordion', label: 'Accordion', icon: 'callout',
+        accentClass: 'dax-node-accordion', attr: { name: 'title', default: '', label: 'Title', placeholder: 'How do refunds work?' },
+    });
+}
+
+export function DocsTabs() {
+    return contentComponent({
+        name: 'docsTabs', content: 'docsTab+', tag: 'data-docs-tabs', label: 'Tabs', icon: 'cards',
+        accentClass: 'dax-node-tabs', child: { type: 'docsTab', label: 'tab', attrs: { label: 'New tab' } },
+    });
+}
+
+export function DocsTab() {
+    return contentComponent({
+        name: 'docsTab', content: 'block+', tag: 'data-docs-tab', label: 'Tab', icon: 'cards',
+        accentClass: 'dax-node-tab', attr: { name: 'label', default: '', label: 'Label', placeholder: 'iOS' },
+    });
+}
+
+export function DocsFrame() {
+    return contentComponent({
+        name: 'docsFrame', content: 'block+', tag: 'data-docs-frame', label: 'Frame', icon: 'image',
+        accentClass: 'dax-node-frame', attr: { name: 'caption', default: null, label: 'Caption', placeholder: 'The billing overview screen' },
+    });
+}
+
 /* --- docsValue (inline atom) ----------------------------------------------- */
 
 export function DocsValue(context) {
@@ -855,6 +957,12 @@ export function docentNodes(context) {
         DocsCallout(context),
         DocsCards(context),
         DocsCard(context),
+        DocsSteps(),
+        DocsStep(),
+        DocsAccordion(),
+        DocsTabs(),
+        DocsTab(),
+        DocsFrame(),
         DocsValue(context),
         DocsAppLink(context),
         DocsInclude(context),

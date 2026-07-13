@@ -383,6 +383,257 @@ a.docent-card:hover {
 
 /*
 | ---------------------------------------------------------------------------
+| Steps, disclosures, tabs, and image frames
+| ---------------------------------------------------------------------------
+*/
+.docent-prose .docent-steps {
+    list-style: none;
+    margin: 1.75rem 0;
+    padding: 0;
+    counter-reset: docent-step;
+}
+
+.docent-prose .docent-step {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.85rem;
+    position: relative;
+    margin: 0;
+    padding: 0 0 1.75rem;
+    counter-increment: docent-step;
+}
+
+.docent-prose .docent-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 2rem;
+    bottom: 0;
+    left: 0.95rem;
+    width: 1px;
+    background-color: var(--docent-border);
+}
+
+.docent-step-marker {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--docent-border-strong);
+    border-radius: 999px;
+    background-color: var(--docent-bg);
+    color: var(--docent-accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+    z-index: 1;
+}
+
+.docent-step-marker::before {
+    content: counter(docent-step);
+}
+
+.docent-step-title {
+    padding-top: 0.15rem;
+    color: var(--docent-strong);
+    font-weight: 650;
+}
+
+.docent-prose .docent-step-content > :first-child:not(.docent-step-title) {
+    margin-top: 0;
+}
+
+.docent-prose .docent-step-content > :last-child {
+    margin-bottom: 0;
+}
+
+.docent-accordion {
+    border-block: 1px solid var(--docent-border);
+}
+
+.docent-accordion + .docent-accordion {
+    border-top: 0;
+}
+
+.docent-accordion-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem 0;
+    border: 0;
+    background: transparent;
+    color: var(--docent-strong);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 650;
+    text-align: left;
+}
+
+.docent-accordion-chevron {
+    display: inline-flex;
+    flex: none;
+    color: var(--docent-faint);
+    transform: rotate(0deg);
+    transition: transform 0.15s ease;
+}
+
+.docent-accordion-trigger[aria-expanded='true'] .docent-accordion-chevron {
+    transform: rotate(180deg);
+}
+
+.docent-accordion-chevron svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.docent-accordion-content {
+    padding: 0 0 1.1rem;
+    color: var(--docent-muted);
+}
+
+.docent-prose .docent-accordion-content > :first-child,
+.docent-prose .docent-tab-panel > :first-child {
+    margin-top: 0;
+}
+
+.docent-prose .docent-accordion-content > :last-child,
+.docent-prose .docent-tab-panel > :last-child {
+    margin-bottom: 0;
+}
+
+.docent-tabs {
+    margin: 1.75rem 0;
+    min-width: 0;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.docent-tab-list {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding: 0.45rem;
+    border-bottom: 1px solid var(--docent-border);
+    background-color: var(--docent-panel);
+    scrollbar-width: thin;
+}
+
+.docent-tab-list [role='tab'] {
+    flex: none;
+    padding: 0.45rem 0.75rem;
+    border: 0;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: var(--docent-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.docent-tab-list [role='tab'][aria-selected='true'] {
+    background-color: var(--docent-bg);
+    color: var(--docent-strong);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+.dark .docent-tab-list [role='tab'][aria-selected='true'] {
+    box-shadow: none;
+}
+
+.docent-tab-panel {
+    padding: 1.15rem 1.25rem;
+}
+
+.docent-tab-label {
+    margin-bottom: 0.5rem;
+    color: var(--docent-strong);
+    font-weight: 650;
+}
+
+.docent-frame {
+    margin: 1.75rem 0;
+}
+
+.docent-frame-content {
+    overflow: hidden;
+    border: 1px solid var(--docent-border);
+    border-radius: 0.8rem;
+    background-color: var(--docent-panel);
+}
+
+.docent-prose .docent-frame-content p {
+    margin: 0;
+}
+
+.docent-prose .docent-frame-content img {
+    display: block;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+    cursor: zoom-in;
+}
+
+.docent-frame figcaption {
+    margin-top: 0.6rem;
+    color: var(--docent-muted);
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.docent-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background-color: rgb(2 6 23 / 0.88);
+}
+
+.docent-prose .docent-lightbox img {
+    max-width: min(92vw, 90rem);
+    max-height: 88vh;
+    margin: 0;
+    border-radius: 0.5rem;
+    object-fit: contain;
+}
+
+.docent-lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid rgb(255 255 255 / 0.3);
+    border-radius: 999px;
+    background-color: rgb(15 23 42 / 0.65);
+    color: #fff;
+    cursor: pointer;
+}
+
+.docent-lightbox-close svg {
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+@media (max-width: 480px) {
+    .docent-tab-panel {
+        padding: 1rem;
+    }
+
+    .docent-lightbox {
+        padding: 1rem;
+    }
+}
+
+/*
+| ---------------------------------------------------------------------------
 | Landing hero
 | ---------------------------------------------------------------------------
 */
@@ -587,5 +838,29 @@ a.docent-card:hover {
 
     .docent-main {
         max-width: none;
+    }
+
+    .docent-accordion-panel,
+    .docent-tab-panel {
+        display: block !important;
+    }
+
+    .docent-accordion-panel[hidden] {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .docent-tab-list,
+    .docent-lightbox,
+    .docent-accordion-chevron {
+        display: none !important;
+    }
+
+    .docent-tab-panel::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.4rem;
+        font-weight: 700;
     }
 }

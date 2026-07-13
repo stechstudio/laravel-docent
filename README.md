@@ -52,6 +52,12 @@ Your account is on the **{{ value:account.plan }}** plan.
 
 Directories become navigation groups (customize with a `_group.yml`), `_partials/` holds reusable fragments for `:::include`, and callouts use the same fence syntax: `:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`.
 
+Task-focused guides can also use `:::steps` with titled `:::step` items,
+collapsible `:::accordion` answers, `:::tabs` with labeled `:::tab` panels, and
+`:::frame caption="…"` around screenshots. These remain readable in search,
+print, and agent-facing Markdown; headings inside accordions and tabs keep their
+normal deep links and table-of-contents entries.
+
 When the database-backed admin is enabled, editors can normally create an editable copy of a repository page. Add `locked: true` to a page's front matter when the repository version must always win. The same key in `_group.yml` locks every repository page and partial below that directory; a page-level `locked: false` cannot weaken the group lock. Locked pages remain visible in the admin as rendered, read-only content.
 
 ## Connecting your application

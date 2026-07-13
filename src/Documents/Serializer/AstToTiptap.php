@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Documents\Serializer;
 
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AudienceBlock;
 use STS\Docent\Documents\Ast\AuthorizationBlock;
@@ -17,6 +18,7 @@ use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\HardBreak;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\HtmlBlock;
@@ -30,12 +32,16 @@ use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\SoftBreak;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Table;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\TableRow;
 use STS\Docent\Documents\Ast\TableSection;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
@@ -108,6 +114,12 @@ final class AstToTiptap
             $node instanceof AudienceBlock => ['type' => 'docsAudience', 'attrs' => ['name' => $node->audience], 'content' => $this->blocks($node->children)],
             $node instanceof CardGroup => ['type' => 'docsCards', 'attrs' => ['columns' => $node->columns], 'content' => $this->blocks($node->children)],
             $node instanceof Card => ['type' => 'docsCard', 'attrs' => ['title' => $node->title, 'icon' => $node->icon, 'href' => $node->href], 'content' => $this->blocks($node->children)],
+            $node instanceof Steps => ['type' => 'docsSteps', 'content' => $this->blocks($node->children)],
+            $node instanceof Step => ['type' => 'docsStep', 'attrs' => ['title' => $node->title], 'content' => $this->blocks($node->children)],
+            $node instanceof Accordion => ['type' => 'docsAccordion', 'attrs' => ['title' => $node->title], 'content' => $this->blocks($node->children)],
+            $node instanceof Tabs => ['type' => 'docsTabs', 'content' => $this->blocks($node->children)],
+            $node instanceof Tab => ['type' => 'docsTab', 'attrs' => ['label' => $node->label], 'content' => $this->blocks($node->children)],
+            $node instanceof Frame => ['type' => 'docsFrame', 'attrs' => ['caption' => $node->caption], 'content' => $this->blocks($node->children)],
             $node instanceof IncludeNode => ['type' => 'docsInclude', 'attrs' => ['name' => $node->name]],
             $node instanceof ComponentNode => ['type' => 'docsComponent', 'attrs' => ['name' => $node->name, 'attributes' => (object) $node->attributes]],
             default => ['type' => 'paragraph', 'content' => $this->inlines([$node])],

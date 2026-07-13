@@ -30,6 +30,7 @@ use League\CommonMark\Node\Block\Paragraph as CmParagraph;
 use League\CommonMark\Node\Inline\Newline as CmNewline;
 use League\CommonMark\Node\Inline\Text as CmText;
 use League\CommonMark\Node\Node as CmNode;
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AudienceBlock;
 use STS\Docent\Documents\Ast\AuthorizationBlock;
@@ -44,6 +45,7 @@ use STS\Docent\Documents\Ast\CodeBlock;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\HardBreak;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\HtmlBlock;
@@ -57,12 +59,16 @@ use STS\Docent\Documents\Ast\Node as AstNode;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\SoftBreak;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Table;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\TableRow;
 use STS\Docent\Documents\Ast\TableSection;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
@@ -198,6 +204,12 @@ final class AstConverter
                 $attributes['href'] ?? null,
                 $line,
             ),
+            'steps' => new Steps($line),
+            'step' => new Step($attributes['title'] ?? $shorthand ?? '', $line),
+            'accordion' => new Accordion($attributes['title'] ?? $shorthand ?? '', $line),
+            'tabs' => new Tabs($line),
+            'tab' => new Tab($attributes['label'] ?? $shorthand ?? '', $line),
+            'frame' => new Frame($attributes['caption'] ?? $shorthand, $line),
             default => new Callout(
                 CalloutType::tryFromName($node->name) ?? CalloutType::Note,
                 $attributes['title'] ?? $shorthand,

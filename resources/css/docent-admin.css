@@ -844,6 +844,28 @@
 .dax-card-body > :first-child { margin-top: 0; }
 .dax-card-body > :last-child { margin-bottom: 0; }
 
+/* --- Content components --------------------------------------------------- */
+.dax-node-steps { --dax-accent: #0f766e; }
+.dax-node-step { --dax-accent: #14b8a6; margin: 0.55rem; }
+.dax-node-accordion { --dax-accent: #7c3aed; }
+.dax-node-tabs { --dax-accent: #2563eb; }
+.dax-node-tab { --dax-accent: #60a5fa; margin: 0.55rem; }
+.dax-node-frame { --dax-accent: #d97706; }
+
+.dax-node-meta {
+    max-width: 22rem;
+    overflow: hidden;
+    color: var(--docent-muted);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dax-node-steps > .dax-node-body,
+.dax-node-tabs > .dax-node-body {
+    padding: 0.15rem;
+}
+
 /* --- Widgets (include / component / html block atoms) ---------------------- */
 .dax-widget {
     display: flex;

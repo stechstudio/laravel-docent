@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Artisan;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
+use STS\Docent\Documents\Parser\MarkdownDocumentParser;
 
 /**
  * Point the repository at a fixture tree and run the check command, returning
@@ -127,4 +128,30 @@ it('validates persistent navigation link targets and icons', function () {
         ->expectsOutputToContain('unknown-icon')
         ->expectsOutputToContain('navigation.topbar.0')
         ->assertFailed();
+});
+
+it('reports invalid and empty content component structures in draft checks', function () {
+    $document = (new MarkdownDocumentParser)->parse(<<<'MD'
+    :::step Orphaned
+    Body.
+    :::
+
+    :::tab Orphaned
+    Body.
+    :::
+
+    :::steps
+    :::
+
+    :::tabs
+    :::
+
+    :::frame caption="No screenshot"
+    Text only.
+    :::
+    MD);
+
+    $checks = array_column(app(DocentManager::class)->draftIssues('components', $document), 'check');
+
+    expect($checks)->toContain('orphan-step', 'orphan-tab', 'empty-steps', 'empty-tabs', 'frame-without-image');
 });

@@ -25,10 +25,18 @@ final class AttributeParser
             }
         }
 
-        // A shorthand is a leading bare token with no `=` (e.g. `advanced-exports`).
+        // Everything before the first key="value" pair is shorthand. This
+        // supports both identifier shorthands (`:::when beta`) and human labels
+        // (`:::step Install the package`) without forcing quotes around prose.
         $shorthand = null;
-        if (preg_match('/^([^\s"=]+)(?:\s|$)/', $input, $m) === 1 && ! str_contains($m[1], '=')) {
-            $shorthand = $m[1];
+        $attributeOffset = null;
+        if (preg_match('/(?:^|\s)[A-Za-z_][A-Za-z0-9_-]*\s*=\s*"/', $input, $match, PREG_OFFSET_CAPTURE) === 1) {
+            $attributeOffset = $match[0][1];
+        }
+
+        $candidate = trim($attributeOffset === null ? $input : substr($input, 0, $attributeOffset));
+        if ($candidate !== '') {
+            $shorthand = $candidate;
         }
 
         return ['attributes' => $attributes, 'shorthand' => $shorthand];

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AppLinkKind;
 use STS\Docent\Documents\Ast\AudienceBlock;
@@ -18,6 +19,7 @@ use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\HtmlBlock;
 use STS\Docent\Documents\Ast\Image;
@@ -27,11 +29,15 @@ use STS\Docent\Documents\Ast\Link;
 use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Table;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\TableSection;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
@@ -177,6 +183,10 @@ it('parses every docs* block node', function () {
         ['type' => 'docsInclude', 'attrs' => ['name' => 'permissions-note']],
         ['type' => 'docsComponent', 'attrs' => ['name' => 'plan-usage', 'attributes' => ['plan' => 'pro']]],
         ['type' => 'docsHtml', 'attrs' => ['html' => '<aside>Raw</aside>']],
+        ['type' => 'docsSteps', 'content' => [['type' => 'docsStep', 'attrs' => ['title' => 'Install'], 'content' => [['type' => 'paragraph']]]]],
+        ['type' => 'docsAccordion', 'attrs' => ['title' => 'Question'], 'content' => [['type' => 'paragraph']]],
+        ['type' => 'docsTabs', 'content' => [['type' => 'docsTab', 'attrs' => ['label' => 'iOS'], 'content' => [['type' => 'paragraph']]]]],
+        ['type' => 'docsFrame', 'attrs' => ['caption' => 'Screenshot'], 'content' => [['type' => 'paragraph', 'content' => [['type' => 'image', 'attrs' => ['src' => '/shot.png', 'alt' => 'Shot']]]]]],
     ]);
 
     $gate = docFind($doc, AuthorizationBlock::class);
@@ -192,7 +202,13 @@ it('parses every docs* block node', function () {
         ->and(docFind($doc, Callout::class)->title)->toBe('Heads up')
         ->and(docFind($doc, IncludeNode::class)->name)->toBe('permissions-note')
         ->and(docFind($doc, ComponentNode::class)->attributes)->toBe(['plan' => 'pro'])
-        ->and(docFind($doc, HtmlBlock::class)->html)->toBe('<aside>Raw</aside>');
+        ->and(docFind($doc, HtmlBlock::class)->html)->toBe('<aside>Raw</aside>')
+        ->and(docFind($doc, Steps::class))->not->toBeNull()
+        ->and(docFind($doc, Step::class)->title)->toBe('Install')
+        ->and(docFind($doc, Accordion::class)->title)->toBe('Question')
+        ->and(docFind($doc, Tabs::class))->not->toBeNull()
+        ->and(docFind($doc, Tab::class)->label)->toBe('iOS')
+        ->and(docFind($doc, Frame::class)->caption)->toBe('Screenshot');
 });
 
 it('parses cards containing cards containing paragraphs (nesting)', function () {

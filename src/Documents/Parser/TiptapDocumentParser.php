@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Documents\Parser;
 
 use InvalidArgumentException;
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AppLinkKind;
 use STS\Docent\Documents\Ast\AudienceBlock;
@@ -21,6 +22,7 @@ use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\HardBreak;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\HtmlBlock;
@@ -32,12 +34,16 @@ use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node as AstNode;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Table;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\TableRow;
 use STS\Docent\Documents\Ast\TableSection;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
@@ -119,6 +125,12 @@ final class TiptapDocumentParser implements DocumentParser
                 $this->nullableStringAttr($node, 'icon'),
                 $this->nullableStringAttr($node, 'href'),
             ), $node),
+            'docsSteps' => $this->withBlocks(new Steps, $node),
+            'docsStep' => $this->withBlocks(new Step($this->stringAttr($node, 'title')), $node),
+            'docsAccordion' => $this->withBlocks(new Accordion($this->stringAttr($node, 'title')), $node),
+            'docsTabs' => $this->withBlocks(new Tabs, $node),
+            'docsTab' => $this->withBlocks(new Tab($this->stringAttr($node, 'label')), $node),
+            'docsFrame' => $this->withBlocks(new Frame($this->nullableStringAttr($node, 'caption')), $node),
             'docsInclude' => new IncludeNode($this->stringAttr($node, 'name')),
             'docsComponent' => new ComponentNode($this->stringAttr($node, 'name'), $this->attributesAttr($node)),
             'docsHtml' => new HtmlBlock($this->stringAttr($node, 'html')),

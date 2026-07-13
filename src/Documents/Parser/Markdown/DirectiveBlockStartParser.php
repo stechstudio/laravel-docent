@@ -24,6 +24,7 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
         'can', 'cannot', 'when', 'unless', 'audience', 'include',
         'note', 'tip', 'info', 'warning', 'danger',
         'cards', 'card',
+        'steps', 'step', 'accordion', 'tabs', 'tab', 'frame',
     ];
 
     public function tryStart(Cursor $cursor, MarkdownParserStateInterface $parserState): ?BlockStart

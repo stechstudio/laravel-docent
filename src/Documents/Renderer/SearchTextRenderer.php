@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Documents\Renderer;
 
 use Closure;
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AudienceBlock;
 use STS\Docent\Documents\Ast\AuthorizationBlock;
 use STS\Docent\Documents\Ast\BlockQuote;
@@ -12,6 +13,7 @@ use STS\Docent\Documents\Ast\Callout;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\CodeBlock;
 use STS\Docent\Documents\Ast\ConditionBlock;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\HardBreak;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\Image;
@@ -21,6 +23,8 @@ use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\SoftBreak;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
@@ -78,6 +82,10 @@ final class SearchTextRenderer
 
             // Cards are static content: their title and body are indexed.
             $node instanceof Card => ($node->title ?? '')."\n".$this->renderChildren($node)."\n\n",
+            $node instanceof Step => $node->title."\n".$this->renderChildren($node)."\n\n",
+            $node instanceof Accordion => $node->title."\n".$this->renderChildren($node)."\n\n",
+            $node instanceof Tab => $node->label."\n".$this->renderChildren($node)."\n\n",
+            $node instanceof Frame => ($node->caption ?? '')."\n".$this->renderChildren($node)."\n\n",
 
             $node instanceof CodeBlock => $node->code."\n\n",
             $node instanceof ListItem => $this->renderChildren($node)."\n",

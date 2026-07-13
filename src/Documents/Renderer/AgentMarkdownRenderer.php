@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Documents\Renderer;
 
 use Closure;
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AppLinkKind;
 use STS\Docent\Documents\Ast\AudienceBlock;
@@ -17,14 +18,21 @@ use STS\Docent\Documents\Ast\CardGroup;
 use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
+use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\Image;
 use STS\Docent\Documents\Ast\IncludeNode;
 use STS\Docent\Documents\Ast\Link;
 use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node;
+use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
@@ -139,6 +147,30 @@ final class AgentMarkdownRenderer
             return [$this->cards([$node])];
         }
 
+        if ($node instanceof Steps) {
+            return [$this->steps($node)];
+        }
+
+        if ($node instanceof Step) {
+            return [$this->stepsFrom([$node])];
+        }
+
+        if ($node instanceof Accordion) {
+            return [$this->label($node->title, $node->line), ...$this->transformChildren($node)];
+        }
+
+        if ($node instanceof Tabs) {
+            return $this->tabs($node);
+        }
+
+        if ($node instanceof Tab) {
+            return [$this->label($node->label, $node->line), ...$this->transformChildren($node)];
+        }
+
+        if ($node instanceof Frame) {
+            return $this->frame($node);
+        }
+
         $copy = clone $node;
 
         if ($copy instanceof Link) {
@@ -221,6 +253,89 @@ final class AgentMarkdownRenderer
         }
 
         return $list;
+    }
+
+    private function steps(Steps $node): OrderedList
+    {
+        return $this->stepsFrom($node->children);
+    }
+
+    /** @param list<Node> $nodes */
+    private function stepsFrom(array $nodes): OrderedList
+    {
+        $list = new OrderedList;
+
+        foreach ($nodes as $node) {
+            if (! $node instanceof Step) {
+                continue;
+            }
+
+            $item = new ListItem(line: $node->line);
+            $item->setChildren([$this->label($node->title, $node->line), ...$this->transformChildren($node)]);
+            $list->appendChild($item);
+        }
+
+        return $list;
+    }
+
+    /** @return list<Node> */
+    private function tabs(Tabs $node): array
+    {
+        $children = [];
+
+        foreach ($node->children as $tab) {
+            if (! $tab instanceof Tab) {
+                continue;
+            }
+
+            array_push($children, $this->label($tab->label, $tab->line), ...$this->transformChildren($tab));
+        }
+
+        return $children;
+    }
+
+    /** @return list<Node> */
+    private function frame(Frame $node): array
+    {
+        $children = array_values(array_filter(
+            $this->transformChildren($node),
+            fn (Node $child): bool => $this->containsImage($child),
+        ));
+
+        if ($node->caption !== null && $node->caption !== '') {
+            $caption = new Paragraph($node->line);
+            $emphasis = new Emphasis($node->line);
+            $emphasis->appendChild(new Text($node->caption, $node->line));
+            $caption->appendChild($emphasis);
+            $children[] = $caption;
+        }
+
+        return $children;
+    }
+
+    private function containsImage(Node $node): bool
+    {
+        if ($node instanceof Image) {
+            return true;
+        }
+
+        foreach ($node->children as $child) {
+            if ($this->containsImage($child)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function label(string $text, ?int $line): Paragraph
+    {
+        $paragraph = new Paragraph($line);
+        $strong = new Strong($line);
+        $strong->appendChild(new Text($text, $line));
+        $paragraph->appendChild($strong);
+
+        return $paragraph;
     }
 
     private function applicationLink(AppLink $node): ?string

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Validation;
 
 use STS\Docent\Validation\Checks\BrokenLinkCheck;
+use STS\Docent\Validation\Checks\ContentComponentCheck;
 use STS\Docent\Validation\Checks\DuplicateSlugCheck;
 use STS\Docent\Validation\Checks\FrontMatterCheck;
 use STS\Docent\Validation\Checks\HeadingHierarchyCheck;
@@ -54,6 +55,7 @@ final class DocsChecker
             new MissingIncludeCheck,
             new IncludeCycleCheck,
             new MissingImageCheck,
+            new ContentComponentCheck,
             new HeadingHierarchyCheck,
             new UnknownIconCheck,
             new UnknownSuggestionCheck,
@@ -83,6 +85,7 @@ final class DocsChecker
             new UnknownAudienceCheck,
             new UnknownAbilityCheck,
             new MissingIncludeCheck,
+            new ContentComponentCheck,
             new UnknownIconCheck,
         ]);
     }

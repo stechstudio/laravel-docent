@@ -1,0 +1,79 @@
+---
+title: Content Components
+description: Interactive patterns for task-focused guides and visual explanations.
+order: 5
+---
+
+# Content Components
+
+Use these components to make a guide easier to scan without hiding its meaning
+from search, print, or agent-readable Markdown.
+
+## Complete a setup
+
+::::steps
+:::step Install the package
+Run Composer from your application directory:
+
+```bash
+composer require stechstudio/laravel-docent
+```
+:::
+:::step Publish the configuration
+Publish Docent's configuration file, then adjust the route and branding for
+your application.
+
+:::can billing.manage
+Administrators can also enable the contextual billing guide from this screen.
+:::
+:::
+:::step Add your first guide
+Create a Markdown file in `resources/docs` and give it a title in front matter.
+:::
+::::
+
+## Answer common questions
+
+:::accordion How do refunds work?
+Refunds return to the original payment method. Most banks show the credit within
+five to ten business days.
+
+### Refund timing
+
+The exact timing depends on the customer's bank, not the day the refund was
+requested.
+:::
+:::accordion Can I cancel a pending refund?
+No. Once submitted, a refund cannot be cancelled.
+:::
+
+## Compare platforms
+
+::::tabs
+:::tab iOS
+Install the app from the App Store, then sign in with your workspace email.
+
+### iOS notifications
+
+Allow notifications when prompted so approval requests can reach you.
+:::
+:::tab Android
+Install the app from Google Play, then sign in with your workspace email.
+
+### Android notifications
+
+Keep battery optimization disabled for time-sensitive approval requests.
+:::
+::::
+
+## Show the interface
+
+:::frame caption="The billing overview screen"
+![A sample billing overview with plan and invoice details](https://placehold.co/1200x720/eff6ff/1e3a8a?text=Billing+overview)
+:::
+
+:::can reports.view
+:::accordion Where can administrators find exports?
+Open **Reports**, choose an export, and select the date range you need.
+:::
+:::

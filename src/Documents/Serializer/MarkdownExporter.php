@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Documents\Serializer;
 
+use STS\Docent\Documents\Ast\Accordion;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\AudienceBlock;
 use STS\Docent\Documents\Ast\AuthorizationBlock;
@@ -18,6 +19,7 @@ use STS\Docent\Documents\Ast\ComponentNode;
 use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\Emphasis;
+use STS\Docent\Documents\Ast\Frame;
 use STS\Docent\Documents\Ast\HardBreak;
 use STS\Docent\Documents\Ast\Heading;
 use STS\Docent\Documents\Ast\HtmlBlock;
@@ -31,12 +33,16 @@ use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\SoftBreak;
+use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
+use STS\Docent\Documents\Ast\Tab;
 use STS\Docent\Documents\Ast\Table;
 use STS\Docent\Documents\Ast\TableCell;
 use STS\Docent\Documents\Ast\TableRow;
 use STS\Docent\Documents\Ast\TableSection;
+use STS\Docent\Documents\Ast\Tabs;
 use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Document;
@@ -122,7 +128,10 @@ final class MarkdownExporter
             $node instanceof ComponentNode => $this->component($node),
             $node instanceof Callout, $node instanceof AuthorizationBlock,
             $node instanceof ConditionBlock, $node instanceof AudienceBlock,
-            $node instanceof CardGroup, $node instanceof Card => $this->directive($node),
+            $node instanceof CardGroup, $node instanceof Card,
+            $node instanceof Steps, $node instanceof Step,
+            $node instanceof Accordion, $node instanceof Tabs,
+            $node instanceof Tab, $node instanceof Frame => $this->directive($node),
             default => '',
         };
     }
@@ -331,6 +340,12 @@ final class MarkdownExporter
                 .($node->title !== null ? ' title="'.$node->title.'"' : '')
                 .($node->icon !== null ? ' icon="'.$node->icon.'"' : '')
                 .($node->href !== null ? ' href="'.$node->href.'"' : ''),
+            $node instanceof Steps => 'steps',
+            $node instanceof Step => 'step'.($node->title !== '' ? ' '.$node->title : ''),
+            $node instanceof Accordion => 'accordion'.($node->title !== '' ? ' '.$node->title : ''),
+            $node instanceof Tabs => 'tabs',
+            $node instanceof Tab => 'tab'.($node->label !== '' ? ' '.$node->label : ''),
+            $node instanceof Frame => 'frame'.($node->caption !== null ? ' caption="'.$node->caption.'"' : ''),
             default => '',
         };
     }
@@ -388,7 +403,13 @@ final class MarkdownExporter
             || $node instanceof AudienceBlock
             || $node instanceof Callout
             || $node instanceof CardGroup
-            || $node instanceof Card;
+            || $node instanceof Card
+            || $node instanceof Steps
+            || $node instanceof Step
+            || $node instanceof Accordion
+            || $node instanceof Tabs
+            || $node instanceof Tab
+            || $node instanceof Frame;
     }
 
     /**

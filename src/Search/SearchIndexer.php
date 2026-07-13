@@ -7,7 +7,11 @@ namespace STS\Docent\Search;
 use Illuminate\Support\Str;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
+use STS\Docent\Documents\Ast\AudienceBlock;
+use STS\Docent\Documents\Ast\AuthorizationBlock;
+use STS\Docent\Documents\Ast\ConditionBlock;
 use STS\Docent\Documents\Ast\Heading;
+use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\Renderer\NodeText;
 use STS\Docent\Documents\Renderer\SearchTextRenderer;
@@ -20,8 +24,8 @@ use STS\Docent\Support\DocentCache;
  * whenever any content file changes, and `docent:clear` orphans it.
  *
  * The index is context-free by construction: bodies come from the leak-safe
- * {@see SearchTextRenderer}, and headings are read only from the document's top
- * level (never from inside conditional blocks), so nothing gated is indexed.
+ * {@see SearchTextRenderer}, and headings are collected recursively while
+ * conditional subtrees remain opaque, so nothing gated is indexed.
  */
 final class SearchIndexer
 {
@@ -82,8 +86,8 @@ final class SearchIndexer
     }
 
     /**
-     * Section headings (level 2+) with their anchor slugs, read only from the
-     * document's top level so headings inside conditional blocks never leak.
+     * Section headings (level 2+) with their anchor slugs. Content-component
+     * containers are traversed; conditional containers are never traversed.
      *
      * @return list<array{title: string, slug: string}>
      */
@@ -91,13 +95,25 @@ final class SearchIndexer
     {
         $headings = [];
 
-        foreach ($document->children as $child) {
+        $this->collectHeadings($document, $headings);
+
+        return $headings;
+    }
+
+    /** @param list<array{title: string, slug: string}> $headings */
+    private function collectHeadings(Node $node, array &$headings): void
+    {
+        foreach ($node->children as $child) {
+            if ($child instanceof AuthorizationBlock || $child instanceof ConditionBlock || $child instanceof AudienceBlock) {
+                continue;
+            }
+
             if ($child instanceof Heading && $child->level >= 2) {
                 $headings[] = ['title' => trim(NodeText::extract($child)), 'slug' => $child->slug];
             }
-        }
 
-        return $headings;
+            $this->collectHeadings($child, $headings);
+        }
     }
 
     private function group(string $directory): string
