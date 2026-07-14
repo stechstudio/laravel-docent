@@ -102,6 +102,7 @@ it('renders a dedicated reader Assistant outside search', function () {
         ->assertSee('Open Assistant')
         ->assertSee('Ask Assistant')
         ->assertSee('Answers from these docs.')
+        ->assertDontSee('Temporary conversation. Answers are grounded in the docs available to you.')
         ->assertDontSee('Back to results')
         ->assertDontSee('From the docs');
 });

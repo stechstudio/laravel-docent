@@ -99,11 +99,10 @@
                         </a>
                     @endforeach
                     @if($aiEnabled)
-                        <button type="button" @click="$dispatch('docent:assistant-open')" aria-label="Open Assistant"
-                                class="inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                        <button type="button" @click="$dispatch('docent:assistant-open')" aria-label="Open Assistant" title="Open Assistant (⌘I)"
+                                class="relative inline-flex size-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                            <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                             <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('chat-bubble-left-right') !!}</span>
-                            <span class="hidden md:inline">Assistant</span>
-                            <kbd data-docent-assistant-kbd class="hidden rounded bg-slate-950/5 px-1.5 py-0.5 font-sans text-[0.6875rem] text-slate-400 xl:inline dark:bg-white/10">⌘I</kbd>
                         </button>
                     @endif
                     @if($searchEnabled)

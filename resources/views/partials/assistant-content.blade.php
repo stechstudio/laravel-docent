@@ -138,7 +138,7 @@
     </div>
 
     <footer class="shrink-0 border-t border-slate-950/10 bg-white p-3 dark:border-white/10 dark:bg-slate-950 sm:p-4">
-        <form @submit.prevent="submit()" class="mx-auto flex max-w-3xl flex-col gap-2">
+        <form @submit.prevent="submit()" class="mx-auto max-w-3xl">
             <div class="relative rounded-2xl bg-white shadow-sm ring-1 ring-slate-950/10 focus-within:ring-2 focus-within:ring-[var(--docent-accent)] dark:bg-slate-900 dark:shadow-none dark:ring-white/10">
                 <label for="docent-assistant-question-{{ $widgetAssistant ? 'widget' : 'reader' }}" class="sr-only">Ask the Assistant</label>
                 <textarea id="docent-assistant-question-{{ $widgetAssistant ? 'widget' : 'reader' }}" name="question" x-ref="assistantComposer" x-model="composer"
@@ -154,7 +154,6 @@
                     <span class="[&_svg]:size-4" aria-hidden="true">{!! $stopIcon !!}</span>
                 </button>
             </div>
-            <p class="text-center text-xs text-slate-500 dark:text-slate-400">Temporary conversation. Answers are grounded in the docs available to you.</p>
         </form>
     </footer>
 

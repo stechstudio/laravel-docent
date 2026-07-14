@@ -30,7 +30,10 @@ it('renders Assistant as a widget view only when AI is enabled', function () {
         ->assertSee('data-docent-assistant-enabled', false)
         ->assertSee('data-docent-assistant-panel', false)
         ->assertSee('Ask Assistant')
-        ->assertSee('Answers from these docs.');
+        ->assertSee('aria-label="Open Assistant"', false)
+        ->assertSee('id="docent-assistant-title-widget"', false)
+        ->assertSee('aria-label="Open full docs"', false)
+        ->assertDontSee('Temporary conversation. Answers are grounded in the docs available to you.');
 
     config()->set('docent.ai.enabled', false);
 

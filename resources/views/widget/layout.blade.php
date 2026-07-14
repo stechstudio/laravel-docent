@@ -68,21 +68,25 @@
                             <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                             <span class="[&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('arrow-left') !!}</span>
                         </button>
-                        <div class="min-w-0 flex-1">
-                            <p id="docent-assistant-title-widget" class="truncate text-base font-semibold text-slate-950 dark:text-white sm:text-sm">Assistant</p>
-                            <p class="truncate text-sm text-slate-500 dark:text-slate-400">Answers from these docs.</p>
-                        </div>
+                        <p id="docent-assistant-title-widget" class="min-w-0 flex-1 truncate text-base font-semibold text-slate-950 dark:text-white sm:text-sm">Assistant</p>
                         <button x-show="messages.length > 0" x-cloak type="button" @click="newConversation()" aria-label="Start a new conversation"
                                 class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                             <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                             <span class="[&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('trash') !!}</span>
                         </button>
                     </div>
+
+                    <button x-show="!assistantOpen" x-cloak type="button" @click="$dispatch('docent:assistant-open')" aria-label="Open Assistant" title="Open Assistant"
+                            class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                        <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
+                        <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('chat-bubble-left-right') !!}</span>
+                    </button>
                 @endif
 
-                <a href="{{ $fullDocsUrl }}" target="_top" class="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" title="Open full docs">
-                    <span class="hidden min-[360px]:inline">Full docs</span>
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7"/><path d="M10 14 21 3"/><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>
+                <a href="{{ $fullDocsUrl }}" target="_top" aria-label="Open full docs" title="Open full docs"
+                   class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
+                    <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('book-open') !!}</span>
                 </a>
 
                 <button type="button" data-docent-widget-close aria-label="Close help" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
