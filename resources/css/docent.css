@@ -52,6 +52,162 @@
 @import './shared/prose.css';
 
 @layer components {
+    @media (min-width: 1280px) {
+        .docent-assistant-is-open {
+            padding-right: 26.25rem;
+        }
+
+        .docent-assistant-is-open .docent-rail {
+            display: none;
+        }
+    }
+
+    .docent-assistant-prose {
+        color: var(--color-slate-700);
+        font-size: 1rem;
+        line-height: 1.75;
+        overflow-wrap: anywhere;
+    }
+
+    .docent-assistant-prose > * + * {
+        margin-top: 1rem;
+    }
+
+    .docent-assistant-prose h1,
+    .docent-assistant-prose h2,
+    .docent-assistant-prose h3,
+    .docent-assistant-prose h4,
+    .docent-assistant-prose h5,
+    .docent-assistant-prose h6 {
+        color: var(--color-slate-950);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .docent-assistant-prose h1,
+    .docent-assistant-prose h2 {
+        font-size: var(--text-lg);
+    }
+
+    .docent-assistant-prose h3,
+    .docent-assistant-prose h4,
+    .docent-assistant-prose h5,
+    .docent-assistant-prose h6 {
+        font-size: var(--text-base);
+    }
+
+    .docent-assistant-prose ul,
+    .docent-assistant-prose ol {
+        padding-left: 1.4em;
+    }
+
+    .docent-assistant-prose ul {
+        list-style: disc;
+    }
+
+    .docent-assistant-prose ol {
+        list-style: decimal;
+    }
+
+    .docent-assistant-prose li + li {
+        margin-top: 0.35rem;
+    }
+
+    .docent-assistant-prose strong {
+        color: var(--color-slate-950);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .docent-assistant-prose :not(pre) > code {
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--color-slate-950) 6%, transparent);
+        color: var(--color-slate-900);
+        font-family: var(--font-mono);
+        font-size: 0.875em;
+        padding: 0.15em 0.35em;
+    }
+
+    .docent-assistant-prose pre {
+        position: relative;
+        max-width: 100%;
+        overflow-x: auto;
+        border-radius: var(--radius-xl);
+        background: var(--color-slate-950);
+        color: var(--color-slate-100);
+        padding: 1rem;
+    }
+
+    .docent-assistant-prose pre code {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        line-height: 1.7;
+    }
+
+    .docent-assistant-prose blockquote {
+        border-left: 3px solid color-mix(in srgb, var(--docent-accent) 45%, transparent);
+        color: var(--color-slate-600);
+        padding-left: 1rem;
+    }
+
+    .docent-assistant-link {
+        color: var(--docent-accent);
+        font-weight: var(--font-weight-medium);
+        text-decoration: underline;
+        text-decoration-color: color-mix(in srgb, var(--docent-accent) 35%, transparent);
+        text-underline-offset: 0.2em;
+    }
+
+    .docent-assistant-link:hover {
+        text-decoration-color: var(--docent-accent);
+    }
+
+    .docent-assistant-code-copy {
+        position: absolute;
+        right: 0.5rem;
+        top: 0.5rem;
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, white 10%, transparent);
+        color: var(--color-slate-300);
+        font-family: var(--font-sans);
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-medium);
+        line-height: 1;
+        padding: 0.45rem 0.55rem;
+    }
+
+    .docent-assistant-code-copy:hover {
+        background: color-mix(in srgb, white 16%, transparent);
+        color: white;
+    }
+
+    .dark .docent-assistant-prose {
+        color: var(--color-slate-200);
+    }
+
+    .dark .docent-assistant-prose h1,
+    .dark .docent-assistant-prose h2,
+    .dark .docent-assistant-prose h3,
+    .dark .docent-assistant-prose h4,
+    .dark .docent-assistant-prose h5,
+    .dark .docent-assistant-prose h6,
+    .dark .docent-assistant-prose strong {
+        color: white;
+    }
+
+    .dark .docent-assistant-prose :not(pre) > code {
+        background: color-mix(in srgb, white 10%, transparent);
+        color: var(--color-slate-100);
+    }
+
+    .dark .docent-assistant-prose blockquote {
+        color: var(--color-slate-300);
+    }
+
+    @media (min-width: 640px) {
+        .docent-assistant-prose {
+            font-size: 0.9375rem;
+        }
+    }
+
     .docent-widget-frame {
         min-width: 0;
         overflow-x: hidden;

@@ -172,3 +172,14 @@ it('does not register the search route when search is disabled', function () {
     // The wildcard page route now swallows the path and 404s.
     $this->get('/docs/_search?q=billing')->assertNotFound();
 });
+
+it('renders no Assistant controls or panel when AI is disabled', function () {
+    config()->set('docent.ai.enabled', false);
+
+    $this->get('/docs/guides/setup')
+        ->assertOk()
+        ->assertDontSee('data-docent-assistant-enabled', false)
+        ->assertDontSee('data-docent-assistant-panel', false)
+        ->assertDontSee('Ask Assistant')
+        ->assertDontSee('Open Assistant');
+});

@@ -1,8 +1,10 @@
 <?php
 
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use STS\Docent\DocentManager;
+use STS\Docent\DocentServiceProvider;
 
 it('renders compact widget home chrome with widget navigation', function () {
     $response = $this->get('/docs/_widget')->assertOk();
@@ -15,6 +17,28 @@ it('renders compact widget home chrome with widget navigation', function () {
         ->assertSee('href="http://localhost/docs/_widget/guides/setup"', false)
         ->assertDontSee('docent-sidebar', false)
         ->assertDontSee('On this page');
+});
+
+it('renders Assistant as a widget view only when AI is enabled', function () {
+    config()->set('docent.ai.enabled', true);
+    $this->app['router']->setRoutes(new RouteCollection);
+    (new DocentServiceProvider($this->app))->boot();
+    $this->app['router']->getRoutes()->refreshNameLookups();
+
+    $this->get('/docs/_widget')
+        ->assertOk()
+        ->assertSee('data-docent-assistant-enabled', false)
+        ->assertSee('data-docent-assistant-panel', false)
+        ->assertSee('Ask Assistant')
+        ->assertSee('Answers from these docs.');
+
+    config()->set('docent.ai.enabled', false);
+
+    $this->get('/docs/_widget')
+        ->assertOk()
+        ->assertDontSee('data-docent-assistant-enabled', false)
+        ->assertDontSee('docentAssistant', false)
+        ->assertDontSee('Ask Assistant');
 });
 
 it('renders visible sections as flat top-level widget groups', function () {

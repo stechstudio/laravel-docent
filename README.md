@@ -92,9 +92,13 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 
 ## Optional grounded answers
 
-Docent can add a single **Ask the docs** answer beneath regular search results
-and inside the help widget. Answers use only the current viewer's visible
-agent-readable corpus, and source chips are limited to URLs Docent supplied.
+Docent can add an **Assistant** that answers one question at a time from the
+help the current viewer can read. Readers can hand a search query to it, open
+it from the top bar, or press `Cmd/Ctrl+I`. Answers stream into a full-height
+panel with formatted code, copy controls, feedback, and links limited to pages
+Docent supplied. The completed answer stays available while the reader follows
+those links in the same browser tab.
+
 The feature is off by default and uses your own Prism provider and key:
 
 ```bash
@@ -110,7 +114,8 @@ composer require prism-php/prism
 ```
 
 Publish and run Docent's migrations to log questions and thumbs feedback. Set
-`log_questions` to `false` when no question analytics should be stored.
+`log_questions` to `false` when no question analytics should be stored. The
+Assistant does not send conversation history or provide multi-turn chat.
 
 ## Search that understands questions
 

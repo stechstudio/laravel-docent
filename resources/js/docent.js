@@ -1,166 +1,13 @@
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
+import { registerDocentAssistant } from './docent-assistant';
 
 Alpine.plugin(collapse);
+registerDocentAssistant(Alpine);
 
 function widgetAnalytics(event, detail = {}) {
     if (window.parent === window) return;
     window.parent.postMessage({ docent: 'event', event, detail }, window.location.origin);
-}
-
-function csrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-}
-
-async function consumeEventStream(response, onEvent) {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    const consume = (block) => {
-        if (!block.trim()) return;
-        let event = 'message';
-        const data = [];
-
-        for (const line of block.split(/\r?\n/)) {
-            if (line.startsWith('event:')) event = line.slice(6).trim();
-            if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
-        }
-
-        if (data.length === 0) return;
-        try {
-            onEvent(event, JSON.parse(data.join('\n')));
-        } catch (error) {}
-    };
-
-    while (true) {
-        const { value, done } = await reader.read();
-        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-        const blocks = buffer.split(/\r?\n\r?\n/);
-        buffer = blocks.pop() || '';
-        blocks.forEach(consume);
-        if (done) break;
-    }
-
-    consume(buffer);
-}
-
-function askDocsState(askUrl, feedbackUrl, mode = '') {
-    return {
-        askUrl,
-        feedbackUrl,
-        askMode: false,
-        asking: false,
-        answer: '',
-        citations: [],
-        questionId: null,
-        feedbackToken: null,
-        askError: '',
-        feedback: null,
-        _askAbort: null,
-
-        canAsk() {
-            return Boolean(this.askUrl) && this.query.trim() !== '';
-        },
-
-        resetAnswer() {
-            if (this._askAbort) this._askAbort.abort();
-            this._askAbort = null;
-            this.askMode = false;
-            this.asking = false;
-            this.answer = '';
-            this.citations = [];
-            this.questionId = null;
-            this.feedbackToken = null;
-            this.askError = '';
-            this.feedback = null;
-        },
-
-        backToResults() {
-            this.resetAnswer();
-            this.selected = 0;
-            this.$nextTick(() => this.$refs.input && this.$refs.input.focus());
-        },
-
-        async ask() {
-            if (!this.canAsk() || this.asking) return;
-
-            this.askMode = true;
-            this.asking = true;
-            this.answer = '';
-            this.citations = [];
-            this.questionId = null;
-            this.feedbackToken = null;
-            this.askError = '';
-            this.feedback = null;
-            this._askAbort = new AbortController();
-
-            try {
-                const suffix = mode ? `?mode=${encodeURIComponent(mode)}` : '';
-                const response = await fetch(`${this.askUrl}${suffix}`, {
-                    method: 'POST',
-                    headers: {
-                        Accept: 'text/event-stream',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken(),
-                    },
-                    body: JSON.stringify({ question: this.query.trim() }),
-                    signal: this._askAbort.signal,
-                });
-
-                if (!response.ok || !response.body) {
-                    const payload = await response.json().catch(() => ({}));
-                    throw new Error(payload.message || 'The documentation answer is unavailable.');
-                }
-
-                await consumeEventStream(response, (event, data) => {
-                    if (event === 'citations') {
-                        this.citations = Array.isArray(data.citations) ? data.citations : [];
-                        this.questionId = data.question_id || null;
-                        this.feedbackToken = data.feedback_token || null;
-                    } else if (event === 'text_delta') {
-                        this.answer += data.delta || '';
-                    } else if (event === 'error') {
-                        this.askError = data.message || 'The documentation answer is unavailable.';
-                    }
-                });
-            } catch (error) {
-                if (error.name !== 'AbortError') this.askError = error.message || 'The documentation answer is unavailable.';
-            } finally {
-                this.asking = false;
-                this._askAbort = null;
-            }
-        },
-
-        displayAnswer() {
-            return this.answer.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-        },
-
-        citedPages() {
-            const answerUrls = new Set(
-                (this.answer.match(/https?:\/\/[^\s<>()\]]+/g) || [])
-                    .map((url) => url.replace(/[.,;:!?]+$/, '')),
-            );
-
-            return this.citations.filter((citation) => citation.url && answerUrls.has(citation.url));
-        },
-
-        async sendFeedback(thumbs) {
-            if (!this.questionId || !this.feedbackToken || !this.feedbackUrl || this.feedback) return;
-
-            const response = await fetch(this.feedbackUrl, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken(),
-                },
-                body: JSON.stringify({ question_id: this.questionId, feedback_token: this.feedbackToken, thumbs }),
-            });
-
-            if (response.ok) this.feedback = thumbs;
-        },
-    };
 }
 
 /* ---------------------------------------------------------------------------
@@ -183,8 +30,8 @@ Alpine.store('theme', {
 /* ---------------------------------------------------------------------------
  * Search command palette.
  * ------------------------------------------------------------------------- */
-Alpine.data('docentSearch', (searchUrl, askUrl = null, feedbackUrl = null) => ({
-    ...askDocsState(askUrl, feedbackUrl),
+Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
+    assistantEnabled,
     open: false,
     query: '',
     results: [],
@@ -193,22 +40,28 @@ Alpine.data('docentSearch', (searchUrl, askUrl = null, feedbackUrl = null) => ({
     searched: false,
     _timer: null,
     _seq: 0,
+    _previousFocus: null,
+
+    canAsk() {
+        return this.assistantEnabled && this.query.trim() !== '';
+    },
 
     show() {
+        this._previousFocus = document.activeElement;
         this.reset();
         this.open = true;
         document.body.style.overflow = 'hidden';
         this.$nextTick(() => this.$refs.input && this.$refs.input.focus());
     },
 
-    hide() {
-        this.resetAnswer();
+    hide(restoreFocus = true) {
         this.open = false;
         document.body.style.overflow = '';
+        window.dispatchEvent(new CustomEvent('docent:surface-closed'));
+        if (restoreFocus) this.$nextTick(() => this._previousFocus?.focus?.());
     },
 
     reset() {
-        this.resetAnswer();
         this.query = '';
         this.results = [];
         this.selected = 0;
@@ -217,7 +70,6 @@ Alpine.data('docentSearch', (searchUrl, askUrl = null, feedbackUrl = null) => ({
     },
 
     onInput() {
-        if (this.askMode) this.resetAnswer();
         clearTimeout(this._timer);
         const q = this.query.trim();
 
@@ -253,7 +105,6 @@ Alpine.data('docentSearch', (searchUrl, askUrl = null, feedbackUrl = null) => ({
     },
 
     move(delta) {
-        if (this.askMode) return;
         const count = this.results.length + (this.canAsk() ? 1 : 0);
         if (count === 0) return;
         this.selected = (this.selected + delta + count) % count;
@@ -269,20 +120,42 @@ Alpine.data('docentSearch', (searchUrl, askUrl = null, feedbackUrl = null) => ({
     },
 
     enter() {
-        if (this.askMode) return;
         if (this.canAsk() && this.selected === this.results.length) {
-            this.ask();
+            this.handoff();
             return;
         }
         this.go(this.results[this.selected]);
+    },
+
+    handoff() {
+        const question = this.query.trim();
+        if (!this.canAsk()) return;
+        this.hide(false);
+        window.dispatchEvent(new CustomEvent('docent:assistant-open', { detail: { question, mode: 'reader' } }));
+    },
+
+    trap(event) {
+        const focusable = Array.from(this.$root.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        )).filter((element) => element.offsetParent !== null);
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     },
 }));
 
 /* ---------------------------------------------------------------------------
  * Compact, inline search used inside the same-origin widget frame.
  * ------------------------------------------------------------------------- */
-Alpine.data('docentWidgetSearch', (searchUrl, askUrl = null, feedbackUrl = null) => ({
-    ...askDocsState(askUrl, feedbackUrl, 'widget'),
+Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
+    assistantEnabled,
     query: '',
     results: [],
     selected: 0,
@@ -291,8 +164,11 @@ Alpine.data('docentWidgetSearch', (searchUrl, askUrl = null, feedbackUrl = null)
     _timer: null,
     _seq: 0,
 
+    canAsk() {
+        return this.assistantEnabled && this.query.trim() !== '';
+    },
+
     onInput() {
-        if (this.askMode) this.resetAnswer();
         clearTimeout(this._timer);
         const query = this.query.trim();
         if (query === '') {
@@ -326,7 +202,6 @@ Alpine.data('docentWidgetSearch', (searchUrl, askUrl = null, feedbackUrl = null)
     },
 
     move(delta) {
-        if (this.askMode) return;
         const count = this.results.length + (this.canAsk() ? 1 : 0);
         if (count === 0) return;
         this.selected = (this.selected + delta + count) % count;
@@ -343,19 +218,25 @@ Alpine.data('docentWidgetSearch', (searchUrl, askUrl = null, feedbackUrl = null)
     },
 
     enter() {
-        if (this.askMode) return;
         if (this.canAsk() && this.selected === this.results.length) {
-            this.ask();
+            this.handoff();
             return;
         }
         this.go(this.results[this.selected]);
     },
 
     setQuery(query) {
-        this.resetAnswer();
         this.query = String(query || '');
         this.onInput();
         this.$nextTick(() => this.$refs.input && this.$refs.input.focus());
+    },
+
+    handoff() {
+        const question = this.query.trim();
+        if (!this.canAsk()) return;
+        this.results = [];
+        this.searched = false;
+        window.dispatchEvent(new CustomEvent('docent:assistant-open', { detail: { question, mode: 'widget' } }));
     },
 }));
 
@@ -524,7 +405,7 @@ Alpine.data('docentVideo', () => ({
 }));
 
 /* ---------------------------------------------------------------------------
- * Global shortcuts: Cmd/Ctrl-K and "/" open search.
+ * Global shortcuts: Cmd/Ctrl-K opens search; Cmd/Ctrl-I opens Assistant.
  * ------------------------------------------------------------------------- */
 document.addEventListener('keydown', (e) => {
     const inField = /^(input|textarea|select)$/i.test((e.target.tagName || '')) || e.target.isContentEditable;
@@ -532,6 +413,9 @@ document.addEventListener('keydown', (e) => {
     if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('docent:search-open'));
+    } else if ((e.key === 'i' || e.key === 'I') && (e.metaKey || e.ctrlKey) && document.querySelector('[data-docent-assistant-enabled]')) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('docent:assistant-open', { detail: { mode: document.documentElement.hasAttribute('data-docent-widget') ? 'widget' : 'reader' } }));
     } else if (e.key === '/' && !inField) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('docent:search-open'));
@@ -542,6 +426,8 @@ document.addEventListener('keydown', (e) => {
 function normalizeKbd() {
     if (/Mac|iPhone|iPad|iPod/.test(navigator.platform)) return;
     document.querySelectorAll('[data-docent-kbd]').forEach((el) => (el.textContent = 'Ctrl K'));
+    document.querySelectorAll('[data-docent-assistant-kbd]').forEach((el) => (el.textContent = 'Ctrl I'));
+    document.querySelectorAll('[data-docent-ask-kbd]').forEach((el) => (el.textContent = 'Ctrl ↵'));
 }
 
 /* ---------------------------------------------------------------------------

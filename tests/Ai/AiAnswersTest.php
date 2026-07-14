@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Http\Request;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,7 @@ use Prism\Prism\Testing\TextResponseFake;
 use STS\Docent\Ai\AiAnswerService;
 use STS\Docent\Ai\Models\AiQuestion;
 use STS\Docent\Ai\PrismGuard;
+use STS\Docent\DocentManager;
 use STS\Docent\DocentServiceProvider;
 
 function fakeDocentAnswer(string $text): PrismFake
@@ -41,6 +43,14 @@ function streamedAnswer(string $stream): string
     ));
 }
 
+/** @return array<string, mixed> */
+function streamedEvent(string $stream, string $event): array
+{
+    preg_match('/event: '.preg_quote($event, '/').'\ndata: (\{.*\})\n\n/', $stream, $match);
+
+    return json_decode($match[1] ?? '{}', true, flags: JSON_THROW_ON_ERROR);
+}
+
 beforeEach(function () {
     RateLimiter::clear('docent-ai:'.sha1('ip:127.0.0.1'));
 });
@@ -54,8 +64,71 @@ it('streams the citation whitelist before Prism answer events', function () {
         ->toStartWith("event: citations\n")
         ->toContain('"slug":"guides/setup"')
         ->toContain("event: text_delta\n")
+        ->toContain("event: answer_rendered\n")
         ->toContain("event: stream_end\n");
     expect(streamedAnswer($stream))->toBe('Use the setup guide: http://localhost/docs/guides/setup');
+    expect(streamedEvent($stream, 'answer_rendered')['html'] ?? null)
+        ->toBe('<p>Use the setup guide: http://localhost/docs/guides/setup</p>');
+});
+
+it('renders a dedicated reader Assistant outside search', function () {
+    $response = $this->get('/docs/guides/setup')->assertOk();
+
+    $response
+        ->assertSee('data-docent-assistant-enabled', false)
+        ->assertSee('data-docent-assistant-panel', false)
+        ->assertSee('Open Assistant')
+        ->assertSee('Ask Assistant')
+        ->assertSee('Answers from these docs.')
+        ->assertDontSee('Back to results')
+        ->assertDontSee('From the docs');
+});
+
+it('namespaces restored Assistant state by viewer session and surface', function () {
+    $request = Request::create('/docs/guides/setup');
+    $session = $this->app['session']->driver();
+    $session->start();
+    $request->setLaravelSession($session);
+
+    $docent = app(DocentManager::class);
+    $guestContext = $docent->contextFor($request);
+    $first = $docent->assistantStateNamespace($request, $guestContext);
+    $sameViewer = $docent->assistantStateNamespace($request, $guestContext);
+    $widget = $docent->assistantStateNamespace($request, $guestContext, true);
+
+    $adminUser = $this->adminUser();
+    $request->setUserResolver(static fn () => $adminUser);
+    $admin = $docent->assistantStateNamespace($request, $docent->contextFor($request));
+
+    expect($first)->toHaveLength(64)
+        ->and($sameViewer)->toBe($first)
+        ->and($widget)->not->toBe($first)
+        ->and($admin)->not->toBe($first);
+});
+
+it('emits safe rendered markdown for live and cached answers', function () {
+    $fake = fakeDocentAnswer(
+        "## Setup\n\n[Allowed](http://localhost/docs/guides/setup) "
+        .'[Invented](https://evil.test/setup) <script>alert(1)</script>',
+    );
+
+    [, $live] = askDocs($this, 'Render this safely');
+    [, $cached] = askDocs($this, '  render this safely  ');
+
+    foreach ([$live, $cached] as $stream) {
+        $html = streamedEvent($stream, 'answer_rendered')['html'] ?? '';
+
+        expect($stream)
+            ->toContain("event: answer_rendered\n")
+            ->and($html)
+            ->toContain('<h2>Setup</h2>')
+            ->toContain('href="http://localhost/docs/guides/setup"')
+            ->not->toContain('href="https://evil.test/setup"')
+            ->not->toContain('<script>');
+    }
+
+    expect($cached)->toContain('"cached":true');
+    $fake->assertCallCount(1);
 });
 
 it('sends only viewer-visible documentation to Prism', function () {

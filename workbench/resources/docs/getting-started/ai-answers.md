@@ -6,15 +6,24 @@ order: 6
 
 # AI Answers
 
-Docent can offer a single grounded answer alongside normal search results. It
-uses only the pages and content the current reader is allowed to see, and every
-source link is checked against that same visible set.
+Docent can answer one question at a time from the pages the current reader is
+allowed to see. Search stays focused on finding pages; the Assistant gets its
+own full-height space for a slower, more detailed answer.
 
-Open search, type a question such as **How do I get started?**, then choose
-**Ask the docs** beneath the regular results. The help widget offers the same
-action in its compact search panel.
+Open search, type **How do I insert a video?**, then choose **Ask Assistant** at
+the top or beneath the results. You can also open an empty Assistant from the
+top bar or with **Cmd/Ctrl+I**. Follow a source and the completed answer remains
+open while you read. The help widget uses the same handoff without nesting a
+second drawer inside the widget.
+
+The response supports headings, lists, inline code, fenced code, and
+blockquotes. Model links become clickable only when they exactly match a page
+Docent made available to the current viewer.
+
+This is not a conversation yet. A new question replaces the current answer.
 
 :::note title="Local demo"
 This workbench uses Prism's local fake provider. It demonstrates streaming,
-citations, and feedback without an API key or an external request.
+formatted code, citations, persistence, and feedback without an API key or an
+external request.
 :::

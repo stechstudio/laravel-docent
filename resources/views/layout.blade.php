@@ -26,11 +26,20 @@
     <style>{!! $docent->themeStyles() !!}</style>
 </head>
 <body class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
+    @php($aiEnabled = (bool) config('docent.ai.enabled', false))
     <a href="#docent-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-[var(--docent-accent)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">
         Skip to content
     </a>
 
-    <div x-data="{ sidebar: false }" @keydown.escape.window="sidebar = false">
+    @if($aiEnabled)
+    <div x-data="docentAssistant(@js(route('docent.ask')), @js(route('docent.ask.feedback')), @js($assistantStateNamespace), 'reader')"
+         data-docent-assistant-enabled data-docent-assistant-state="{{ $assistantStateNamespace }}"
+         @docent:assistant-open.window="openAssistant($event.detail)"
+         @docent:surface-closed.window="syncBodyLock()"
+         @keydown.escape.window="escape($event)"
+         :class="{ 'docent-assistant-is-open': assistantOpen, 'docent-assistant-is-expanded': assistantOpen && assistantExpanded }">
+    @endif
+    <div x-data="{ sidebar: false }" @keydown.escape.window="sidebar = false" class="isolate">
         {{-- Top bar --}}
         <header class="docent-topbar sticky top-0 z-40 h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80">
             <div class="mx-auto flex h-full max-w-[100rem] items-center gap-3 px-4 sm:px-6">
@@ -89,6 +98,14 @@
                             @endif
                         </a>
                     @endforeach
+                    @if($aiEnabled)
+                        <button type="button" @click="$dispatch('docent:assistant-open')" aria-label="Open Assistant"
+                                class="inline-flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                            <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('chat-bubble-left-right') !!}</span>
+                            <span class="hidden md:inline">Assistant</span>
+                            <kbd data-docent-assistant-kbd class="hidden rounded bg-slate-950/5 px-1.5 py-0.5 font-sans text-[0.6875rem] text-slate-400 xl:inline dark:bg-white/10">⌘I</kbd>
+                        </button>
+                    @endif
                     @if($searchEnabled)
                         <button type="button" @click="$dispatch('docent:search-open')" aria-label="Search documentation"
                                 class="group inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-400 transition hover:border-slate-300 hover:text-slate-500 sm:w-64 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
@@ -157,5 +174,9 @@
             @include('docent::partials.search')
         @endif
     </div>
+    @if($aiEnabled)
+        @include('docent::partials.assistant-panel')
+    </div>
+    @endif
 </body>
 </html>

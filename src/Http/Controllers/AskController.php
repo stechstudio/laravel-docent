@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Prism\Prism\Streaming\Events\StreamEndEvent;
 use Prism\Prism\Streaming\Events\TextDeltaEvent;
+use STS\Docent\Ai\AiAnswerRenderer;
 use STS\Docent\Ai\AiAnswerService;
 use STS\Docent\Ai\AiCorpus;
 use STS\Docent\Ai\AiCorpusBuilder;
@@ -25,6 +26,7 @@ final class AskController
         private readonly DocentManager $docent,
         private readonly AiCorpusBuilder $corpus,
         private readonly AiAnswerService $answers,
+        private readonly AiAnswerRenderer $renderer,
         private readonly AiQuestionLogger $questions,
         private readonly DocentCache $cache,
     ) {}
@@ -103,6 +105,9 @@ final class AskController
 
             if ($answer !== '') {
                 $this->emit('text_delta', ['delta' => $answer]);
+                $this->emit('answer_rendered', [
+                    'html' => $this->renderer->render($answer, $corpus->citations),
+                ]);
             }
 
             $this->emit('stream_end', ['finish_reason' => 'Stop', 'cached' => true]);
@@ -114,8 +119,8 @@ final class AskController
         return $this->eventStream(function () use ($corpus, $question, $cacheKey, $log): void {
             $this->emit('citations', $this->citationsPayload($corpus, $log));
             $answer = '';
-            $ended = false;
             $failed = false;
+            $streamEnd = ['finish_reason' => 'Stop'];
 
             try {
                 foreach ($this->answers->stream($corpus, $question) as $event) {
@@ -124,7 +129,9 @@ final class AskController
                     }
 
                     if ($event instanceof StreamEndEvent) {
-                        $ended = true;
+                        $streamEnd = $event->toArray();
+
+                        continue;
                     }
 
                     $this->emit($event->eventKey(), $event->toArray());
@@ -133,10 +140,6 @@ final class AskController
                 report($exception);
                 $failed = true;
                 $this->emit('error', ['message' => 'The documentation answer could not be generated.']);
-            }
-
-            if (! $ended) {
-                $this->emit('stream_end', ['finish_reason' => 'Stop']);
             }
 
             $this->questions->finish($log, $failed ? '' : $answer);
@@ -148,7 +151,13 @@ final class AskController
                     ['answer' => $answer],
                     max(1, (int) config('docent.ai.answer_ttl', 300)),
                 );
+
+                $this->emit('answer_rendered', [
+                    'html' => $this->renderer->render($answer, $corpus->citations),
+                ]);
             }
+
+            $this->emit('stream_end', $streamEnd);
         });
     }
 

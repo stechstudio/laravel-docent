@@ -459,6 +459,36 @@ final class DocentManager
         return sha1(implode('|', $slugs).'|'.$identifier.'|'.($context->audience ?? '').'|'.$parameters);
     }
 
+    /**
+     * Namespace browser-only Assistant state to this application, Laravel
+     * session, viewer scope, and reader surface. The opaque value is safe to
+     * render, while a session or permission change makes prior state
+     * unreachable without exposing any of the binding inputs.
+     */
+    public function assistantStateNamespace(Request $request, DocumentationContext $context, bool $widget = false): string
+    {
+        $key = (string) config('app.key', 'docent');
+        $session = 'no-session';
+
+        if ($request->hasSession()) {
+            $store = $request->session();
+            $nonce = $store->get('docent.assistant_state_nonce');
+
+            if (! is_string($nonce) || $nonce === '') {
+                $nonce = Str::random(32);
+                $store->put('docent.assistant_state_nonce', $nonce);
+            }
+
+            $session = $store->getId().':'.$nonce;
+        }
+
+        return hash_hmac('sha256', implode('|', [
+            $session,
+            $this->viewerFingerprint($context),
+            $widget ? 'widget' : 'reader',
+        ]), $key === '' ? 'docent' : $key);
+    }
+
     public function partialDocument(string $name): ?Document
     {
         $source = $this->repository->partial($name);

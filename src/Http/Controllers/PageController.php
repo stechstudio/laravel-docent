@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use STS\Docent\DocentManager;
 use STS\Docent\Page;
+use STS\Docent\Runtime\DocumentationContext;
 
 /**
  * Serves documentation pages. Deliberately thin — all resolution, rendering,
@@ -71,6 +72,7 @@ final class PageController
                 'siteName' => $this->docent->siteName(),
                 'homeUrl' => $this->docent->url(''),
                 'searchEnabled' => (bool) config('docent.search.enabled', true),
+                'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
                 'page' => $page,
                 'title' => $page->title(),
                 'description' => $page->description(),
@@ -90,6 +92,7 @@ final class PageController
             'siteName' => $this->docent->siteName(),
             'homeUrl' => $this->docent->url(''),
             'searchEnabled' => (bool) config('docent.search.enabled', true),
+            'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
             'page' => $page,
             'title' => $page->title(),
             'description' => $page->description(),
@@ -115,5 +118,12 @@ final class PageController
             is_string($response) && str_starts_with($response, 'redirect:') => redirect(substr($response, strlen('redirect:'))),
             default => abort(404),
         };
+    }
+
+    private function assistantStateNamespace(Request $request, DocumentationContext $context): ?string
+    {
+        return config('docent.ai.enabled', false)
+            ? $this->docent->assistantStateNamespace($request, $context)
+            : null;
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use STS\Docent\DocentManager;
+use STS\Docent\Runtime\DocumentationContext;
 
 final class WidgetController
 {
@@ -24,6 +25,7 @@ final class WidgetController
             'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
             'searchEnabled' => (bool) config('docent.search.enabled', true),
+            'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
             'navigation' => $this->docent->navigation($context),
             'navigationLinks' => $this->docent->navigationLinks($context),
             'sections' => $this->docent->navigationSections($context),
@@ -52,6 +54,7 @@ final class WidgetController
             'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
             'searchEnabled' => (bool) config('docent.search.enabled', true),
+            'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
             'page' => $page,
             'title' => $page->title(),
             'description' => $page->description(),
@@ -70,5 +73,12 @@ final class WidgetController
             is_string($response) && str_starts_with($response, 'redirect:') => redirect(substr($response, strlen('redirect:'))),
             default => abort(404),
         };
+    }
+
+    private function assistantStateNamespace(Request $request, DocumentationContext $context): ?string
+    {
+        return config('docent.ai.enabled', false)
+            ? $this->docent->assistantStateNamespace($request, $context, true)
+            : null;
     }
 }
