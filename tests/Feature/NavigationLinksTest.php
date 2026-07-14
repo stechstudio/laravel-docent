@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use STS\Docent\DocentManager;
+use STS\Docent\Support\Icon;
 
 beforeEach(function () {
     Route::get('/host/admin', fn () => 'Admin')->name('host.admin');
@@ -94,8 +95,8 @@ it('renders topbar links as labeled icon buttons in the header', function () {
 
 it('bundles brand icons for common utility destinations', function () {
     foreach (['github', 'discord', 'slack', 'x-twitter', 'youtube'] as $name) {
-        expect(\STS\Docent\Support\Icon::has($name))->toBeTrue()
-            ->and(\STS\Docent\Support\Icon::svg($name))->toContain('fill="currentColor"');
+        expect(Icon::has($name))->toBeTrue()
+            ->and(Icon::svg($name))->toContain('fill="currentColor"');
     }
 });
 

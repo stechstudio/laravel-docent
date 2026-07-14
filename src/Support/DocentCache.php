@@ -137,6 +137,16 @@ final class DocentCache
         $this->store->put($this->key($key), serialize($value), max(1, $seconds));
     }
 
+    public function add(string $key, mixed $value, int $seconds): bool
+    {
+        return $this->store->add($this->key($key), serialize($value), max(1, $seconds));
+    }
+
+    public function forget(string $key): bool
+    {
+        return $this->store->forget($this->key($key));
+    }
+
     public function version(): int
     {
         return (int) $this->store->get($this->prefix.':version', 1);

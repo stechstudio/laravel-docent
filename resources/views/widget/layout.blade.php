@@ -72,7 +72,7 @@
                             <p id="docent-assistant-title-widget" class="truncate text-base font-semibold text-slate-950 dark:text-white sm:text-sm">Assistant</p>
                             <p class="truncate text-sm text-slate-500 dark:text-slate-400">Answers from these docs.</p>
                         </div>
-                        <button x-show="question || askError" x-cloak type="button" @click="clearAnswer()" aria-label="Clear current answer"
+                        <button x-show="messages.length > 0" x-cloak type="button" @click="newConversation()" aria-label="Start a new conversation"
                                 class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                             <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                             <span class="[&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('trash') !!}</span>

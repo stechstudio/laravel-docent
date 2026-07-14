@@ -10,7 +10,14 @@ use Prism\Prism\Enums\FinishReason;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Testing\PrismFake;
 use Prism\Prism\Testing\TextResponseFake;
+use Prism\Prism\ValueObjects\Messages\AssistantMessage;
+use Prism\Prism\ValueObjects\Messages\UserMessage;
 use STS\Docent\Ai\AiAnswerService;
+use STS\Docent\Ai\AiConversation;
+use STS\Docent\Ai\AiConversationStore;
+use STS\Docent\Ai\AiConversationTurn;
+use STS\Docent\Ai\AiCorpusBuilder;
+use STS\Docent\Ai\Conversation\AiConversationBusy;
 use STS\Docent\Ai\Models\AiQuestion;
 use STS\Docent\Ai\PrismGuard;
 use STS\Docent\DocentManager;
@@ -28,6 +35,19 @@ function fakeDocentAnswer(string $text): PrismFake
 function askDocs($test, string $question, string $query = ''): array
 {
     $response = $test->postJson('/docs/_ask'.$query, ['question' => $question]);
+    $response->assertOk()->assertHeader('Content-Type', 'text/event-stream; charset=UTF-8');
+
+    return [$response, $response->streamedContent()];
+}
+
+function continueDocs($test, string $question, array $conversation, array $extra = [], string $query = ''): array
+{
+    $response = $test->postJson('/docs/_ask'.$query, [
+        'question' => $question,
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => $conversation['conversation_token'],
+        ...$extra,
+    ]);
     $response->assertOk()->assertHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 
     return [$response, $response->streamedContent()];
@@ -55,13 +75,15 @@ beforeEach(function () {
     RateLimiter::clear('docent-ai:'.sha1('ip:127.0.0.1'));
 });
 
-it('streams the citation whitelist before Prism answer events', function () {
+it('streams signed conversation metadata and the citation whitelist before Prism answer events', function () {
     fakeDocentAnswer('Use the setup guide: http://localhost/docs/guides/setup');
 
     [, $stream] = askDocs($this, 'How do I set this up?');
 
     expect($stream)
-        ->toStartWith("event: citations\n")
+        ->toStartWith("event: conversation\n")
+        ->toContain('"conversation_token"')
+        ->toContain("event: citations\n")
         ->toContain('"slug":"guides/setup"')
         ->toContain("event: text_delta\n")
         ->toContain("event: answer_rendered\n")
@@ -169,11 +191,10 @@ it('rewrites the allowed citation set for widget navigation', function () {
     fakeDocentAnswer('Open http://localhost/docs/_widget/guides/setup');
 
     [, $stream] = askDocs($this, 'Where is setup?', '?mode=widget');
-    $citationEvent = strstr($stream, "\n\n", true);
+    $citationEvent = streamedEvent($stream, 'citations');
 
-    expect($citationEvent)
-        ->toContain('http://localhost/docs/_widget/guides/setup')
-        ->not->toContain('http://localhost/docs/guides/setup');
+    expect($citationEvent['citations'][2]['url'] ?? null)
+        ->toBe('http://localhost/docs/_widget/guides/setup');
 });
 
 it('caps questions at 500 characters', function () {
@@ -300,6 +321,7 @@ it('does not register ask routes when disabled', function () {
     $this->app['router']->getRoutes()->refreshNameLookups();
 
     expect(Route::getRoutes()->getByName('docent.ask'))->toBeNull()
+        ->and(Route::getRoutes()->getByName('docent.ask.conversation.destroy'))->toBeNull()
         ->and(Route::getRoutes()->getByName('docent.ask.feedback'))->toBeNull();
 });
 
@@ -317,4 +339,208 @@ it('warns when the configured corpus budget is too small', function () {
     $this->artisan('docent:check')
         ->expectsOutputToContain('ai-corpus-large')
         ->assertFailed();
+});
+
+it('sends complete bounded conversation pairs to Prism for follow-up questions', function () {
+    $fake = Prism::fake([
+        TextResponseFake::make()->withText('Install it from the setup page.'),
+        TextResponseFake::make()->withText('Then publish the configuration.'),
+    ])->withFakeChunkSize(12);
+
+    [, $first] = askDocs($this, 'How do I install it?');
+    $conversation = streamedEvent($first, 'conversation');
+    [, $second] = continueDocs($this, 'What should I do after that?', $conversation);
+
+    expect(streamedEvent($second, 'conversation')['turn_index'] ?? null)->toBe(2)
+        ->and(AiQuestion::query()->count())->toBe(2);
+
+    $fake->assertRequest(function (array $requests): void {
+        $messages = $requests[1]->messages();
+
+        expect($messages)->toHaveCount(3)
+            ->and($messages[0])->toBeInstanceOf(UserMessage::class)
+            ->and($messages[0]->content)->toBe('How do I install it?')
+            ->and($messages[1])->toBeInstanceOf(AssistantMessage::class)
+            ->and($messages[1]->content)->toBe('Install it from the setup page.')
+            ->and($messages[2])->toBeInstanceOf(UserMessage::class)
+            ->and($messages[2]->content)->toContain('What should I do after that?');
+    });
+});
+
+it('requires the opaque conversation id and signed token together', function () {
+    fakeDocentAnswer('First answer.');
+    [, $first] = askDocs($this, 'Start a session');
+    $conversation = streamedEvent($first, 'conversation');
+
+    $this->postJson('/docs/_ask', [
+        'question' => 'Continue',
+        'conversation_id' => $conversation['conversation_id'],
+    ])->assertUnprocessable()->assertJsonValidationErrors('conversation_token');
+
+    $this->postJson('/docs/_ask', [
+        'question' => 'Continue',
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => str_repeat('0', 64),
+    ])->assertForbidden();
+});
+
+it('does not reveal or restore a conversation to another signed-in viewer', function () {
+    $member = $this->memberUser();
+    $member->forceFill(['id' => 10]);
+    $this->actingAs($member);
+    fakeDocentAnswer('Member answer.');
+    [, $first] = askDocs($this, 'My member question');
+    $conversation = streamedEvent($first, 'conversation');
+
+    $this->app['auth']->forgetGuards();
+    $admin = $this->adminUser();
+    $admin->forceFill(['id' => 20]);
+    $this->actingAs($admin);
+    $this->postJson('/docs/_ask', [
+        'question' => 'Can I see it?',
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => $conversation['conversation_token'],
+    ])->assertForbidden();
+});
+
+it('resets safely when the visible corpus changes and never sends stale history', function () {
+    $fake = Prism::fake([
+        TextResponseFake::make()->withText('The first answer.'),
+        TextResponseFake::make()->withText('The reset answer.'),
+    ]);
+    [, $first] = askDocs($this, 'First question');
+    $conversation = streamedEvent($first, 'conversation');
+
+    config()->set('docent.ai.corpus_budget', 1);
+    [, $second] = continueDocs($this, 'What now?', $conversation);
+    $reset = streamedEvent($second, 'conversation');
+
+    expect($reset['reset_reason'] ?? null)->toBe('viewer_or_corpus_changed')
+        ->and($reset['conversation_id'])->not->toBe($conversation['conversation_id'])
+        ->and($reset['turn_index'])->toBe(1);
+
+    $fake->assertRequest(function (array $requests): void {
+        expect($requests[1]->messages())->toHaveCount(1);
+    });
+});
+
+it('returns a distinct expiry response only for a valid signed conversation', function () {
+    fakeDocentAnswer('Temporary answer.');
+    [, $first] = askDocs($this, 'Start expiring');
+    $conversation = streamedEvent($first, 'conversation');
+    $key = 'docent:1:ai-conversation:'.hash('sha256', $conversation['conversation_id']);
+    $store = $this->app['cache']->store();
+    $value = unserialize($store->get($key), ['allowed_classes' => false]);
+    $value['expires_at'] = time() - 1;
+    $store->put($key, serialize($value), 60);
+
+    $this->postJson('/docs/_ask', [
+        'question' => 'Too late?',
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => $conversation['conversation_token'],
+    ])->assertStatus(409)->assertJsonPath('code', 'conversation_expired');
+
+    $this->postJson('/docs/_ask', [
+        'question' => 'Guessing?',
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => str_repeat('f', 64),
+    ])->assertForbidden();
+});
+
+it('forgets a verified temporary conversation through the reset endpoint', function () {
+    fakeDocentAnswer('Resettable answer.');
+    [, $first] = askDocs($this, 'Start resettable');
+    $conversation = streamedEvent($first, 'conversation');
+
+    $this->deleteJson('/docs/_ask/conversation', [
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => $conversation['conversation_token'],
+    ])->assertNoContent();
+
+    $this->postJson('/docs/_ask', [
+        'question' => 'Continue reset conversation',
+        'conversation_id' => $conversation['conversation_id'],
+        'conversation_token' => $conversation['conversation_token'],
+    ])->assertStatus(409)->assertJsonPath('code', 'conversation_expired');
+});
+
+it('regenerates only the latest answer against the history before its question', function () {
+    $fake = Prism::fake([
+        TextResponseFake::make()->withText('Original answer.'),
+        TextResponseFake::make()->withText('Replacement answer.'),
+        TextResponseFake::make()->withText('Follow-up answer.'),
+    ]);
+    [, $first] = askDocs($this, 'Original question');
+    $conversation = streamedEvent($first, 'conversation');
+    [, $replacement] = continueDocs($this, 'Original question', $conversation, ['regenerate' => true]);
+    $conversation = streamedEvent($replacement, 'conversation');
+    continueDocs($this, 'Follow up', $conversation);
+
+    $fake->assertRequest(function (array $requests): void {
+        expect($requests[1]->messages())->toHaveCount(1)
+            ->and($requests[2]->messages()[1]->content)->toBe('Replacement answer.');
+    });
+});
+
+it('prunes only whole oldest pairs to the configured turn and history limits', function () {
+    $conversation = new AiConversation('id', 'reader', 'owner', 'viewer', 'corpus', [], 0, time(), time(), time() + 60);
+    $conversation = $conversation->withTurn('one', str_repeat('a', 20), 60, 2, 100);
+    $conversation = $conversation->withTurn('two', str_repeat('b', 20), 60, 2, 100);
+    $conversation = $conversation->withTurn('three', str_repeat('c', 20), 60, 2, 100);
+
+    expect($conversation->turns)->toHaveCount(2)
+        ->and($conversation->turns[0])->toBeInstanceOf(AiConversationTurn::class)
+        ->and($conversation->turns[0]->question)->toBe('two')
+        ->and($conversation->turns[1]->question)->toBe('three')
+        ->and($conversation->turnCount)->toBe(3);
+});
+
+it('commits cached answers into the server conversation for later follow-ups', function () {
+    $fake = Prism::fake([
+        TextResponseFake::make()->withText('A cacheable answer.'),
+        TextResponseFake::make()->withText('A contextual follow-up.'),
+    ]);
+    askDocs($this, 'Cache this turn');
+    [, $cached] = askDocs($this, '  cache   this turn  ');
+    $conversation = streamedEvent($cached, 'conversation');
+    continueDocs($this, 'Continue from it', $conversation);
+
+    $fake->assertRequest(function (array $requests): void {
+        expect($requests)->toHaveCount(2)
+            ->and($requests[1]->messages()[0]->content)->toBe('cache this turn')
+            ->and($requests[1]->messages()[1]->content)->toBe('A cacheable answer.');
+    });
+});
+
+it('does not commit a failed turn before a retry', function () {
+    fakeDocentAnswer('Consumed by another question.');
+    askDocs($this, 'Consume the fake');
+    [, $failed] = askDocs($this, 'Fail inside a conversation');
+    $conversation = streamedEvent($failed, 'conversation');
+
+    $fake = fakeDocentAnswer('Recovered without failed history.');
+    continueDocs($this, 'Fail inside a conversation', $conversation);
+
+    $fake->assertRequest(function (array $requests): void {
+        expect($requests[0]->messages())->toHaveCount(1);
+    });
+});
+
+it('rejects overlapping work with a short per-conversation lock', function () {
+    $request = Request::create('/docs/_ask', 'POST');
+    $session = $this->app['session']->driver();
+    $session->start();
+    $request->setLaravelSession($session);
+    $docent = app(DocentManager::class);
+    $context = $docent->contextFor($request);
+    $corpus = app(AiCorpusBuilder::class)->build($context);
+    $store = app(AiConversationStore::class);
+    $resolution = $store->resolve($request, $context, $corpus, 'reader', null, null);
+
+    $store->acquire($resolution->conversation);
+
+    expect(fn () => $store->acquire($resolution->conversation))
+        ->toThrow(AiConversationBusy::class);
+
+    $store->release($resolution->conversation);
 });

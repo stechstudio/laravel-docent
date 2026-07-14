@@ -1,5 +1,4 @@
-const SCHEMA_VERSION = 1;
-const STATE_TTL = 2 * 60 * 60 * 1000;
+const SCHEMA_VERSION = 2;
 
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -71,29 +70,31 @@ function copyText(text) {
     });
 }
 
+function identifier() {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function registerDocentAssistant(Alpine) {
     Alpine.data('docentAssistant', (askUrl, feedbackUrl, stateNamespace, mode = 'reader') => ({
         askUrl,
         feedbackUrl,
+        resetUrl: `${askUrl}/conversation`,
         stateNamespace,
         mode,
         assistantOpen: false,
         assistantExpanded: false,
         overlay: true,
-        question: '',
         composer: '',
-        answer: '',
-        renderedAnswer: '',
-        citations: [],
-        questionId: null,
-        feedbackToken: null,
-        feedback: null,
+        messages: [],
+        conversationId: null,
+        conversationToken: null,
+        conversationExpiresAt: null,
         asking: false,
-        askError: '',
-        completedAt: null,
         announcement: '',
-        copied: false,
+        conversationNotice: '',
         _askAbort: null,
+        _currentAssistantId: null,
+        _currentUserId: null,
         _invoker: null,
         _media: null,
         _mediaListener: null,
@@ -108,10 +109,8 @@ export function registerDocentAssistant(Alpine) {
             };
             this._media.addEventListener?.('change', this._mediaListener);
             this._pageHide = () => {
-                if (this.asking) {
-                    this.persistInterrupted();
-                    this.interrupt();
-                }
+                if (this.asking) this.interrupt(false);
+                this.persist();
             };
             window.addEventListener('pagehide', this._pageHide);
             this.restore();
@@ -130,78 +129,47 @@ export function registerDocentAssistant(Alpine) {
         restore() {
             try {
                 const state = JSON.parse(sessionStorage.getItem(this.storageKey()) || 'null');
-                const savedAt = Number.isFinite(state?.savedAt) ? state.savedAt : state?.completedAt;
                 const valid = state
                     && state.schema === SCHEMA_VERSION
                     && state.mode === this.mode
-                    && Number.isFinite(savedAt)
-                    && Date.now() - savedAt <= STATE_TTL;
+                    && Number.isFinite(state.savedAt)
+                    && Number.isFinite(state.conversationExpiresAt)
+                    && Date.now() / 1000 < state.conversationExpiresAt;
 
                 if (!valid) {
-                    sessionStorage.removeItem(this.storageKey());
+                    this.removeStoredState();
                     return;
                 }
 
                 this.assistantOpen = state.open === true;
                 this.assistantExpanded = state.expanded === true;
-                this.question = String(state.question || '');
-
-                if (state.kind === 'interrupted') {
-                    this.askError = 'This answer was interrupted. Try the question again.';
-                    this.announcement = this.askError;
-                    this.syncBodyLock();
-
-                    return;
-                }
-
-                this.answer = String(state.answer || '');
-                this.renderedAnswer = String(state.renderedAnswer || '');
-                this.citations = Array.isArray(state.citations) ? state.citations : [];
-                this.questionId = state.questionId || null;
-                this.feedbackToken = state.feedbackToken || null;
-                this.feedback = state.feedback || null;
-                this.completedAt = state.completedAt;
+                this.messages = Array.isArray(state.messages) ? state.messages : [];
+                this.conversationId = state.conversationId || null;
+                this.conversationToken = state.conversationToken || null;
+                this.conversationExpiresAt = state.conversationExpiresAt;
                 this.syncBodyLock();
-                this.$nextTick(() => this.enhanceCodeBlocks());
+                this.$nextTick(() => {
+                    this.enhanceCodeBlocks();
+                    this.scrollToLatest(false);
+                });
             } catch (error) {
                 this.removeStoredState();
             }
         },
 
         persist() {
-            if (!this.completedAt || !this.renderedAnswer) return;
+            if (!this.conversationId || !this.conversationToken || !this.conversationExpiresAt) return;
 
             try {
                 sessionStorage.setItem(this.storageKey(), JSON.stringify({
                     schema: SCHEMA_VERSION,
-                    kind: 'complete',
                     mode: this.mode,
                     open: this.assistantOpen,
                     expanded: this.assistantExpanded,
-                    question: this.question,
-                    answer: this.answer,
-                    renderedAnswer: this.renderedAnswer,
-                    citations: this.citations,
-                    questionId: this.questionId,
-                    feedbackToken: this.feedbackToken,
-                    feedback: this.feedback,
-                    savedAt: Date.now(),
-                    completedAt: this.completedAt,
-                }));
-            } catch (error) {}
-        },
-
-        persistInterrupted() {
-            if (!this.question) return;
-
-            try {
-                sessionStorage.setItem(this.storageKey(), JSON.stringify({
-                    schema: SCHEMA_VERSION,
-                    kind: 'interrupted',
-                    mode: this.mode,
-                    open: true,
-                    expanded: this.assistantExpanded,
-                    question: this.question,
+                    conversationId: this.conversationId,
+                    conversationToken: this.conversationToken,
+                    conversationExpiresAt: this.conversationExpiresAt,
+                    messages: this.messages.filter((message) => message.status !== 'streaming'),
                     savedAt: Date.now(),
                 }));
             } catch (error) {}
@@ -217,9 +185,7 @@ export function registerDocentAssistant(Alpine) {
             if (!this.askUrl) return;
 
             const search = document.querySelector('[data-docent-search-dialog]');
-            const searchState = search && search.offsetParent !== null && window.Alpine
-                ? Alpine.$data(search)
-                : null;
+            const searchState = search && search.offsetParent !== null && window.Alpine ? Alpine.$data(search) : null;
             this._invoker = detail.invoker || searchState?._previousFocus || document.activeElement;
             this.assistantOpen = true;
             this.syncBodyLock();
@@ -235,7 +201,6 @@ export function registerDocentAssistant(Alpine) {
 
         closeAssistant() {
             if (!this.assistantOpen) return;
-
             if (this.asking) this.interrupt();
             this.assistantOpen = false;
             this.assistantExpanded = false;
@@ -261,70 +226,135 @@ export function registerDocentAssistant(Alpine) {
             document.body.style.overflow = this.assistantOpen && this.overlay ? 'hidden' : '';
         },
 
-        clearAnswer() {
-            this._askAbort?.abort();
-            this._askAbort = null;
-            this.question = '';
+        async newConversation() {
+            if (this.messages.length > 0 && !window.confirm('Start a new conversation? The current help session will be cleared.')) return;
+
+            const id = this.conversationId;
+            const token = this.conversationToken;
+            this.interrupt(false);
+            this.resetLocalConversation();
+
+            if (!id || !token) return;
+
+            const suffix = this.mode === 'widget' ? '?mode=widget' : '';
+            await fetch(`${this.resetUrl}${suffix}`, {
+                method: 'DELETE',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                body: JSON.stringify({ conversation_id: id, conversation_token: token }),
+            }).catch(() => {});
+        },
+
+        resetLocalConversation(notice = '') {
+            this.messages = [];
             this.composer = '';
-            this.answer = '';
-            this.renderedAnswer = '';
-            this.citations = [];
-            this.questionId = null;
-            this.feedbackToken = null;
-            this.feedback = null;
+            this.conversationId = null;
+            this.conversationToken = null;
+            this.conversationExpiresAt = null;
+            this.conversationNotice = notice;
             this.asking = false;
-            this.askError = '';
-            this.completedAt = null;
-            this.announcement = 'The current answer was cleared.';
+            this._currentAssistantId = null;
+            this._currentUserId = null;
             this.removeStoredState();
+            this.announcement = notice || 'A new conversation is ready.';
             this.$nextTick(() => this.$refs.assistantComposer?.focus());
         },
 
-        interrupt() {
+        interrupt(announce = true) {
             this._askAbort?.abort();
             this._askAbort = null;
             this.asking = false;
-            this.answer = '';
-            this.renderedAnswer = '';
-            this.askError = 'This answer was interrupted. Try the question again.';
-            this.announcement = this.askError;
+            const message = this.messageById(this._currentAssistantId);
+            if (message?.status === 'streaming') {
+                message.status = 'error';
+                message.error = 'This answer was interrupted. Try the question again.';
+            }
+            if (announce) {
+                this.announcement = 'The answer was stopped.';
+                this.persist();
+            }
         },
 
         submit() {
             this.ask(this.composer, { restoreComposerFocus: true });
         },
 
-        retry() {
-            this.ask(this.question);
+        retry(message) {
+            const index = this.messages.findIndex((candidate) => candidate.id === message.id);
+            const user = this.messages[index - 1];
+            if (!user || user.role !== 'user') return;
+            this.ask(user.content, {
+                reuseUserId: user.id,
+                reuseAssistantId: message.id,
+                regenerate: message.regenerate === true,
+            });
         },
 
-        async ask(value, { focusHeading = false, restoreComposerFocus = false } = {}) {
+        regenerate(message) {
+            const index = this.messages.findIndex((candidate) => candidate.id === message.id);
+            const user = this.messages[index - 1];
+            if (!user || user.role !== 'user' || index !== this.messages.length - 1) return;
+            this.messages.splice(index, 1);
+            this.ask(user.content, { regenerate: true, reuseUserId: user.id });
+        },
+
+        async ask(value, options = {}) {
             const question = String(value || '').trim().replace(/\s+/g, ' ');
             if (!this.askUrl || !question || this.asking) return;
 
-            this.removeStoredState();
             this.assistantOpen = true;
-            this.question = question;
             this.composer = '';
-            this.answer = '';
-            this.renderedAnswer = '';
-            this.citations = [];
-            this.questionId = null;
-            this.feedbackToken = null;
-            this.feedback = null;
-            this.askError = '';
-            this.completedAt = null;
+            this.conversationNotice = '';
             this.asking = true;
-            this.copied = false;
             this.announcement = 'The Assistant is reading these docs.';
             this._askAbort = new AbortController();
             this.syncBodyLock();
-            if (focusHeading) {
+
+            let user = this.messageById(options.reuseUserId);
+            if (!user) {
+                user = { id: identifier(), role: 'user', content: question };
+                this.messages.push(user);
+                user = this.messages[this.messages.length - 1];
+            }
+
+            let assistant = this.messageById(options.reuseAssistantId);
+            if (!assistant) {
+                assistant = {
+                    id: identifier(), role: 'assistant', content: '', html: '', citations: [],
+                    questionId: null, feedbackToken: null, feedback: null, copied: false,
+                    error: '', status: 'streaming', regenerate: options.regenerate === true,
+                };
+                this.messages.push(assistant);
+                assistant = this.messages[this.messages.length - 1];
+            } else {
+                Object.assign(assistant, {
+                    content: '', html: '', citations: [], questionId: null, feedbackToken: null,
+                    feedback: null, copied: false, error: '', status: 'streaming',
+                    regenerate: options.regenerate === true,
+                });
+            }
+
+            this._currentUserId = user.id;
+            this._currentAssistantId = assistant.id;
+            this.removeStoredState();
+
+            if (options.focusHeading) {
                 this.$nextTick(() => this.$refs.assistantHeading?.focus({ preventScroll: true }));
             }
+            this.$nextTick(() => this.scrollToLatest());
 
             try {
                 const suffix = this.mode === 'widget' ? '?mode=widget' : '';
+                const body = { question };
+                if (this.conversationId && this.conversationToken) {
+                    body.conversation_id = this.conversationId;
+                    body.conversation_token = this.conversationToken;
+                }
+                if (options.regenerate) body.regenerate = true;
+
                 const response = await fetch(`${this.askUrl}${suffix}`, {
                     method: 'POST',
                     headers: {
@@ -332,60 +362,87 @@ export function registerDocentAssistant(Alpine) {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': csrfToken(),
                     },
-                    body: JSON.stringify({ question }),
+                    body: JSON.stringify(body),
                     signal: this._askAbort.signal,
                 });
 
                 if (!response.ok || !response.body) {
                     const payload = await response.json().catch(() => ({}));
+                    if (payload.code === 'conversation_expired') {
+                        this.resetLocalConversation('That temporary help session expired. Ask again to start a new conversation.');
+                        return;
+                    }
                     throw new Error(payload.message || 'The documentation answer is unavailable.');
                 }
 
                 await consumeEventStream(response, (event, data) => {
-                    if (event === 'citations') {
-                        this.citations = Array.isArray(data.citations) ? data.citations : [];
-                        this.questionId = data.question_id || null;
-                        this.feedbackToken = data.feedback_token || null;
+                    if (event === 'conversation') {
+                        if (data.reset_reason) {
+                            this.messages = this.messages.filter((item) => item.id === user.id || item.id === assistant.id);
+                            this.conversationNotice = 'The documentation available to you changed, so a new conversation was started.';
+                        }
+                        this.conversationId = data.conversation_id || null;
+                        this.conversationToken = data.conversation_token || null;
+                        this.conversationExpiresAt = Number(data.expires_at) || null;
+                    } else if (event === 'citations') {
+                        assistant.citations = Array.isArray(data.citations) ? data.citations : [];
+                        assistant.questionId = data.question_id || null;
+                        assistant.feedbackToken = data.feedback_token || null;
                     } else if (event === 'text_delta') {
-                        this.answer += data.delta || '';
+                        assistant.content += data.delta || '';
                     } else if (event === 'answer_rendered') {
-                        this.renderedAnswer = String(data.html || '');
+                        assistant.html = String(data.html || '');
                     } else if (event === 'error') {
-                        this.askError = data.message || 'The documentation answer is unavailable.';
+                        assistant.error = data.message || 'The documentation answer is unavailable.';
+                    } else if (event === 'stream_end' && data.committed === false && !assistant.error) {
+                        assistant.error = 'The documentation did not return an answer. Try another question.';
                     }
+                    this.$nextTick(() => this.scrollToLatest());
                 });
 
-                if (!this.askError && this.answer && this.renderedAnswer) {
-                    this.completedAt = Date.now();
+                if (!assistant.error && assistant.content && assistant.html) {
+                    assistant.status = 'complete';
                     this.announcement = 'The Assistant answer is ready.';
                     this.persist();
-                    this.$nextTick(() => this.enhanceCodeBlocks());
-                } else if (!this.askError) {
-                    this.askError = 'The documentation did not return an answer. Try another question.';
-                    this.announcement = this.askError;
+                    this.$nextTick(() => {
+                        this.enhanceCodeBlocks();
+                        this.scrollToLatest();
+                    });
+                } else {
+                    assistant.status = 'error';
+                    assistant.error ||= 'The documentation did not return an answer. Try another question.';
+                    this.announcement = assistant.error;
+                    this.persist();
                 }
             } catch (error) {
                 if (error.name !== 'AbortError') {
-                    this.askError = error.message || 'The documentation answer is unavailable.';
-                    this.announcement = this.askError;
+                    assistant.status = 'error';
+                    assistant.error = error.message || 'The documentation answer is unavailable.';
+                    this.announcement = assistant.error;
+                    this.persist();
                 }
             } finally {
                 this.asking = false;
                 this._askAbort = null;
+                this._currentAssistantId = null;
+                this._currentUserId = null;
 
-                if (restoreComposerFocus && this.assistantOpen) {
+                if (options.restoreComposerFocus && this.assistantOpen) {
                     this.$nextTick(() => this.$refs.assistantComposer?.focus({ preventScroll: true }));
                 }
             }
         },
 
-        citedPages() {
-            const answerUrls = new Set(
-                (this.answer.match(/https?:\/\/[^\s<>()\]]+/g) || [])
+        messageById(id) {
+            return id ? this.messages.find((message) => message.id === id) : null;
+        },
+
+        citedPages(message) {
+            const urls = new Set(
+                (String(message?.content || '').match(/https?:\/\/[^\s<>()\]]+/g) || [])
                     .map((url) => url.replace(/[.,;:!?]+$/, '')),
             );
-
-            return this.citations.filter((citation) => citation.url && answerUrls.has(citation.url));
+            return (message?.citations || []).filter((citation) => citation.url && urls.has(citation.url));
         },
 
         navigateCitation(citation) {
@@ -395,18 +452,17 @@ export function registerDocentAssistant(Alpine) {
             window.location.href = citation.url;
         },
 
-        async copyAnswer() {
-            if (!this.answer) return;
-
+        async copyAnswer(message) {
+            if (!message?.content) return;
             try {
-                await copyText(this.answer);
-                this.copied = true;
-                setTimeout(() => (this.copied = false), 1500);
+                await copyText(message.content);
+                message.copied = true;
+                setTimeout(() => (message.copied = false), 1500);
             } catch (error) {}
         },
 
         enhanceCodeBlocks() {
-            this.$refs.assistantAnswer?.querySelectorAll('pre').forEach((pre) => {
+            this.$refs.assistantMessages?.querySelectorAll('pre').forEach((pre) => {
                 if (pre.querySelector('[data-docent-assistant-code-copy]')) return;
                 const button = document.createElement('button');
                 button.type = 'button';
@@ -423,7 +479,6 @@ export function registerDocentAssistant(Alpine) {
             if (!button) return;
             const code = button.closest('pre')?.querySelector('code');
             if (!code) return;
-
             try {
                 await copyText(code.innerText);
                 button.textContent = 'Copied';
@@ -431,9 +486,8 @@ export function registerDocentAssistant(Alpine) {
             } catch (error) {}
         },
 
-        async sendFeedback(thumbs) {
-            if (!this.questionId || !this.feedbackToken || !this.feedbackUrl || this.feedback) return;
-
+        async sendFeedback(message, thumbs) {
+            if (!message?.questionId || !message.feedbackToken || !this.feedbackUrl || message.feedback) return;
             const response = await fetch(this.feedbackUrl, {
                 method: 'POST',
                 headers: {
@@ -442,16 +496,20 @@ export function registerDocentAssistant(Alpine) {
                     'X-CSRF-TOKEN': csrfToken(),
                 },
                 body: JSON.stringify({
-                    question_id: this.questionId,
-                    feedback_token: this.feedbackToken,
+                    question_id: message.questionId,
+                    feedback_token: message.feedbackToken,
                     thumbs,
                 }),
             });
-
             if (response.ok) {
-                this.feedback = thumbs;
+                message.feedback = thumbs;
                 this.persist();
             }
+        },
+
+        scrollToLatest(smooth = true) {
+            const scroller = this.$refs.assistantScroller;
+            if (scroller) scroller.scrollTo({ top: scroller.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
         },
 
         trap(event) {
@@ -460,7 +518,6 @@ export function registerDocentAssistant(Alpine) {
             if (focusable.length === 0) return;
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
-
             if (event.shiftKey && document.activeElement === first) {
                 event.preventDefault();
                 last.focus();

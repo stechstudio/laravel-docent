@@ -38,6 +38,7 @@ use STS\Docent\Http\Controllers\Admin\PreviewController;
 use STS\Docent\Http\Controllers\Admin\TreeController;
 use STS\Docent\Http\Controllers\Admin\UploadController;
 use STS\Docent\Http\Controllers\AskController;
+use STS\Docent\Http\Controllers\AskConversationController;
 use STS\Docent\Http\Controllers\AskFeedbackController;
 use STS\Docent\Http\Controllers\AssetController;
 use STS\Docent\Http\Controllers\LlmsController;
@@ -182,6 +183,7 @@ final class DocentServiceProvider extends ServiceProvider
 
             if (config('docent.ai.enabled', false)) {
                 Route::post('/_ask', AskController::class)->name('docent.ask');
+                Route::delete('/_ask/conversation', AskConversationController::class)->name('docent.ask.conversation.destroy');
                 Route::post('/_ask/feedback', AskFeedbackController::class)->name('docent.ask.feedback');
             }
 

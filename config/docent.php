@@ -156,6 +156,11 @@ return [
         'throttle' => '10,1',
         'corpus_budget' => 150000,
         'answer_ttl' => 300,
+        'conversation' => [
+            'ttl' => 7200,
+            'max_turns' => 10,
+            'history_budget' => 12000,
+        ],
     ],
 
     /*

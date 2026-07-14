@@ -92,12 +92,12 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 
 ## Optional grounded answers
 
-Docent can add an **Assistant** that answers one question at a time from the
-help the current viewer can read. Readers can hand a search query to it, open
-it from the top bar, or press `Cmd/Ctrl+I`. Answers stream into a full-height
-panel with formatted code, copy controls, feedback, and links limited to pages
-Docent supplied. The completed answer stays available while the reader follows
-those links in the same browser tab.
+Docent can add an **Assistant** that answers from the help the current viewer
+can read. Readers can hand a search query to it, open it from the top bar, or
+press `Cmd/Ctrl+I`. Answers stream into a full-height panel with formatted
+code, copy controls, feedback, and links limited to pages Docent supplied.
+Readers can ask follow-up questions, follow a source without closing the panel,
+and return to the same temporary conversation in the current browser tab.
 
 The feature is off by default and uses your own Prism provider and key:
 
@@ -115,7 +115,21 @@ composer require prism-php/prism
 
 Publish and run Docent's migrations to log questions and thumbs feedback. Set
 `log_questions` to `false` when no question analytics should be stored. The
-Assistant does not send conversation history or provide multi-turn chat.
+question log never stores answer content or conversation transcripts.
+
+Conversation memory is intentionally short-lived. Docent keeps complete turns
+in your configured Laravel cache, binds them to the current viewer and docs
+surface with a signed token, and drops the oldest pairs as the configured turn
+or history budget is reached. It starts over if the session expires or the
+viewer's visible documentation changes.
+
+```php
+'conversation' => [
+    'ttl' => 7200,
+    'max_turns' => 10,
+    'history_budget' => 12000,
+],
+```
 
 ## Search that understands questions
 

@@ -27,8 +27,17 @@ final class GroundedAnswersFake extends PrismFake
         preg_match('/^- (https?:\/\/\S+\/getting-started\/content-components) — /m', $prompt, $videoMatch);
         $components = $videoMatch[1] ?? $quickstart;
 
-        $question = mb_strtolower((string) $request->prompt());
-        $answer = str_contains($question, 'video')
+        $messages = $request->messages();
+        $question = mb_strtolower((string) ($messages[array_key_last($messages)]->content ?? ''));
+        $conversation = mb_strtolower(implode("\n", array_map(
+            static fn ($message): string => (string) ($message->content ?? ''),
+            $messages,
+        )));
+        $answer = str_contains($question, 'autoplay') && str_contains($conversation, 'video')
+            ? 'The example does not enable autoplay. Add the `autoplay` option only when playing immediately is appropriate. See [Videos in the authoring toolkit]('.$components.').'
+            : (str_contains($question, 'where') && str_contains($conversation, 'video')
+                ? 'You will find the full set of video options on [Videos in the authoring toolkit]('.$components.').'
+                : (str_contains($question, 'video')
             ? <<<MARKDOWN
             ## Add a video
 
@@ -41,7 +50,7 @@ final class GroundedAnswersFake extends PrismFake
 
             Provider videos wait for a click before contacting the video host. See [Videos in the authoring toolkit]({$components}) for every option.
             MARKDOWN
-            : 'Start with the [Quickstart guide]('.$quickstart.') for installation and your first page.';
+            : 'Start with the [Quickstart guide]('.$quickstart.') for installation and your first page.'));
 
         $response = TextResponseFake::make()->withText(
             $answer,

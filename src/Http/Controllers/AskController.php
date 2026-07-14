@@ -11,9 +11,15 @@ use Prism\Prism\Streaming\Events\StreamEndEvent;
 use Prism\Prism\Streaming\Events\TextDeltaEvent;
 use STS\Docent\Ai\AiAnswerRenderer;
 use STS\Docent\Ai\AiAnswerService;
+use STS\Docent\Ai\AiConversation;
+use STS\Docent\Ai\AiConversationStore;
 use STS\Docent\Ai\AiCorpus;
 use STS\Docent\Ai\AiCorpusBuilder;
 use STS\Docent\Ai\AiQuestionLogger;
+use STS\Docent\Ai\Conversation\AiConversationBusy;
+use STS\Docent\Ai\Conversation\AiConversationExpired;
+use STS\Docent\Ai\Conversation\AiConversationForbidden;
+use STS\Docent\Ai\Conversation\AiConversationResolution;
 use STS\Docent\Ai\Models\AiQuestion;
 use STS\Docent\DocentManager;
 use STS\Docent\Support\DocentCache;
@@ -29,12 +35,16 @@ final class AskController
         private readonly AiAnswerRenderer $renderer,
         private readonly AiQuestionLogger $questions,
         private readonly DocentCache $cache,
+        private readonly AiConversationStore $conversations,
     ) {}
 
     public function __invoke(Request $request): StreamedResponse|JsonResponse
     {
         $validated = $request->validate([
             'question' => ['required', 'string', 'max:500'],
+            'conversation_id' => ['nullable', 'uuid', 'required_with:conversation_token'],
+            'conversation_token' => ['nullable', 'string', 'size:64', 'required_with:conversation_id'],
+            'regenerate' => ['sometimes', 'boolean'],
         ]);
 
         if (($limited = $this->rateLimit($request)) !== null) {
@@ -43,6 +53,7 @@ final class AskController
 
         $question = $this->normalize((string) $validated['question']);
         $widget = $request->string('mode')->toString() === 'widget' && config('docent.widget.enabled', false);
+        $mode = $widget ? 'widget' : 'reader';
 
         if ($widget) {
             $this->docent->enableWidgetMode();
@@ -50,34 +61,185 @@ final class AskController
 
         $context = $this->docent->contextFor($request);
         $corpus = $this->corpus->build($context, $widget);
+
+        try {
+            $resolution = $this->conversations->resolve(
+                $request,
+                $context,
+                $corpus,
+                $mode,
+                isset($validated['conversation_id']) ? (string) $validated['conversation_id'] : null,
+                isset($validated['conversation_token']) ? (string) $validated['conversation_token'] : null,
+            );
+        } catch (AiConversationForbidden $exception) {
+            return response()->json(['message' => $exception->getMessage()], 403);
+        } catch (AiConversationExpired $exception) {
+            return response()->json(['message' => $exception->getMessage(), 'code' => 'conversation_expired'], 409);
+        }
+
+        $conversation = $resolution->conversation;
+        $regenerate = (bool) ($validated['regenerate'] ?? false);
+
+        if ($regenerate) {
+            $last = $conversation->turns[array_key_last($conversation->turns)] ?? null;
+
+            if ($last === null || ! hash_equals($last->question, $question)) {
+                return response()->json(['message' => 'Only the most recent answer can be regenerated.'], 422);
+            }
+
+            $conversation = $conversation->withoutLastTurn();
+        }
+
+        try {
+            $this->conversations->acquire($resolution->conversation);
+        } catch (AiConversationBusy $exception) {
+            return response()->json(['message' => $exception->getMessage(), 'code' => 'conversation_busy'], 409);
+        }
+
         $log = $this->questions->start($question, $context);
-        $cacheKey = 'ai-answer:'.$corpus->version.':'.sha1(mb_strtolower($question));
-        $cached = $this->cache->get($cacheKey);
+        $cacheKey = $this->cacheKey($corpus, $conversation, $question, $mode);
+        $cached = $regenerate ? null : $this->cache->get($cacheKey);
 
         if (is_array($cached) && is_string($cached['answer'] ?? null)) {
             $this->questions->finish($log, $cached['answer']);
 
-            return $this->cachedResponse($corpus, $log, $cached['answer']);
+            return $this->cachedResponse($corpus, $resolution, $conversation, $question, $log, $cached['answer']);
         }
 
-        return $this->liveResponse($corpus, $question, $cacheKey, $log);
+        return $this->liveResponse($corpus, $resolution, $conversation, $question, $cacheKey, $log);
+    }
+
+    private function cachedResponse(
+        AiCorpus $corpus,
+        AiConversationResolution $resolution,
+        AiConversation $conversation,
+        string $question,
+        ?AiQuestion $log,
+        string $answer,
+    ): StreamedResponse {
+        return $this->eventStream(function () use ($corpus, $resolution, $conversation, $question, $log, $answer): void {
+            try {
+                $this->emitConversation($resolution, $conversation);
+                $this->emit('citations', $this->citationsPayload($corpus, $log));
+
+                if ($answer !== '') {
+                    $this->emit('text_delta', ['delta' => $answer]);
+                    $this->emit('answer_rendered', ['html' => $this->renderer->render($answer, $corpus->citations)]);
+                }
+
+                $committed = $this->commit($conversation, $question, $answer);
+                $this->emit('stream_end', ['finish_reason' => 'Stop', 'cached' => true, 'committed' => $committed]);
+            } finally {
+                $this->conversations->release($resolution->conversation);
+            }
+        });
+    }
+
+    private function liveResponse(
+        AiCorpus $corpus,
+        AiConversationResolution $resolution,
+        AiConversation $conversation,
+        string $question,
+        string $cacheKey,
+        ?AiQuestion $log,
+    ): StreamedResponse {
+        return $this->eventStream(function () use ($corpus, $resolution, $conversation, $question, $cacheKey, $log): void {
+            try {
+                $this->emitConversation($resolution, $conversation);
+                $this->emit('citations', $this->citationsPayload($corpus, $log));
+                $answer = '';
+                $failed = false;
+                $streamEnd = ['finish_reason' => 'Stop'];
+
+                try {
+                    foreach ($this->answers->stream($corpus, $question, $conversation->turns) as $event) {
+                        if ($event instanceof TextDeltaEvent) {
+                            $answer .= $event->delta;
+                        }
+
+                        if ($event instanceof StreamEndEvent) {
+                            $streamEnd = $event->toArray();
+
+                            continue;
+                        }
+
+                        $this->emit($event->eventKey(), $event->toArray());
+                    }
+                } catch (Throwable $exception) {
+                    report($exception);
+                    $failed = true;
+                    $this->emit('error', ['message' => 'The documentation answer could not be generated.']);
+                }
+
+                $this->questions->finish($log, $failed ? '' : $answer);
+                $committed = false;
+
+                if (! $failed && $answer !== '') {
+                    $this->cache->put($cacheKey, ['answer' => $answer], max(1, (int) config('docent.ai.answer_ttl', 300)));
+                    $this->emit('answer_rendered', ['html' => $this->renderer->render($answer, $corpus->citations)]);
+                    $committed = $this->commit($conversation, $question, $answer);
+                }
+
+                $this->emit('stream_end', [...$streamEnd, 'committed' => $committed]);
+            } finally {
+                $this->conversations->release($resolution->conversation);
+            }
+        });
+    }
+
+    private function commit(AiConversation $conversation, string $question, string $answer): bool
+    {
+        if ($answer === '') {
+            return false;
+        }
+
+        $this->conversations->save($conversation->withTurn(
+            $question,
+            $answer,
+            max(1, (int) config('docent.ai.conversation.ttl', 7200)),
+            max(1, (int) config('docent.ai.conversation.max_turns', 10)),
+            max(1, (int) config('docent.ai.conversation.history_budget', 12000)),
+        ));
+
+        return true;
+    }
+
+    private function emitConversation(AiConversationResolution $resolution, AiConversation $conversation): void
+    {
+        $this->emit('conversation', [
+            'conversation_id' => $resolution->conversation->id,
+            'conversation_token' => $resolution->token,
+            'expires_at' => time() + max(1, (int) config('docent.ai.conversation.ttl', 7200)),
+            'turn_index' => $conversation->turnCount + 1,
+            'reset_reason' => $resolution->resetReason,
+        ]);
+    }
+
+    private function cacheKey(AiCorpus $corpus, AiConversation $conversation, string $question, string $mode): string
+    {
+        $history = array_map(static fn ($turn): array => [$turn->question, $turn->answer], $conversation->turns);
+        $historyHash = hash('sha256', json_encode($history, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+        return implode(':', [
+            'ai-answer-v2',
+            $corpus->version,
+            $mode,
+            $historyHash,
+            sha1(mb_strtolower($question)),
+        ]);
     }
 
     private function rateLimit(Request $request): ?JsonResponse
     {
         [$attempts, $minutes] = $this->throttle();
         $user = $request->user();
-        $identity = $user === null
-            ? 'ip:'.$request->ip()
-            : 'user:'.get_class($user).':'.(string) $user->getAuthIdentifier();
+        $identity = $user === null ? 'ip:'.$request->ip() : 'user:'.get_class($user).':'.(string) $user->getAuthIdentifier();
         $key = 'docent-ai:'.sha1($identity);
 
         if (RateLimiter::tooManyAttempts($key, $attempts)) {
             $retry = RateLimiter::availableIn($key);
 
-            return response()->json([
-                'message' => 'Too many questions. Please try again shortly.',
-            ], 429, ['Retry-After' => (string) $retry]);
+            return response()->json(['message' => 'Too many questions. Please try again shortly.'], 429, ['Retry-After' => (string) $retry]);
         }
 
         RateLimiter::hit($key, $minutes * 60);
@@ -96,69 +258,6 @@ final class AskController
     private function normalize(string $question): string
     {
         return trim(preg_replace('/\s+/', ' ', $question) ?? $question);
-    }
-
-    private function cachedResponse(AiCorpus $corpus, ?AiQuestion $log, string $answer): StreamedResponse
-    {
-        return $this->eventStream(function () use ($corpus, $log, $answer): void {
-            $this->emit('citations', $this->citationsPayload($corpus, $log));
-
-            if ($answer !== '') {
-                $this->emit('text_delta', ['delta' => $answer]);
-                $this->emit('answer_rendered', [
-                    'html' => $this->renderer->render($answer, $corpus->citations),
-                ]);
-            }
-
-            $this->emit('stream_end', ['finish_reason' => 'Stop', 'cached' => true]);
-        });
-    }
-
-    private function liveResponse(AiCorpus $corpus, string $question, string $cacheKey, ?AiQuestion $log): StreamedResponse
-    {
-        return $this->eventStream(function () use ($corpus, $question, $cacheKey, $log): void {
-            $this->emit('citations', $this->citationsPayload($corpus, $log));
-            $answer = '';
-            $failed = false;
-            $streamEnd = ['finish_reason' => 'Stop'];
-
-            try {
-                foreach ($this->answers->stream($corpus, $question) as $event) {
-                    if ($event instanceof TextDeltaEvent) {
-                        $answer .= $event->delta;
-                    }
-
-                    if ($event instanceof StreamEndEvent) {
-                        $streamEnd = $event->toArray();
-
-                        continue;
-                    }
-
-                    $this->emit($event->eventKey(), $event->toArray());
-                }
-            } catch (Throwable $exception) {
-                report($exception);
-                $failed = true;
-                $this->emit('error', ['message' => 'The documentation answer could not be generated.']);
-            }
-
-            $this->questions->finish($log, $failed ? '' : $answer);
-
-            // A failed or empty generation must never be replayed as an answer.
-            if (! $failed && $answer !== '') {
-                $this->cache->put(
-                    $cacheKey,
-                    ['answer' => $answer],
-                    max(1, (int) config('docent.ai.answer_ttl', 300)),
-                );
-
-                $this->emit('answer_rendered', [
-                    'html' => $this->renderer->render($answer, $corpus->citations),
-                ]);
-            }
-
-            $this->emit('stream_end', $streamEnd);
-        });
     }
 
     /** @return array<string, mixed> */
