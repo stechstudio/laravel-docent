@@ -6,6 +6,7 @@ namespace STS\Docent\Support;
 
 use Closure;
 use Illuminate\Contracts\Cache\Repository;
+use STS\Docent\Ai\AiCorpus;
 use STS\Docent\Content\PageReference;
 use STS\Docent\Documents;
 use STS\Docent\Search\SearchRecord;
@@ -33,6 +34,7 @@ final class DocentCache
     public const ALLOWED_CLASSES = [
         PageReference::class,
         SearchRecord::class,
+        AiCorpus::class,
         Documents\Document::class,
         Documents\FrontMatter::class,
         Documents\Ast\AppLink::class,
@@ -111,6 +113,24 @@ final class DocentCache
         $this->store->forever($qualified, serialize($value));
 
         return $value;
+    }
+
+    public function get(string $key): mixed
+    {
+        $cached = $this->store->get($this->key($key));
+
+        if (! is_string($cached) || ! $this->payloadIsAllowed($cached)) {
+            return null;
+        }
+
+        $value = @unserialize($cached, ['allowed_classes' => self::ALLOWED_CLASSES]);
+
+        return $value === false ? null : $value;
+    }
+
+    public function put(string $key, mixed $value, int $seconds): void
+    {
+        $this->store->put($this->key($key), serialize($value), max(1, $seconds));
     }
 
     public function version(): int

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Validation;
 
+use STS\Docent\Validation\Checks\AiCorpusSizeCheck;
 use STS\Docent\Validation\Checks\BrokenLinkCheck;
 use STS\Docent\Validation\Checks\ContentComponentCheck;
 use STS\Docent\Validation\Checks\DuplicateSlugCheck;
@@ -43,6 +44,7 @@ final class DocsChecker
     {
         return new self([
             new FrontMatterCheck,
+            new AiCorpusSizeCheck,
             new DuplicateSlugCheck,
             new BrokenLinkCheck,
             new UnknownConditionCheck,

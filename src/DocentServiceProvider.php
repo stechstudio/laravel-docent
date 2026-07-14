@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use STS\Docent\Ai\AiAnswerService;
+use STS\Docent\Ai\AiCorpusBuilder;
+use STS\Docent\Ai\AiQuestionLogger;
+use STS\Docent\Ai\PrismGuard;
 use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\InstallCommand;
@@ -33,6 +37,8 @@ use STS\Docent\Http\Controllers\Admin\PageStateController;
 use STS\Docent\Http\Controllers\Admin\PreviewController;
 use STS\Docent\Http\Controllers\Admin\TreeController;
 use STS\Docent\Http\Controllers\Admin\UploadController;
+use STS\Docent\Http\Controllers\AskController;
+use STS\Docent\Http\Controllers\AskFeedbackController;
 use STS\Docent\Http\Controllers\AssetController;
 use STS\Docent\Http\Controllers\LlmsController;
 use STS\Docent\Http\Controllers\PageController;
@@ -119,6 +125,17 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(SearchIndexer::class),
             $app->make(DocentManager::class),
         ));
+
+        $this->app->singleton(PrismGuard::class);
+        $this->app->scoped(AiCorpusBuilder::class, static fn (Application $app): AiCorpusBuilder => new AiCorpusBuilder(
+            $app->make(DocentManager::class),
+            $app->make(DocumentationRepository::class),
+            $app->make(DocentCache::class),
+        ));
+        $this->app->scoped(AiAnswerService::class, static fn (Application $app): AiAnswerService => new AiAnswerService(
+            $app->make(PrismGuard::class),
+        ));
+        $this->app->singleton(AiQuestionLogger::class);
     }
 
     public function boot(): void
@@ -159,6 +176,11 @@ final class DocentServiceProvider extends ServiceProvider
 
             if (config('docent.search.enabled', true)) {
                 Route::get('/_search', SearchController::class)->name('docent.search');
+            }
+
+            if (config('docent.ai.enabled', false)) {
+                Route::post('/_ask', AskController::class)->name('docent.ask');
+                Route::post('/_ask/feedback', AskFeedbackController::class)->name('docent.ask.feedback');
             }
 
             if (config('docent.admin.enabled', false) && config('docent.database.enabled', false)) {

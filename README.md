@@ -90,6 +90,28 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 - Search: server-side, filtered through the same authorization before results are returned; conditional block content is never indexed, so a snippet can never leak gated text
 - Table of contents: headings inside conditional blocks only appear for viewers who'd see them
 
+## Optional grounded answers
+
+Docent can add a single **Ask the docs** answer beneath regular search results
+and inside the help widget. Answers use only the current viewer's visible
+agent-readable corpus, and source chips are limited to URLs Docent supplied.
+The feature is off by default and uses your own Prism provider and key:
+
+```bash
+composer require prism-php/prism
+```
+
+```php
+'ai' => [
+    'enabled' => true,
+    'provider' => env('DOCENT_AI_PROVIDER'),
+    'model' => env('DOCENT_AI_MODEL'),
+],
+```
+
+Publish and run Docent's migrations to log questions and thumbs feedback. Set
+`log_questions` to `false` when no question analytics should be stored.
+
 ## Validate your docs like code
 
 ```bash

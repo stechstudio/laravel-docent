@@ -446,7 +446,7 @@ final class DocentManager
         return implode("\n\n", $lines);
     }
 
-    private function viewerFingerprint(DocumentationContext $context): string
+    public function viewerFingerprint(DocumentationContext $context): string
     {
         $slugs = array_map(
             static fn (NavigationItem $item): string => $item->slug,

@@ -130,6 +130,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ask the Docs
+    |--------------------------------------------------------------------------
+    |
+    | Optional grounded answers powered by the host application's Prism setup.
+    | The feature is off by default and Prism is intentionally not a required
+    | package dependency. Questions use only the current viewer's visible docs.
+    |
+    */
+
+    'ai' => [
+        'enabled' => false,
+        'provider' => env('DOCENT_AI_PROVIDER'),
+        'model' => env('DOCENT_AI_MODEL'),
+        'log_questions' => true,
+        'max_tokens' => 1200,
+        'throttle' => '10,1',
+        'corpus_budget' => 150000,
+        'answer_ttl' => 300,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Navigation
     |--------------------------------------------------------------------------
     |

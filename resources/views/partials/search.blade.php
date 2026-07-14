@@ -1,6 +1,8 @@
+@php($aiEnabled = (bool) config('docent.ai.enabled', false))
 <template x-teleport="body">
-    <div x-data="docentSearch('{{ route('docent.search') }}')"
+    <div x-data="docentSearch('{{ route('docent.search') }}', @js($aiEnabled ? route('docent.ask') : null), @js($aiEnabled ? route('docent.ask.feedback') : null))"
          @docent:search-open.window="show()"
+         @keydown.escape.window="open && (askMode ? backToResults() : hide())"
          x-show="open" x-cloak
          class="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Search documentation">
 
@@ -11,17 +13,18 @@
         <div class="absolute inset-x-0 top-[15vh] mx-auto w-full max-w-xl px-4">
             <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                  class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
-                 @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="enter()" @keydown.escape.prevent="hide()">
+                 @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="enter()">
 
                 <div class="flex items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input x-ref="input" x-model="query" @input="onInput()" type="text" autocomplete="off" spellcheck="false"
+                    <input x-ref="input" x-model="query" @input="onInput()" :disabled="askMode" type="text" autocomplete="off" spellcheck="false"
                            placeholder="Search documentation…"
                            class="w-full bg-transparent py-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white">
                     <kbd class="rounded border border-slate-200 px-1.5 py-0.5 text-[11px] font-medium text-slate-400 dark:border-slate-700">Esc</kbd>
                 </div>
 
-                <div x-ref="list" class="docent-scroll max-h-[60vh] overflow-y-auto p-2">
+                <div x-ref="list" class="docent-scroll max-h-[60vh] overflow-y-auto">
+                    <div x-show="!askMode" class="p-2">
                     {{-- Loading --}}
                     <div x-show="loading" class="px-3 py-8 text-center text-sm text-slate-400">Searching…</div>
 
@@ -39,6 +42,15 @@
                         </a>
                     </template>
 
+                    {{-- Grounded answer stays beneath ordinary search results. --}}
+                    <button x-show="canAsk()" type="button" @click="ask()" @mouseenter="selected = results.length"
+                            :data-selected="selected === results.length"
+                            class="mt-1 block w-full border-t border-slate-100 px-3 py-3 text-left transition dark:border-slate-800"
+                            :class="selected === results.length ? 'bg-[color-mix(in_srgb,var(--docent-accent)_10%,transparent)]' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'">
+                        <span class="block text-sm font-semibold text-slate-900 dark:text-white">Ask the docs</span>
+                        <span class="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400" x-text="query"></span>
+                    </button>
+
                     {{-- Empty --}}
                     <div x-show="searched && !loading && results.length === 0" class="px-3 py-8 text-center text-sm text-slate-400">
                         No results for “<span x-text="query"></span>”
@@ -48,6 +60,9 @@
                     <div x-show="!searched && !loading" class="px-3 py-8 text-center text-sm text-slate-400">
                         Type to search the documentation.
                     </div>
+                    </div>
+
+                    @include('docent::partials.ask-answer', ['compact' => false])
                 </div>
             </div>
         </div>

@@ -4,8 +4,11 @@ namespace Workbench\App\Providers;
 
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Prism\Prism\Enums\Provider as ProviderEnum;
+use Prism\Prism\PrismManager;
 use STS\Docent\Facades\Docent;
 use STS\Docent\Runtime\DocumentationContext;
+use Workbench\App\Ai\GroundedAnswersFake;
 use Workbench\App\Docs\PlanUsageComponent;
 use Workbench\App\Models\User;
 
@@ -22,6 +25,10 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.admin.enabled' => true,
             // Dogfood the same-origin help widget on the demo dashboard.
             'docent.widget.enabled' => true,
+            // Browser-verifiable grounded answers without a key or network call.
+            'docent.ai.enabled' => true,
+            'docent.ai.provider' => 'fake',
+            'docent.ai.model' => 'workbench',
             'docent.navigation.links' => [
                 ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://example.com/support'],
                 ['label' => 'Quickstart', 'icon' => 'rocket-launch', 'page' => 'getting-started/quickstart'],
@@ -44,6 +51,20 @@ class WorkbenchServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $fake = new GroundedAnswersFake;
+        app()->instance(PrismManager::class, new class($fake) extends PrismManager
+        {
+            public function __construct(private readonly GroundedAnswersFake $fake) {}
+
+            /** @param array<string, mixed> $providerConfig */
+            public function resolve(ProviderEnum|string $name, array $providerConfig = []): GroundedAnswersFake
+            {
+                $this->fake->setProviderConfig($providerConfig);
+
+                return $this->fake;
+            }
+        });
+
         // The database store is opt-in, so its migrations load only for the demo.
         $this->loadMigrationsFrom(dirname(__DIR__, 3).'/database/migrations');
 
