@@ -18,6 +18,9 @@ it('parses typed front matter accessors', function () {
     locked: true
     search:
       exclude: true
+      keywords:
+        - insert video
+        - upload a movie
     redirect: billing/old
     ---
 
@@ -34,6 +37,7 @@ it('parses typed front matter accessors', function () {
         ->and($fm->hidden())->toBeTrue()
         ->and($fm->locked())->toBeTrue()
         ->and($fm->searchExcluded())->toBeTrue()
+        ->and($fm->searchKeywords())->toBe(['insert video', 'upload a movie'])
         ->and($fm->redirect())->toBe('billing/old')
         ->and($fm->get('title'))->toBe('Payment Methods')
         ->and($fm->all())->toHaveKey('title');
@@ -49,6 +53,7 @@ it('defaults sensibly when front matter is absent', function () {
         ->and($fm->hidden())->toBeFalse()
         ->and($fm->locked())->toBeFalse()
         ->and($fm->searchExcluded())->toBeFalse()
+        ->and($fm->searchKeywords())->toBe([])
         ->and($fm->all())->toBe([]);
 });
 

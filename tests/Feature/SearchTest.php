@@ -40,7 +40,7 @@ it('caches the index under the repository directory hash', function () {
 
     // remember() returns the already-stored value; the sentinel proves the
     // index was written under exactly this directory-hash key.
-    $cached = app(DocentCache::class)->remember('search:'.$hash, fn () => 'MISS');
+    $cached = app(DocentCache::class)->remember('search:v2:'.$hash, fn () => 'MISS');
 
     expect($cached)->not->toBe('MISS');
 });
@@ -55,12 +55,14 @@ it('ranks a title match above a body-only match', function () {
         ->and(slugsOf($results))->toContain('guides/setup');
 });
 
-it('requires every token to match somewhere (AND semantics)', function () {
+it('rewards full term coverage without rejecting a useful partial match', function () {
     $results = slugsOf(searchAs($this, 'billing overview'));
 
-    // "Billing Overview" has both tokens; "Setup" has only "billing".
+    // "Billing Overview" has both tokens and wins; "Setup" remains a useful
+    // lower-ranked result because its body still contains "billing".
     expect($results)->toContain('billing/overview')
-        ->and($results)->not->toContain('guides/setup');
+        ->and($results)->toContain('guides/setup')
+        ->and($results[0])->toBe('billing/overview');
 });
 
 it('matches on token prefixes', function () {

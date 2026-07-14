@@ -9,7 +9,9 @@ use Illuminate\Contracts\Cache\Repository;
 use STS\Docent\Ai\AiCorpus;
 use STS\Docent\Content\PageReference;
 use STS\Docent\Documents;
+use STS\Docent\Search\SearchIndex;
 use STS\Docent\Search\SearchRecord;
+use STS\Docent\Search\SearchSection;
 
 /**
  * Versioned, store-agnostic cache for parsed ASTs, navigation, and search.
@@ -34,6 +36,8 @@ final class DocentCache
     public const ALLOWED_CLASSES = [
         PageReference::class,
         SearchRecord::class,
+        SearchIndex::class,
+        SearchSection::class,
         AiCorpus::class,
         Documents\Document::class,
         Documents\FrontMatter::class,

@@ -140,6 +140,7 @@ final class FilesystemRepository implements DocumentationRepository, LockAwareRe
             description: $frontMatter->description(),
             directory: $this->directoryOf($relative),
             locked: $this->relativeLocked($relative),
+            searchKeywords: $frontMatter->searchKeywords(),
         );
     }
 

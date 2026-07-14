@@ -18,6 +18,11 @@ final class SearchRecord
 {
     /**
      * @param  list<array{title: string, slug: string}>  $headings
+     * @param  list<string>  $keywords
+     * @param  list<string>  $titleTokens
+     * @param  list<string>  $descriptionTokens
+     * @param  list<string>  $keywordTokens
+     * @param  list<SearchSection>  $sections
      */
     public function __construct(
         public readonly string $slug,
@@ -28,5 +33,11 @@ final class SearchRecord
         public readonly string $group,
         public readonly ?string $authorize,
         public readonly ?string $audience,
+        public readonly array $keywords,
+        public readonly array $titleTokens,
+        public readonly array $descriptionTokens,
+        public readonly array $keywordTokens,
+        public readonly array $sections,
+        public readonly int $order,
     ) {}
 }

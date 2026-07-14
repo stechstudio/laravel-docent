@@ -24,5 +24,7 @@ final class PageReference
         public readonly ?string $description,
         public readonly string $directory = '',
         public readonly bool $locked = false,
+        /** @var list<string> */
+        public readonly array $searchKeywords = [],
     ) {}
 }

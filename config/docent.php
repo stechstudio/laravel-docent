@@ -126,6 +126,14 @@ return [
 
     'search' => [
         'enabled' => true,
+        // English defaults keep question-shaped queries focused. Replace this
+        // list (or set it to []) when the documentation uses another locale.
+        'stop_words' => [
+            'a', 'an', 'and', 'are', 'can', 'could', 'do', 'does', 'for', 'from',
+            'how', 'i', 'in', 'is', 'it', 'my', 'of', 'on', 'or', 'our', 'should',
+            'that', 'the', 'this', 'to', 'we', 'what', 'when', 'where', 'which',
+            'with', 'would', 'you', 'your',
+        ],
     ],
 
     /*

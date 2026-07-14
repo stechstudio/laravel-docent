@@ -71,6 +71,21 @@ final class FrontMatter
         return (bool) $this->get('search.exclude', false);
     }
 
+    /** @return list<string> */
+    public function searchKeywords(): array
+    {
+        $keywords = $this->get('search.keywords', []);
+
+        if (! is_array($keywords)) {
+            return [];
+        }
+
+        return array_values(array_slice(array_filter(array_map(
+            static fn (mixed $keyword): string => is_string($keyword) ? mb_substr(trim($keyword), 0, 80) : '',
+            $keywords,
+        )), 0, 12));
+    }
+
     public function redirect(): ?string
     {
         $redirect = $this->get('redirect');

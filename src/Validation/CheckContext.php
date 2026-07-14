@@ -167,6 +167,7 @@ final class CheckContext
             description: $frontMatter->description(),
             directory: str_contains($slug, '/') ? substr($slug, 0, (int) strrpos($slug, '/')) : '',
             locked: false,
+            searchKeywords: $frontMatter->searchKeywords(),
         );
     }
 

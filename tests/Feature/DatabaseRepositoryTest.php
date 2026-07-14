@@ -63,7 +63,7 @@ it('builds page references from the published front matter', function () {
         'order' => 7,
         'hidden' => false,
         'authorize' => 'reports.view',
-        'search' => ['exclude' => true],
+        'search' => ['exclude' => true, 'keywords' => ['private ledger']],
     ])->publish();
 
     [$ref] = [...$this->repo->all()];
@@ -73,6 +73,7 @@ it('builds page references from the published front matter', function () {
         ->and($ref->order)->toBe(7)
         ->and($ref->authorize)->toBe('reports.view')
         ->and($ref->searchExcluded)->toBeTrue()
+        ->and($ref->searchKeywords)->toBe(['private ledger'])
         ->and($ref->directory)->toBe('guides');
 });
 

@@ -59,6 +59,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
                 description: $frontMatter->description(),
                 directory: $this->baseDirOf($page->slug),
                 locked: false,
+                searchKeywords: $frontMatter->searchKeywords(),
             );
         }
     }

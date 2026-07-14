@@ -7,206 +7,244 @@ namespace STS\Docent\Search;
 use STS\Docent\DocentManager;
 use STS\Docent\Runtime\DocumentationContext;
 
-/**
- * Runs queries against the cached index. Authorization is applied first — records
- * are dropped for viewers who could not open the underlying page — so a hit can
- * never reveal a gated page's title, slug, or snippet. Only then are the
- * remaining records scored, ranked, and turned into {@see SearchResult}s.
- *
- * Scoring: query tokens are matched case-insensitively with prefix semantics
- * against each field. Field weights are title 5, headings 3, description 2,
- * body 1; a multi-token query requires every token to match somewhere (AND),
- * and an exact-phrase occurrence adds a small bonus (title over body).
- */
+/** Runs permission-filtered, section-aware ranked lexical search. */
 final class SearchEngine
 {
     private const MIN_QUERY_LENGTH = 2;
 
-    private const WEIGHT_TITLE = 5;
-
-    private const WEIGHT_HEADING = 3;
-
-    private const WEIGHT_DESCRIPTION = 2;
-
-    private const WEIGHT_BODY = 1;
-
     private const SNIPPET_LENGTH = 160;
+
+    private const K1 = 1.2;
+
+    private const B = 0.75;
+
+    /** @var array<string, float> */
+    private const FIELD_WEIGHTS = [
+        'title' => 5.0,
+        'heading' => 3.5,
+        'description' => 2.5,
+        'keywords' => 2.0,
+        'body' => 1.0,
+    ];
 
     public function __construct(
         private readonly SearchIndexer $indexer,
         private readonly DocentManager $manager,
+        private readonly SearchQueryAnalyzer $analyzer = new SearchQueryAnalyzer,
     ) {}
 
-    /**
-     * @return list<SearchResult>
-     */
+    /** @return list<SearchResult> */
     public function search(string $query, DocumentationContext $context, int $limit = 10): array
     {
         if (mb_strlen(trim($query)) < self::MIN_QUERY_LENGTH) {
             return [];
         }
 
-        $tokens = array_values(array_unique($this->tokenize($query)));
+        $analyzed = $this->analyzer->analyze($query);
 
-        if ($tokens === []) {
+        if ($analyzed->terms === []) {
             return [];
         }
 
+        $index = $this->indexer->index();
         $scored = [];
 
-        foreach ($this->indexer->records() as $record) {
+        foreach ($index->records as $record) {
             if (! $this->manager->authorizes($record->authorize, $record->audience, $context)) {
                 continue;
             }
 
-            $match = $this->score($record, $tokens, $query);
-
+            $match = $this->score($record, $index, $analyzed);
             if ($match !== null) {
                 $scored[] = $match;
             }
         }
 
-        usort($scored, fn (array $a, array $b): int => $b['score'] <=> $a['score']);
+        usort($scored, static function (array $left, array $right): int {
+            return ($right['score'] <=> $left['score'])
+                ?: ($left['record']->order <=> $right['record']->order)
+                ?: strcmp($left['record']->slug, $right['record']->slug);
+        });
 
         return array_map(
-            fn (array $match): SearchResult => $this->result($match['record'], $tokens, $match['heading']),
+            fn (array $match): SearchResult => $this->result($match['record'], $match['section'], $analyzed),
             array_slice($scored, 0, $limit),
         );
     }
 
-    /**
-     * Score a record, or return null when the AND semantics fail (some query
-     * token matches no field on this record).
-     *
-     * @param  list<string>  $tokens
-     * @return array{record: SearchRecord, score: float, heading: array{title: string, slug: string}|null}|null
-     */
-    private function score(SearchRecord $record, array $tokens, string $query): ?array
+    /** @return array{record: SearchRecord, section: SearchSection, score: float}|null */
+    private function score(SearchRecord $record, SearchIndex $index, SearchQuery $query): ?array
     {
-        $titleTokens = $this->tokenize($record->title);
-        $descriptionTokens = $this->tokenize((string) $record->description);
-        $bodyTokens = $this->tokenize($record->body);
+        $globalFields = [
+            'title' => $record->titleTokens,
+            'description' => $record->descriptionTokens,
+            'keywords' => $record->keywordTokens,
+        ];
+        $globalText = [
+            'title' => $record->title,
+            'description' => (string) $record->description,
+            'keywords' => implode(' ', $record->keywords),
+        ];
 
-        $score = 0.0;
-        $heading = null;
+        $best = null;
 
-        foreach ($tokens as $token) {
-            $matched = false;
+        foreach ($record->sections as $section) {
+            $score = 0.0;
+            $matched = [];
 
-            if ($this->prefixPresent($titleTokens, $token)) {
-                $score += self::WEIGHT_TITLE;
-                $matched = true;
+            foreach ($query->terms as $position => $term) {
+                $termScore = 0.0;
+                $termMatched = false;
+
+                foreach ($globalFields as $field => $tokens) {
+                    [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);
+                    $termScore += $fieldScore;
+                    $termMatched = $termMatched || $fieldMatched;
+                }
+
+                foreach (['heading' => $section->headingTokens, 'body' => $section->bodyTokens] as $field => $tokens) {
+                    [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);
+                    $termScore += $fieldScore;
+                    $termMatched = $termMatched || $fieldMatched;
+                }
+
+                $score += $termScore;
+                $matched[$position] = $termMatched;
             }
 
-            $headingHit = $this->headingMatch($record->headings, $token);
-
-            if ($headingHit !== null) {
-                $score += self::WEIGHT_HEADING;
-                $heading ??= $headingHit;
-                $matched = true;
+            $coverage = count(array_filter($matched)) / max(1, count($query->terms));
+            if ($coverage <= 0) {
+                continue;
             }
 
-            if ($this->prefixPresent($descriptionTokens, $token)) {
-                $score += self::WEIGHT_DESCRIPTION;
-                $matched = true;
-            }
+            $score *= 0.4 + (1.6 * ($coverage ** 2));
+            $score += $this->phraseBonus($query->phrase, $globalText, $section);
 
-            $occurrences = $this->prefixCount($bodyTokens, $token);
-
-            if ($occurrences > 0) {
-                // Presence carries the field weight; extra hits add only a small,
-                // capped bonus so a verbose body can never outrank a title match.
-                $score += self::WEIGHT_BODY + min($occurrences - 1, 9) * 0.1;
-                $matched = true;
-            }
-
-            if (! $matched) {
-                return null;
+            if ($best === null || $score > $best['score']
+                || ($score === $best['score'] && $section->order < $best['section']->order)) {
+                $best = ['record' => $record, 'section' => $section, 'score' => $score];
             }
         }
 
-        $score += $this->phraseBonus($record, $query);
-
-        return ['record' => $record, 'score' => $score, 'heading' => $heading];
+        return $best;
     }
 
-    private function phraseBonus(SearchRecord $record, string $query): float
+    /** @param list<string> $tokens @return array{float, bool} */
+    private function fieldScore(array $tokens, string $field, SearchTerm $term, SearchIndex $index): array
     {
-        $phrase = mb_strtolower(trim($query));
-
-        if (str_contains(mb_strtolower($record->title), $phrase)) {
-            return 3.0;
+        if ($tokens === []) {
+            return [0.0, false];
         }
 
-        if (str_contains(mb_strtolower($record->body), $phrase)) {
+        $factor = 0.0;
+        $occurrences = 0;
+
+        foreach ($tokens as $candidate) {
+            $candidateFactor = $this->matchFactor($candidate, $term);
+            if ($candidateFactor <= 0.0) {
+                continue;
+            }
+
+            $factor = max($factor, $candidateFactor);
+            $occurrences++;
+        }
+
+        if ($occurrences === 0) {
+            return [0.0, false];
+        }
+
+        $documents = max(1, count($index->records));
+        $frequency = $index->documentFrequencies[$term->stem] ?? 0;
+        $idf = log(1 + (($documents - $frequency + 0.5) / ($frequency + 0.5)));
+        $length = count($tokens);
+        $average = max(1.0, (float) ($index->averageFieldLengths[$field] ?? 1.0));
+        $normalized = ($occurrences * (self::K1 + 1))
+            / ($occurrences + self::K1 * (1 - self::B + self::B * ($length / $average)));
+
+        return [self::FIELD_WEIGHTS[$field] * $idf * $normalized * $factor, true];
+    }
+
+    private function matchFactor(string $candidate, SearchTerm $term): float
+    {
+        if ($candidate === $term->value) {
             return 1.0;
+        }
+
+        if (SearchTokenizer::stem($candidate) === $term->stem) {
+            return 0.9;
+        }
+
+        if ($term->prefixEligible && mb_strlen($term->value) >= 2 && str_starts_with($candidate, $term->value)) {
+            return 0.72;
+        }
+
+        if (mb_strlen($term->value) >= 5 && abs(mb_strlen($candidate) - mb_strlen($term->value)) <= 1
+            && $this->withinOneEdit($candidate, $term->value)) {
+            return 0.52;
         }
 
         return 0.0;
     }
 
-    /**
-     * @param  list<string>  $tokens
-     * @param  array{title: string, slug: string}|null  $heading
-     */
-    private function result(SearchRecord $record, array $tokens, ?array $heading): SearchResult
+    /** @param array<string, string> $global */
+    private function phraseBonus(string $phrase, array $global, SearchSection $section): float
     {
+        if ($phrase === '') {
+            return 0.0;
+        }
+
+        foreach (['title' => 4.0, 'description' => 2.0, 'keywords' => 2.5] as $field => $bonus) {
+            if (str_contains(mb_strtolower($global[$field]), $phrase)) {
+                return $bonus;
+            }
+        }
+
+        if ($section->title !== null && str_contains(mb_strtolower($section->title), $phrase)) {
+            return 3.0;
+        }
+
+        return str_contains(mb_strtolower($section->body), $phrase) ? 1.0 : 0.0;
+    }
+
+    private function result(SearchRecord $record, SearchSection $section, SearchQuery $query): SearchResult
+    {
+        $snippetBody = trim($section->body) !== '' ? $section->body : $record->body;
+
         return new SearchResult(
             slug: $record->slug,
             url: $this->manager->url($record->slug),
             title: $record->title,
             group: $record->group,
-            snippet: $this->snippet($record->body, $tokens),
-            heading: $heading['title'] ?? null,
-            anchor: $heading['slug'] ?? null,
+            snippet: $this->snippet($snippetBody, $query),
+            heading: $section->title,
+            anchor: $section->slug,
         );
     }
 
-    /**
-     * Build a ~160-char window of the leak-safe body centered on the first match,
-     * escape it, and wrap matched words in `<mark>`. Escaping happens before the
-     * `<mark>` tags are inserted, so no indexed text can inject markup.
-     *
-     * @param  list<string>  $tokens
-     */
-    private function snippet(string $body, array $tokens): string
+    private function snippet(string $body, SearchQuery $query): string
     {
-        if (trim($body) === '') {
-            return '';
-        }
-
-        if (preg_match_all('/\w+/u', $body, $matches, PREG_OFFSET_CAPTURE) === 0) {
+        if (trim($body) === '' || preg_match_all('/\w+/u', $body, $matches, PREG_OFFSET_CAPTURE) === 0) {
             return '';
         }
 
         /** @var list<array{0: string, 1: int}> $words */
         $words = $matches[0];
-
         $center = 0;
 
         foreach ($words as $index => [$word]) {
-            if ($this->wordMatches($word, $tokens)) {
+            if ($this->wordMatches($word, $query)) {
                 $center = $index;
-
                 break;
             }
         }
 
         [$from, $to] = $this->window($words, $center, strlen($body));
-
         $slice = substr($body, $from, $to - $from);
 
-        return ($from > 0 ? '…' : '').$this->highlight($slice, $tokens).($to < strlen($body) ? '…' : '');
+        return ($from > 0 ? '…' : '').$this->highlight($slice, $query).($to < strlen($body) ? '…' : '');
     }
 
-    /**
-     * Grow a window outward from the centered word until it spans roughly
-     * SNIPPET_LENGTH characters, snapping to word boundaries so no multibyte
-     * character is split.
-     *
-     * @param  list<array{0: string, 1: int}>  $words
-     * @return array{0: int, 1: int}
-     */
+    /** @param list<array{0: string, 1: int}> $words @return array{int, int} */
     private function window(array $words, int $center, int $length): array
     {
         $start = $center;
@@ -215,19 +253,16 @@ final class SearchEngine
 
         while ($span < self::SNIPPET_LENGTH) {
             $grew = false;
-
             if ($start > 0) {
                 $start--;
                 $span = $this->wordEnd($words[$end]) - $words[$start][1];
                 $grew = true;
             }
-
             if ($span < self::SNIPPET_LENGTH && $end < count($words) - 1) {
                 $end++;
                 $span = $this->wordEnd($words[$end]) - $words[$start][1];
                 $grew = true;
             }
-
             if (! $grew) {
                 break;
             }
@@ -236,10 +271,7 @@ final class SearchEngine
         return [$words[$start][1], min($this->wordEnd($words[$end]), $length)];
     }
 
-    /**
-     * @param  list<string>  $tokens
-     */
-    private function highlight(string $slice, array $tokens): string
+    private function highlight(string $slice, SearchQuery $query): string
     {
         if (preg_match_all('/\w+/u', $slice, $matches, PREG_OFFSET_CAPTURE) === 0) {
             return e($slice);
@@ -249,10 +281,9 @@ final class SearchEngine
         $cursor = 0;
 
         foreach ($matches[0] as [$word, $offset]) {
-            if (! $this->wordMatches($word, $tokens)) {
+            if (! $this->wordMatches($word, $query)) {
                 continue;
             }
-
             $output .= e(substr($slice, $cursor, $offset - $cursor)).'<mark>'.e($word).'</mark>';
             $cursor = $offset + strlen($word);
         }
@@ -260,87 +291,61 @@ final class SearchEngine
         return $output.e(substr($slice, $cursor));
     }
 
-    /**
-     * @param  array{0: string, 1: int}  $word
-     */
+    private function wordMatches(string $word, SearchQuery $query): bool
+    {
+        $candidate = mb_strtolower($word);
+        foreach ($query->terms as $term) {
+            if ($this->matchFactor($candidate, $term) > 0.0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** @param array{0: string, 1: int} $word */
     private function wordEnd(array $word): int
     {
         return $word[1] + strlen($word[0]);
     }
 
-    /**
-     * @param  list<array{title: string, slug: string}>  $headings
-     */
-    /**
-     * @param  list<array{title: string, slug: string}>  $headings
-     * @return array{title: string, slug: string}|null
-     */
-    private function headingMatch(array $headings, string $token): ?array
+    private function withinOneEdit(string $left, string $right): bool
     {
-        foreach ($headings as $heading) {
-            if ($this->prefixPresent($this->tokenize($heading['title']), $token)) {
-                return $heading;
+        $a = preg_split('//u', $left, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $b = preg_split('//u', $right, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $lengthA = count($a);
+        $lengthB = count($b);
+
+        if (abs($lengthA - $lengthB) > 1) {
+            return false;
+        }
+
+        $indexA = 0;
+        $indexB = 0;
+        $edits = 0;
+
+        while ($indexA < $lengthA && $indexB < $lengthB) {
+            if ($a[$indexA] === $b[$indexB]) {
+                $indexA++;
+                $indexB++;
+
+                continue;
+            }
+
+            if (++$edits > 1) {
+                return false;
+            }
+
+            if ($lengthA > $lengthB) {
+                $indexA++;
+            } elseif ($lengthB > $lengthA) {
+                $indexB++;
+            } else {
+                $indexA++;
+                $indexB++;
             }
         }
 
-        return null;
-    }
-
-    /**
-     * @param  list<string>  $tokens
-     */
-    private function wordMatches(string $word, array $tokens): bool
-    {
-        $lower = mb_strtolower($word);
-
-        foreach ($tokens as $token) {
-            if (str_starts_with($lower, $token)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param  list<string>  $haystack
-     */
-    private function prefixPresent(array $haystack, string $needle): bool
-    {
-        foreach ($haystack as $token) {
-            if (str_starts_with($token, $needle)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param  list<string>  $haystack
-     */
-    private function prefixCount(array $haystack, string $needle): int
-    {
-        $count = 0;
-
-        foreach ($haystack as $token) {
-            if (str_starts_with($token, $needle)) {
-                $count++;
-            }
-        }
-
-        return $count;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function tokenize(string $text): array
-    {
-        if ($text === '' || preg_match_all('/\w+/u', mb_strtolower($text), $matches) === 0) {
-            return [];
-        }
-
-        return $matches[0];
+        return $edits + (($indexA < $lengthA || $indexB < $lengthB) ? 1 : 0) <= 1;
     }
 }

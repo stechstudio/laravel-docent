@@ -34,3 +34,17 @@ it('renders the database page title from the title column', function () {
         ->assertOk()
         ->assertSee('Proper Title');
 });
+
+it('ranks database page search keywords without rendering them', function () {
+    DocentPage::write('db-video', 'Use a frame to embed media.', [
+        'title' => 'Media guide',
+        'search' => ['keywords' => ['insert video']],
+    ])->publish();
+
+    $result = app(SearchEngine::class)->search('insert video', $this->contextFor(null))[0] ?? null;
+
+    expect($result?->slug)->toBe('db-video')
+        ->and($result?->snippet)->not->toContain('insert video');
+
+    $this->get('/docs/db-video')->assertOk()->assertDontSee('insert video');
+});

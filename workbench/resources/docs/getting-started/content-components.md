@@ -2,6 +2,10 @@
 title: Content Components
 description: Interactive patterns for task-focused guides and visual explanations.
 order: 5
+search:
+  keywords:
+    - insert video
+    - embed a video
 ---
 
 # Content Components

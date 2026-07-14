@@ -53,5 +53,32 @@ final class FrontMatterCheck implements Check
         if (! is_array($data) || ! isset($data['title']) || (is_string($data['title']) && trim($data['title']) === '')) {
             yield Issue::warning('missing-title', $slug, 'Page is missing a `title` in its front matter.', 1);
         }
+
+        if (! is_array($data)) {
+            return;
+        }
+
+        $keywords = is_array($data['search'] ?? null) ? ($data['search']['keywords'] ?? null) : null;
+
+        if ($keywords === null) {
+            return;
+        }
+
+        if (! is_array($keywords) || ! array_is_list($keywords)) {
+            yield Issue::error('search-keywords', $slug, '`search.keywords` must be a YAML list of strings.', 1);
+
+            return;
+        }
+
+        if (count($keywords) > 12) {
+            yield Issue::error('search-keywords', $slug, '`search.keywords` accepts at most 12 entries.', 1);
+        }
+
+        foreach ($keywords as $keyword) {
+            if (! is_string($keyword) || trim($keyword) === '' || mb_strlen(trim($keyword)) > 80) {
+                yield Issue::error('search-keywords', $slug, 'Each `search.keywords` entry must be a non-empty string of at most 80 characters.', 1);
+                break;
+            }
+        }
     }
 }

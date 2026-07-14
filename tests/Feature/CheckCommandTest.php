@@ -32,6 +32,7 @@ it('fires every check at least once on the broken fixtures', function () {
 
     $checks = [
         'front-matter',
+        'search-keywords',
         'missing-title',
         'duplicate-slug',
         'broken-link',

@@ -112,6 +112,32 @@ composer require prism-php/prism
 Publish and run Docent's migrations to log questions and thumbs feedback. Set
 `log_questions` to `false` when no question analytics should be stored.
 
+## Search that understands questions
+
+Docent ranks search results by title, section heading, description, author
+keywords, and body content. It ignores common filler words, tolerates a small
+typo in longer terms, and rewards pages that cover more of the query without
+requiring every word to match. Everything stays local to your application; no
+search service or AI provider is involved.
+
+When readers use a different phrase than the guide itself, add a few quiet
+aliases in front matter:
+
+```yaml
+search:
+  keywords:
+    - insert video
+    - upload a movie
+```
+
+Keywords affect ranking only. They are not rendered, included in snippets, or
+added to agent-readable output. Docent accepts up to 12 keywords of 80
+characters each and validates them with `docent:check`.
+
+Question-shaped English queries use a conservative stop-word list from
+`docent.search.stop_words`. Replace the list—or set it to `[]`—for another
+locale.
+
 ## Validate your docs like code
 
 ```bash
@@ -139,7 +165,7 @@ $this->docs()->search('payroll', as: $member)
 A polished reading experience out of the box, with no build step in your app:
 
 - Three-column responsive layout with grouped sidebar and scroll-spy "On this page" rail
-- ⌘K search palette with keyboard navigation and highlighted snippets
+- ⌘K ranked search with section links, typo tolerance, keyboard navigation, and highlighted snippets
 - Dark mode (system-aware, persisted)
 - Server-side syntax highlighting (Phiki, dual light/dark themes), copy buttons, filename labels
 - One accent color rebrands everything: `config/docent.php` → `theme.accent`

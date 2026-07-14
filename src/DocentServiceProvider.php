@@ -51,6 +51,7 @@ use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
+use STS\Docent\Search\SearchQueryAnalyzer;
 use STS\Docent\Support\DocentCache;
 
 final class DocentServiceProvider extends ServiceProvider
@@ -124,6 +125,7 @@ final class DocentServiceProvider extends ServiceProvider
         $this->app->scoped(SearchEngine::class, static fn (Application $app): SearchEngine => new SearchEngine(
             $app->make(SearchIndexer::class),
             $app->make(DocentManager::class),
+            new SearchQueryAnalyzer($app['config']->get('docent.search.stop_words')),
         ));
 
         $this->app->singleton(PrismGuard::class);
