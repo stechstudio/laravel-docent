@@ -38,6 +38,7 @@ it('exposes source provenance, format, hash, and base dir', function () {
 
     expect($source->path)->toBe('database:docent_pages/'.$page->getKey())
         ->and($source->format)->toBe('markdown')
+        ->and($source->origin)->toBe('database')
         // The hash covers the composed document (front matter + content) so
         // metadata changes invalidate the AST cache too.
         ->and($source->hash)->toBe(sha1($source->rawContent))

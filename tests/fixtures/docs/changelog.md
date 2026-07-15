@@ -9,3 +9,5 @@ search:
 
 - v1 released
 - Added flibbertigibbet support
+
+<aside data-reviewed-html="yes">Reviewed repository HTML.</aside>

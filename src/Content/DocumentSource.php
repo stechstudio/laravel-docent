@@ -10,13 +10,18 @@ namespace STS\Docent\Content;
  * dispatch (a future database repository may store Tiptap JSON); `baseDir` is
  * the directory relative links resolve against, decided by the repository —
  * the only layer that knows whether a slug is a section index. `path` is
- * provenance for error messages (a file path, a database identifier, …).
+ * provenance for error messages (a file path, a database identifier, …), while
+ * `origin` carries the security boundary used for raw HTML rendering.
  */
 final class DocumentSource
 {
     public const FORMAT_MARKDOWN = 'markdown';
 
     public const FORMAT_TIPTAP = 'tiptap';
+
+    public const ORIGIN_REPOSITORY = 'repository';
+
+    public const ORIGIN_DATABASE = 'database';
 
     /**
      * @param  array<string, mixed>|null  $frontMatter  When set, overrides the
@@ -35,5 +40,6 @@ final class DocumentSource
         public readonly string $baseDir = '',
         public readonly string $format = self::FORMAT_MARKDOWN,
         public readonly ?array $frontMatter = null,
+        public readonly string $origin = self::ORIGIN_REPOSITORY,
     ) {}
 }

@@ -153,6 +153,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
             lastModified: (int) $revision->created_at?->getTimestamp(),
             baseDir: $this->baseDirOf($slug),
             format: DocumentSource::FORMAT_MARKDOWN,
+            origin: DocumentSource::ORIGIN_DATABASE,
         );
     }
 
@@ -176,6 +177,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
             baseDir: $this->baseDirOf($slug),
             format: DocumentSource::FORMAT_TIPTAP,
             frontMatter: $frontMatter,
+            origin: DocumentSource::ORIGIN_DATABASE,
         );
     }
 

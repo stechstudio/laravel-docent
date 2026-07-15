@@ -26,6 +26,7 @@ use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
+use STS\Docent\Documents\Renderer\ContentHtmlSanitizer;
 use STS\Docent\Documents\Renderer\PhikiCodeBlockRenderer;
 use STS\Docent\Http\Controllers\Admin\AdminController;
 use STS\Docent\Http\Controllers\Admin\ExportController;
@@ -71,6 +72,8 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocentCache::class),
         ));
 
+        $this->app->singleton(ContentHtmlSanitizer::class);
+
         // A plain bind (not a singleton) so it always reflects the current
         // configured path — tests re-point `docent.filesystem.path` and expect a
         // fresh read when they forget the repository.
@@ -115,6 +118,7 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(CodeBlockRenderer::class),
             $app->make(FilesystemRepository::class),
             $app->make(DocumentationMode::class),
+            $app->make(ContentHtmlSanitizer::class),
         ));
 
         $this->app->scoped(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(

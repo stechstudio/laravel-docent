@@ -14,6 +14,7 @@ final class Document extends Node
     public function __construct(
         public readonly FrontMatter $frontMatter,
         ?int $line = null,
+        public readonly ?HtmlPolicy $htmlPolicy = null,
     ) {
         parent::__construct($line);
     }

@@ -32,6 +32,22 @@ function tiptapDemoDoc(): array
     ]];
 }
 
+function tiptapRawHtmlDoc(): array
+{
+    return ['type' => 'doc', 'content' => [
+        ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Ordinary rich text survives.']]],
+        ['type' => 'docsHtml', 'attrs' => ['html' => <<<'HTML'
+            <aside class="safe-html" aria-label="Safe block">Safe raw HTML</aside>
+            <a class="safe-link" href="/docs/safe">Safe relative link</a>
+            <a href="javascript:alert(1)" onclick="window.clicked = true">Unsafe link</a>
+            <img class="safe-image" src="/safe.png" onerror="window.imageExecuted = true">
+            <div style="position:fixed;inset:0">Styled content</div>
+            <iframe src="https://example.com"></iframe>
+            <script>window.scriptExecuted = true</script>
+            HTML]],
+    ]];
+}
+
 it('saves a tiptap draft, publishes it, and the reader renders it', function () {
     $this->actingAs($this->adminUser())
         ->postJson('/docs/admin/api/pages', [
@@ -100,6 +116,58 @@ it('rejects invalid tiptap with a 422 naming the bad node', function () {
         'content_tiptap' => ['type' => 'doc', 'content' => [['type' => 'bogusNode']]],
     ])->assertStatus(422)
         ->assertJsonValidationErrors('content_tiptap');
+});
+
+it('sanitizes raw html in published database tiptap by default', function () {
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages', [
+        'slug' => 'untrusted-html',
+        'title' => 'Untrusted HTML',
+        'content_tiptap' => tiptapRawHtmlDoc(),
+    ])->assertCreated();
+    $this->actingAs($this->adminUser())->postJson('/docs/admin/api/pages/untrusted-html/publish')->assertOk();
+
+    $this->actingAs($this->adminUser())->get('/docs/untrusted-html')
+        ->assertOk()
+        ->assertSee('Ordinary rich text survives.')
+        ->assertSee('<aside class="safe-html" aria-label="Safe block">Safe raw HTML</aside>', false)
+        ->assertSee('<a class="safe-link" href="/docs/safe">Safe relative link</a>', false)
+        ->assertSee('<img class="safe-image" src="/safe.png" />', false)
+        ->assertSee('Styled content')
+        ->assertDontSee('javascript:', false)
+        ->assertDontSee('onclick=', false)
+        ->assertDontSee('onerror=', false)
+        ->assertDontSee('style=', false)
+        ->assertDontSee('<iframe', false)
+        ->assertDontSee('window.scriptExecuted', false);
+});
+
+it('applies the database html policy to admin previews', function () {
+    $html = $this->actingAs($this->adminUser())
+        ->postJson('/docs/admin/api/preview', ['content_tiptap' => tiptapRawHtmlDoc()])
+        ->assertOk()
+        ->json('html');
+
+    expect($html)->toContain('Ordinary rich text survives.')
+        ->toContain('<aside class="safe-html" aria-label="Safe block">Safe raw HTML</aside>')
+        ->toContain('<a class="safe-link" href="/docs/safe">Safe relative link</a>')
+        ->not->toContain('javascript:')
+        ->not->toContain('onclick=')
+        ->not->toContain('onerror=')
+        ->not->toContain('style=')
+        ->not->toContain('<iframe')
+        ->not->toContain('<script');
+});
+
+it('allows deploy-trusted hosts to disable database html sanitization explicitly', function () {
+    config()->set('docent.content.database.sanitize_html', false);
+
+    $preview = $this->actingAs($this->adminUser())
+        ->postJson('/docs/admin/api/preview', ['content_tiptap' => tiptapRawHtmlDoc()])
+        ->assertOk();
+
+    expect($preview->json('html'))->toContain('<aside class="safe-html" aria-label="Safe block">Safe raw HTML</aside>')
+        ->toContain('onclick="window.clicked = true"')
+        ->toContain('<script>window.scriptExecuted = true</script>');
 });
 
 it('exports any page to markdown the markdown parser accepts', function () {

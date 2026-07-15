@@ -76,6 +76,23 @@ intentionally public:
 ],
 ```
 
+Repository Markdown and browser-authored pages have separate HTML trust
+policies. Raw HTML in repository files remains enabled by default because those
+files are reviewed application code. Raw HTML entered through the database
+admin—including previews, published pages, and database partials—is sanitized
+by default: ordinary structural HTML, classes, links, and media remain useful,
+while scripts, event handlers, unsafe URLs, embedded frames, and inline styles
+are removed. The stored source remains unchanged. Applications whose publishing
+editors are trusted to deploy code may explicitly disable sanitization:
+
+```php
+'content' => [
+    'database' => [
+        'sanitize_html' => false,
+    ],
+],
+```
+
 ## Connecting your application
 
 Documentation never contains raw PHP or Blade. Instead, your app registers stable, allowlisted integrations, typically in a service provider:

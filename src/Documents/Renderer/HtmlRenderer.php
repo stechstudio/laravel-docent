@@ -50,6 +50,7 @@ use STS\Docent\Documents\Ast\Text;
 use STS\Docent\Documents\Ast\ThematicBreak;
 use STS\Docent\Documents\Ast\Video;
 use STS\Docent\Documents\Document;
+use STS\Docent\Documents\HtmlPolicy;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\Icon;
@@ -70,6 +71,11 @@ final class HtmlRenderer
     /** @var list<string> */
     private array $includeStack = [];
 
+    /** @var list<HtmlPolicy> */
+    private array $htmlPolicyStack = [];
+
+    private ContentHtmlSanitizer $htmlSanitizer;
+
     private int $componentIndex = 0;
 
     /**
@@ -84,23 +90,48 @@ final class HtmlRenderer
         private readonly ?Closure $includeResolver = null,
         private readonly ?Closure $urlResolver = null,
         ?CodeBlockRenderer $codeBlockRenderer = null,
+        ?ContentHtmlSanitizer $htmlSanitizer = null,
     ) {
         $this->codeBlockRenderer = $codeBlockRenderer ?? new DefaultCodeBlockRenderer;
+        $this->htmlSanitizer = $htmlSanitizer ?? new ContentHtmlSanitizer;
     }
 
     public function render(Node $node): string
     {
+        if ($node instanceof Document && $node->htmlPolicy !== null) {
+            $this->htmlPolicyStack[] = $node->htmlPolicy;
+
+            try {
+                return $this->renderChildren($node);
+            } finally {
+                array_pop($this->htmlPolicyStack);
+            }
+        }
+
         return $this->renderChildren($node);
     }
 
     private function renderChildren(Node $node): string
     {
-        $html = '';
-        foreach ($node->children as $child) {
-            $html .= $this->renderNode($child);
+        $sanitizeInlineHtml = false;
+
+        if ($this->currentHtmlPolicy() === HtmlPolicy::Sanitized) {
+            foreach ($node->children as $child) {
+                if ($child instanceof HtmlInline) {
+                    $sanitizeInlineHtml = true;
+                    break;
+                }
+            }
         }
 
-        return $html;
+        $html = '';
+        foreach ($node->children as $child) {
+            $html .= $sanitizeInlineHtml && $child instanceof HtmlInline
+                ? $child->html
+                : $this->renderNode($child);
+        }
+
+        return $sanitizeInlineHtml ? $this->htmlSanitizer->sanitize($html) : $html;
     }
 
     private function renderNode(Node $node): string
@@ -119,7 +150,7 @@ final class HtmlRenderer
             $node instanceof TableCell => $this->renderTableCell($node),
             $node instanceof CodeBlock => $this->codeBlockRenderer->render($node),
             $node instanceof ThematicBreak => '<hr />',
-            $node instanceof HtmlBlock => $this->allowHtml() ? $node->html : '',
+            $node instanceof HtmlBlock => $this->renderHtml($node->html),
             $node instanceof Callout => $this->renderCallout($node),
             $node instanceof CardGroup => $this->renderCardGroup($node),
             $node instanceof Card => $this->renderCard($node),
@@ -147,7 +178,7 @@ final class HtmlRenderer
             $node instanceof Image => $this->renderImage($node),
             $node instanceof HardBreak => "<br />\n",
             $node instanceof SoftBreak => "\n",
-            $node instanceof HtmlInline => $this->allowHtml() ? $node->html : '',
+            $node instanceof HtmlInline => $this->renderHtml($node->html),
             $node instanceof DynamicValue => $this->renderDynamicValue($node),
             $node instanceof AppLink => $this->renderAppLink($node),
 
@@ -401,10 +432,12 @@ final class HtmlRenderer
         }
 
         $this->includeStack[] = $node->name;
-        $html = $this->renderChildren($document);
-        array_pop($this->includeStack);
 
-        return $html;
+        try {
+            return $this->render($document);
+        } finally {
+            array_pop($this->includeStack);
+        }
     }
 
     private function renderComponent(ComponentNode $node): string
@@ -500,9 +533,20 @@ final class HtmlRenderer
         return (($this->urlResolver)($target['slug']) ?? $destination).$target['suffix'];
     }
 
-    private function allowHtml(): bool
+    private function renderHtml(string $html): string
     {
-        return (bool) ($this->options['allow_html'] ?? true);
+        return match ($this->currentHtmlPolicy()) {
+            HtmlPolicy::Trusted => $html,
+            HtmlPolicy::Sanitized => $this->htmlSanitizer->sanitize($html),
+            HtmlPolicy::Denied => '',
+        };
+    }
+
+    private function currentHtmlPolicy(): HtmlPolicy
+    {
+        return $this->htmlPolicyStack !== []
+            ? $this->htmlPolicyStack[array_key_last($this->htmlPolicyStack)]
+            : (($this->options['allow_html'] ?? true) ? HtmlPolicy::Trusted : HtmlPolicy::Denied);
     }
 
     private function missing(string $kind, string $name): string

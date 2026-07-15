@@ -114,13 +114,21 @@ return [
     | Content
     |--------------------------------------------------------------------------
     |
-    | Whether raw HTML authored in repository markdown is emitted. Repository
-    | content is app code reviewed in PRs, so this defaults to true.
+    | Repository Markdown is reviewed application code, so its raw HTML remains
+    | enabled by default and keeps the historical `allow_html` setting. Content
+    | written through the database admin is sanitized when rendered: ordinary
+    | structural HTML stays useful, while scripts, event handlers, unsafe URLs,
+    | and other active content are removed. The original source remains stored
+    | verbatim.
+    | Deploy-trusted teams may explicitly disable database sanitization.
     |
     */
 
     'content' => [
         'allow_html' => true,
+        'database' => [
+            'sanitize_html' => true,
+        ],
     ],
 
     /*

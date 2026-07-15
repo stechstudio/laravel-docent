@@ -20,10 +20,12 @@ use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
+use STS\Docent\Documents\HtmlPolicy;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
 use STS\Docent\Documents\Renderer\AgentMarkdownRenderer;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
+use STS\Docent\Documents\Renderer\ContentHtmlSanitizer;
 use STS\Docent\Documents\Renderer\HtmlRenderer;
 use STS\Docent\Documents\Renderer\TableOfContents;
 use STS\Docent\Documents\Renderer\TocEntry;
@@ -66,6 +68,7 @@ final class DocentManager
         private readonly CodeBlockRenderer $codeBlockRenderer,
         private readonly FilesystemRepository $filesystem,
         private readonly DocumentationMode $mode,
+        private readonly ContentHtmlSanitizer $htmlSanitizer,
     ) {}
 
     /** @var array<string, string> */
@@ -223,6 +226,7 @@ final class DocentManager
             includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
             urlResolver: fn (string $slug): string => $this->url($slug),
             codeBlockRenderer: $this->codeBlockRenderer,
+            htmlSanitizer: $this->htmlSanitizer,
         );
 
         return $renderer->render($document);
@@ -976,6 +980,8 @@ final class DocentManager
      */
     public function previewDraft(Document $document, DocumentationContext $context, string $slug = ''): array
     {
+        $document = $this->withHtmlPolicy($document, $this->databaseHtmlPolicy());
+
         return [
             'html' => $this->renderDocument($document, $context),
             'toc' => $this->tocToArray((new TableOfContents($this->registry, $context))->buildFor($document)),
@@ -1244,9 +1250,11 @@ final class DocentManager
             fn (): Document => $parser->parse($source->rawContent),
         );
 
-        return $source->frontMatter === null
+        $document = $source->frontMatter === null
             ? $document
             : $this->withFrontMatter($document, $source->frontMatter);
+
+        return $this->withHtmlPolicy($document, $this->sourceHtmlPolicy($source));
     }
 
     /**
@@ -1258,9 +1266,31 @@ final class DocentManager
      */
     private function withFrontMatter(Document $document, array $frontMatter): Document
     {
-        $replacement = new Document(new FrontMatter($frontMatter), $document->line);
+        $replacement = new Document(new FrontMatter($frontMatter), $document->line, $document->htmlPolicy);
         $replacement->setChildren($document->children);
 
         return $replacement;
+    }
+
+    private function withHtmlPolicy(Document $document, HtmlPolicy $policy): Document
+    {
+        $replacement = new Document($document->frontMatter, $document->line, $policy);
+        $replacement->setChildren($document->children);
+
+        return $replacement;
+    }
+
+    private function sourceHtmlPolicy(DocumentSource $source): HtmlPolicy
+    {
+        return $source->origin === DocumentSource::ORIGIN_DATABASE
+            ? $this->databaseHtmlPolicy()
+            : ((bool) config('docent.content.allow_html', true) ? HtmlPolicy::Trusted : HtmlPolicy::Denied);
+    }
+
+    private function databaseHtmlPolicy(): HtmlPolicy
+    {
+        return (bool) config('docent.content.database.sanitize_html', true)
+            ? HtmlPolicy::Sanitized
+            : HtmlPolicy::Trusted;
     }
 }
