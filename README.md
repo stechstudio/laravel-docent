@@ -61,6 +61,21 @@ normal deep links and table-of-contents entries.
 
 When the database-backed admin is enabled, editors can normally create an editable copy of a repository page. Add `locked: true` to a page's front matter when the repository version must always win. The same key in `_group.yml` locks every repository page and partial below that directory; a page-level `locked: false` cannot weaken the group lock. Locked pages remain visible in the admin as rendered, read-only content.
 
+Admin image uploads support PNG, JPEG, GIF, WebP, and SVG on any configured
+Laravel filesystem disk. Docent streams them through the documentation route,
+uses private immutable browser caching by default, and serves SVGs with a
+restrictive document policy so they remain safe when their raw URL is opened.
+Only enable shared caching when the documentation and every uploaded image are
+intentionally public:
+
+```php
+'admin' => [
+    'uploads' => [
+        'public_cache' => true,
+    ],
+],
+```
+
 ## Connecting your application
 
 Documentation never contains raw PHP or Blade. Instead, your app registers stable, allowlisted integrations, typically in a service provider:

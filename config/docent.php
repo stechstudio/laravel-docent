@@ -78,7 +78,9 @@ return [
     | default). Image uploads land on `disk` and are served back through the
     | docs `_uploads` route — any disk works (public, local, private S3), no
     | storage:link or public bucket required, and images inherit the docs
-    | route middleware.
+    | route middleware. Uploaded files use private immutable browser caching by
+    | default. Enable `uploads.public_cache` only when the documentation and
+    | every uploaded image are intentionally public through any shared cache.
     |
     */
 
@@ -87,6 +89,9 @@ return [
         'path' => 'admin',
         'gate' => 'viewDocentAdmin',
         'disk' => 'public',
+        'uploads' => [
+            'public_cache' => false,
+        ],
     ],
 
     /*
