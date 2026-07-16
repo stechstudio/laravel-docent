@@ -1,5 +1,7 @@
 # Docent
 
+[![CI](https://github.com/stechstudio/laravel-docent/actions/workflows/ci.yml/badge.svg)](https://github.com/stechstudio/laravel-docent/actions/workflows/ci.yml)
+
 **Give your Laravel app a guide.**
 
 Docent installs a beautiful, fast, searchable documentation site inside your Laravel application. And unlike a static docs generator, the documentation *participates* in your app: pages can respond to who the viewer is, what they're authorized to see, which features are enabled, and what's actually happening in their account.
@@ -248,6 +250,14 @@ php artisan docent:check --strict # warnings fail too
 ```
 
 The checker walks your whole tree and reports broken internal links, unknown values, links, conditions, components, and audiences, nonexistent named routes, missing includes and include cycles, missing images, duplicate slugs, heading hierarchy jumps, and front matter problems. Every report has a file and line number, ready for CI.
+
+### Checks for host applications
+
+Add the strict checker to your application's CI so documentation drift fails the build alongside your tests:
+
+```yaml
+- run: php artisan docent:check --strict
+```
 
 And test documentation visibility directly in your suite:
 

@@ -1,0 +1,17 @@
+# Keep release archives (composer dist installs) to runtime files only:
+# src, config, database, resources/views, resources/dist, resources/icons,
+# README, LICENSE, composer.json.
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.github export-ignore
+/CHANGELOG.md export-ignore
+/RELEASING.md export-ignore
+/phpunit.xml export-ignore
+/testbench.yaml export-ignore
+/tests export-ignore
+/workbench export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+# Asset source; the compiled output ships in resources/dist.
+/resources/css export-ignore
+/resources/js export-ignore
