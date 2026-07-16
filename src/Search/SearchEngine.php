@@ -36,6 +36,17 @@ final class SearchEngine
     /** @return list<SearchResult> */
     public function search(string $query, DocumentationContext $context, int $limit = 10): array
     {
+        $analyzed = $this->analyzer->analyze($query);
+
+        return array_map(
+            fn (SearchMatch $match): SearchResult => $this->result($match->record, $match->section, $analyzed),
+            $this->ranked($query, $context, $limit),
+        );
+    }
+
+    /** @return list<SearchMatch> */
+    public function ranked(string $query, DocumentationContext $context, int $limit = 10): array
+    {
         if (mb_strlen(trim($query)) < self::MIN_QUERY_LENGTH) {
             return [];
         }
@@ -56,20 +67,17 @@ final class SearchEngine
 
             $match = $this->score($record, $index, $analyzed);
             if ($match !== null) {
-                $scored[] = $match;
+                $scored[] = new SearchMatch($match['record'], $match['section'], $match['score']);
             }
         }
 
-        usort($scored, static function (array $left, array $right): int {
-            return ($right['score'] <=> $left['score'])
-                ?: ($left['record']->order <=> $right['record']->order)
-                ?: strcmp($left['record']->slug, $right['record']->slug);
+        usort($scored, static function (SearchMatch $left, SearchMatch $right): int {
+            return ($right->score <=> $left->score)
+                ?: ($left->record->order <=> $right->record->order)
+                ?: strcmp($left->record->slug, $right->record->slug);
         });
 
-        return array_map(
-            fn (array $match): SearchResult => $this->result($match['record'], $match['section'], $analyzed),
-            array_slice($scored, 0, $limit),
-        );
+        return array_slice($scored, 0, max(1, $limit));
     }
 
     /** @return array{record: SearchRecord, section: SearchSection, score: float}|null */

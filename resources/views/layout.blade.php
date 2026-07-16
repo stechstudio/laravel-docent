@@ -25,7 +25,7 @@
     {{-- Dynamic theme tokens last so host config always wins the cascade. --}}
     <style>{!! $docent->themeStyles() !!}</style>
 </head>
-<body class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
+<body data-docent-slug="{{ $currentSlug ?? '' }}" class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     @php($aiEnabled = (bool) config('docent.ai.enabled', false))
     <a href="#docent-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-[var(--docent-accent)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">
         Skip to content

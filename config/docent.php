@@ -169,6 +169,11 @@ return [
         'throttle' => '10,1',
         'corpus_budget' => 150000,
         'answer_ttl' => 300,
+        'retrieval' => [
+            'max_pages' => 8,
+            'candidate_limit' => 24,
+            'debug' => false,
+        ],
         'conversation' => [
             'ttl' => 7200,
             'max_turns' => 10,

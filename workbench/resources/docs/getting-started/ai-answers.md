@@ -21,6 +21,11 @@ The response supports headings, lists, inline code, fenced code, and
 blockquotes. Model links become clickable only when they exactly match a page
 Docent made available to the current viewer.
 
+Each question first searches the viewer's authorized help. Docent favors the
+strongest matching pages, gives the page currently on screen a small boost, and
+uses the previous question when a new one looks like a follow-up. Only those
+retrieved pages reach the model or citation list.
+
 Use the trash button to start over. Conversations expire after two hours by
 default and reset automatically if the documentation available to the viewer
 changes. They are kept in Laravel's cache, not in a permanent transcript table.

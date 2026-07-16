@@ -8,7 +8,7 @@ use STS\Docent\Validation\Check;
 use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\Issue;
 
-/** Warns when the configured Phase A context-stuffing budget will omit pages. */
+/** Warns when retrieval cannot fit a useful documentation excerpt. */
 final class AiCorpusSizeCheck implements Check
 {
     public function run(CheckContext $context): iterable
@@ -17,25 +17,14 @@ final class AiCorpusSizeCheck implements Check
             return;
         }
 
-        $characters = 0;
-
-        foreach ($context->pages() as $page) {
-            if ($page->searchExcluded) {
-                continue;
-            }
-
-            $characters += strlen($context->source($page->slug)?->rawContent ?? '');
-        }
-
-        $tokens = (int) ceil($characters / 4);
         $budget = max(1, (int) config('docent.ai.corpus_budget', 150000));
 
-        if ($tokens > $budget) {
+        if ($budget < 256) {
             yield Issue::warning(
-                'ai-corpus-large',
+                'ai-corpus-small',
                 '',
-                'The AI corpus is approximately '.number_format($tokens).' tokens, above the '.number_format($budget)
-                    .'-token budget. Increase docent.ai.corpus_budget or plan Phase B retrieval; Phase A will omit whole pages from the end.',
+                'The AI corpus budget is '.number_format($budget)
+                    .' tokens. Increase docent.ai.corpus_budget to at least 256 so retrieval can include a useful documentation excerpt.',
             );
         }
     }

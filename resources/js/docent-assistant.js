@@ -282,6 +282,12 @@ export function registerDocentAssistant(Alpine) {
             this.ask(this.composer, { restoreComposerFocus: true });
         },
 
+        currentSlug() {
+            return this.mode === 'widget'
+                ? String(document.body.dataset.widgetSlug || '')
+                : String(document.body.dataset.docentSlug || '');
+        },
+
         retry(message) {
             const index = this.messages.findIndex((candidate) => candidate.id === message.id);
             const user = this.messages[index - 1];
@@ -349,6 +355,8 @@ export function registerDocentAssistant(Alpine) {
             try {
                 const suffix = this.mode === 'widget' ? '?mode=widget' : '';
                 const body = { question };
+                const currentSlug = this.currentSlug();
+                if (currentSlug) body.current_slug = currentSlug;
                 if (this.conversationId && this.conversationToken) {
                     body.conversation_id = this.conversationId;
                     body.conversation_token = this.conversationToken;

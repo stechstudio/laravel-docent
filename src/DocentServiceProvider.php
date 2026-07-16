@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use STS\Docent\Ai\AiAnswerService;
 use STS\Docent\Ai\AiCorpusBuilder;
 use STS\Docent\Ai\AiQuestionLogger;
+use STS\Docent\Ai\AiRetriever;
 use STS\Docent\Ai\PrismGuard;
 use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
@@ -134,10 +135,15 @@ final class DocentServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(PrismGuard::class);
+        $this->app->scoped(AiRetriever::class, static fn (Application $app): AiRetriever => new AiRetriever(
+            $app->make(SearchEngine::class),
+            $app->make(SearchIndexer::class),
+            $app->make(DocentManager::class),
+        ));
         $this->app->scoped(AiCorpusBuilder::class, static fn (Application $app): AiCorpusBuilder => new AiCorpusBuilder(
             $app->make(DocentManager::class),
             $app->make(DocumentationRepository::class),
-            $app->make(DocentCache::class),
+            $app->make(AiRetriever::class),
         ));
         $this->app->scoped(AiAnswerService::class, static fn (Application $app): AiAnswerService => new AiAnswerService(
             $app->make(PrismGuard::class),

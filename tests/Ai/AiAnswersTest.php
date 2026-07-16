@@ -32,9 +32,9 @@ function fakeDocentAnswer(string $text): PrismFake
     ])->withFakeChunkSize(12);
 }
 
-function askDocs($test, string $question, string $query = ''): array
+function askDocs($test, string $question, string $query = '', array $extra = []): array
 {
-    $response = $test->postJson('/docs/_ask'.$query, ['question' => $question]);
+    $response = $test->postJson('/docs/_ask'.$query, ['question' => $question, ...$extra]);
     $response->assertOk()->assertHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 
     return [$response, $response->streamedContent()];
@@ -98,6 +98,7 @@ it('renders a dedicated reader Assistant outside search', function () {
 
     $response
         ->assertSee('data-docent-assistant-enabled', false)
+        ->assertSee('data-docent-slug="guides/setup"', false)
         ->assertSee('data-docent-assistant-panel', false)
         ->assertSee('Open Assistant')
         ->assertSee('Ask Assistant')
@@ -105,6 +106,24 @@ it('renders a dedicated reader Assistant outside search', function () {
         ->assertDontSee('Temporary conversation. Answers are grounded in the docs available to you.')
         ->assertDontSee('Back to results')
         ->assertDontSee('From the docs');
+});
+
+it('can expose bounded retrieval diagnostics for the current page', function () {
+    config()->set('docent.ai.retrieval.debug', true);
+    fakeDocentAnswer('Use the current guide.');
+
+    [, $stream] = askDocs(
+        $this,
+        'What should I do next?',
+        extra: ['current_slug' => 'guides/setup'],
+    );
+    $citations = streamedEvent($stream, 'citations');
+    $selected = collect($citations['retrieval']['selected'] ?? [])->firstWhere('slug', 'guides/setup');
+
+    expect($citations['retrieval']['current_page_included'] ?? null)->toBeTrue()
+        ->and($selected['reasons'] ?? [])->toContain('current_page')
+        ->and(json_encode($citations['retrieval'], JSON_THROW_ON_ERROR))
+        ->not->toContain('Install the thing');
 });
 
 it('namespaces restored Assistant state by viewer session and surface', function () {
@@ -135,8 +154,8 @@ it('emits safe rendered markdown for live and cached answers', function () {
         .'[Invented](https://evil.test/setup) <script>alert(1)</script>',
     );
 
-    [, $live] = askDocs($this, 'Render this safely');
-    [, $cached] = askDocs($this, '  render this safely  ');
+    [, $live] = askDocs($this, 'Render this safely', extra: ['current_slug' => 'guides/setup']);
+    [, $cached] = askDocs($this, '  render this safely  ', extra: ['current_slug' => 'guides/setup']);
 
     foreach ([$live, $cached] as $stream) {
         $html = streamedEvent($stream, 'answer_rendered')['html'] ?? '';
@@ -158,7 +177,7 @@ it('sends only viewer-visible documentation to Prism', function () {
     $memberFake = fakeDocentAnswer('Member answer.');
 
     $this->actingAs($this->memberUser());
-    askDocs($this, 'What can I do?');
+    askDocs($this, 'What can I do?', extra: ['current_slug' => 'guides/setup']);
 
     $memberFake->assertRequest(function (array $requests): void {
         $prompt = $requests[0]->systemPrompts()[0]->content;
@@ -174,7 +193,7 @@ it('sends only viewer-visible documentation to Prism', function () {
     $this->app['auth']->forgetGuards();
     $adminFake = fakeDocentAnswer('Admin answer.');
     $this->actingAs($this->adminUser());
-    askDocs($this, 'What can an admin do?');
+    askDocs($this, 'What can an admin do?', extra: ['current_slug' => 'guides/setup']);
 
     $adminFake->assertRequest(function (array $requests): void {
         $prompt = $requests[0]->systemPrompts()[0]->content;
@@ -194,8 +213,9 @@ it('rewrites the allowed citation set for widget navigation', function () {
     [, $stream] = askDocs($this, 'Where is setup?', '?mode=widget');
     $citationEvent = streamedEvent($stream, 'citations');
 
-    expect($citationEvent['citations'][2]['url'] ?? null)
-        ->toBe('http://localhost/docs/_widget/guides/setup');
+    $setup = collect($citationEvent['citations'] ?? [])->firstWhere('slug', 'guides/setup');
+
+    expect($setup['url'] ?? null)->toBe('http://localhost/docs/_widget/guides/setup');
 });
 
 it('caps questions at 500 characters', function () {
@@ -301,11 +321,11 @@ it('records an empty generated response as no-answer', function () {
         ->and($question->answer_hash)->toBeNull();
 });
 
-it('still answers when the corpus budget omits whole pages', function () {
+it('still answers when the corpus budget cannot fit a relevant excerpt', function () {
     config()->set('docent.ai.corpus_budget', 1);
     $fake = fakeDocentAnswer('The available docs do not cover that.');
 
-    [, $stream] = askDocs($this, 'What was omitted?');
+    [, $stream] = askDocs($this, 'How do I install it?', extra: ['current_slug' => 'guides/setup']);
 
     expect(streamedAnswer($stream))->toBe('The available docs do not cover that.');
     $fake->assertRequest(function (array $requests): void {
@@ -338,7 +358,7 @@ it('warns when the configured corpus budget is too small', function () {
     config()->set('docent.ai.corpus_budget', 1);
 
     $this->artisan('docent:check')
-        ->expectsOutputToContain('ai-corpus-large')
+        ->expectsOutputToContain('ai-corpus-small')
         ->assertFailed();
 });
 
@@ -534,9 +554,9 @@ it('rejects overlapping work with a short per-conversation lock', function () {
     $request->setLaravelSession($session);
     $docent = app(DocentManager::class);
     $context = $docent->contextFor($request);
-    $corpus = app(AiCorpusBuilder::class)->build($context);
+    $corpus = app(AiCorpusBuilder::class);
     $store = app(AiConversationStore::class);
-    $resolution = $store->resolve($request, $context, $corpus, 'reader', null, null);
+    $resolution = $store->resolve($request, $context, $corpus->version($context), 'reader', null, null);
 
     $store->acquire($resolution->conversation);
 

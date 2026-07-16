@@ -21,7 +21,7 @@ final class AiConversationStore
     public function resolve(
         Request $request,
         DocumentationContext $context,
-        AiCorpus $corpus,
+        string $corpusVersion,
         string $mode,
         ?string $id,
         ?string $token,
@@ -29,7 +29,7 @@ final class AiConversationStore
         $owner = $this->ownerHash($request, $context, $mode);
 
         if ($id === null && $token === null) {
-            return $this->create($owner, $context, $corpus, $mode);
+            return $this->create($owner, $context, $corpusVersion, $mode);
         }
 
         if ($id === null || $token === null || ! hash_equals($this->token($id, $owner, $mode), $token)) {
@@ -49,10 +49,10 @@ final class AiConversationStore
 
         $viewer = $this->viewerFingerprint($context);
 
-        if (! hash_equals($conversation->viewerFingerprint, $viewer) || ! hash_equals($conversation->corpusVersion, $corpus->version)) {
+        if (! hash_equals($conversation->viewerFingerprint, $viewer) || ! hash_equals($conversation->corpusVersion, $corpusVersion)) {
             $this->cache->forget($this->key($id));
 
-            return $this->create($owner, $context, $corpus, $mode, 'viewer_or_corpus_changed');
+            return $this->create($owner, $context, $corpusVersion, $mode, 'viewer_or_corpus_changed');
         }
 
         return new AiConversationResolution($conversation, $token);
@@ -88,7 +88,7 @@ final class AiConversationStore
     private function create(
         string $owner,
         DocumentationContext $context,
-        AiCorpus $corpus,
+        string $corpusVersion,
         string $mode,
         ?string $resetReason = null,
     ): AiConversationResolution {
@@ -98,7 +98,7 @@ final class AiConversationStore
             $mode,
             $owner,
             $this->viewerFingerprint($context),
-            $corpus->version,
+            $corpusVersion,
             [],
             0,
             $now,

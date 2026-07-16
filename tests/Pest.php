@@ -1,6 +1,7 @@
 <?php
 
 use STS\Docent\Tests\AdminTestCase;
+use STS\Docent\Tests\AiRetrievalTestCase;
 use STS\Docent\Tests\AiTestCase;
 use STS\Docent\Tests\SearchRelevanceTestCase;
 use STS\Docent\Tests\TestCase;
@@ -10,4 +11,5 @@ uses(TestCase::class)->in('Feature');
 uses(AdminTestCase::class)->in('Admin');
 uses(WidgetTestCase::class)->in('Widget');
 uses(AiTestCase::class)->in('Ai');
+uses(AiRetrievalTestCase::class)->in('AiRetrieval');
 uses(SearchRelevanceTestCase::class)->in('SearchRelevance');

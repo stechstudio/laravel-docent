@@ -155,11 +155,23 @@ surface with a signed token, and drops the oldest pairs as the configured turn
 or history budget is reached. It starts over if the session expires or the
 viewer's visible documentation changes.
 
+Before each answer, Docent ranks the viewer's searchable pages for that
+question. The open page gets a modest boost, and a likely follow-up can reuse
+the previous question as retrieval context. Only the selected, authorized
+pages enter the prompt or citation list; hidden, search-excluded, and
+unauthorized content stays out. Retrieval is local and uses the same lexical
+index as search—no vector database or external search service is required.
+
 ```php
 'conversation' => [
     'ttl' => 7200,
     'max_turns' => 10,
     'history_budget' => 12000,
+],
+'retrieval' => [
+    'max_pages' => 8,
+    'candidate_limit' => 24,
+    'debug' => false,
 ],
 ```
 

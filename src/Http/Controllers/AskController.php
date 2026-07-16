@@ -45,6 +45,7 @@ final class AskController
             'conversation_id' => ['nullable', 'uuid', 'required_with:conversation_token'],
             'conversation_token' => ['nullable', 'string', 'size:64', 'required_with:conversation_id'],
             'regenerate' => ['sometimes', 'boolean'],
+            'current_slug' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (($limited = $this->rateLimit($request)) !== null) {
@@ -60,13 +61,13 @@ final class AskController
         }
 
         $context = $this->docent->contextFor($request);
-        $corpus = $this->corpus->build($context, $widget);
+        $corpusVersion = $this->corpus->version($context, $widget);
 
         try {
             $resolution = $this->conversations->resolve(
                 $request,
                 $context,
-                $corpus,
+                $corpusVersion,
                 $mode,
                 isset($validated['conversation_id']) ? (string) $validated['conversation_id'] : null,
                 isset($validated['conversation_token']) ? (string) $validated['conversation_token'] : null,
@@ -89,6 +90,14 @@ final class AskController
 
             $conversation = $conversation->withoutLastTurn();
         }
+
+        $corpus = $this->corpus->build(
+            $context,
+            $question,
+            $conversation->turns,
+            trim((string) ($validated['current_slug'] ?? '')),
+            $widget,
+        );
 
         try {
             $this->conversations->acquire($resolution->conversation);
@@ -222,7 +231,7 @@ final class AskController
 
         return implode(':', [
             'ai-answer-v2',
-            $corpus->version,
+            $corpus->retrievalVersion,
             $mode,
             $historyHash,
             sha1(mb_strtolower($question)),
@@ -263,11 +272,17 @@ final class AskController
     /** @return array<string, mixed> */
     private function citationsPayload(AiCorpus $corpus, ?AiQuestion $log): array
     {
-        return [
+        $payload = [
             'citations' => $corpus->citations,
             'question_id' => $log?->getKey(),
             'feedback_token' => $log?->feedbackToken(),
         ];
+
+        if (config('docent.ai.retrieval.debug', false)) {
+            $payload['retrieval'] = $corpus->diagnostics;
+        }
+
+        return $payload;
     }
 
     /** @param callable(): void $callback */

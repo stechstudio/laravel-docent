@@ -34,13 +34,13 @@ final class AskConversationController
         }
 
         $context = $this->docent->contextFor($request);
-        $corpus = $this->corpus->build($context, $widget);
+        $corpusVersion = $this->corpus->version($context, $widget);
 
         try {
             $resolution = $this->conversations->resolve(
                 $request,
                 $context,
-                $corpus,
+                $corpusVersion,
                 $widget ? 'widget' : 'reader',
                 (string) $validated['conversation_id'],
                 (string) $validated['conversation_token'],
