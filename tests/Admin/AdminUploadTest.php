@@ -50,6 +50,36 @@ it('accepts svg uploads for contained image delivery', function () {
 
     expect($response->json('path'))->toEndWith('.svg');
     Storage::disk('public')->assertExists($response->json('path'));
+
+    $stored = Storage::disk('public')->get($response->json('path'));
+    expect($stored)->toContain('<circle');
+});
+
+it('strips active content from an uploaded svg before storage', function () {
+    Storage::fake('public');
+
+    $response = $this->postJson('/docs/admin/api/uploads', [
+        'file' => UploadedFile::fake()->createWithContent('sneaky.svg', <<<'SVG'
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10" onload="window.svgExecuted = true">
+                <script>window.svgExecuted = true</script>
+                <circle cx="5" cy="5" r="4" onclick="window.svgExecuted = true" />
+                <a xlink:href="javascript:alert(1)"><rect width="10" height="10" /></a>
+                <foreignObject><body xmlns="http://www.w3.org/1999/xhtml" onload="window.svgExecuted = true" /></foreignObject>
+            </svg>
+            SVG),
+    ])->assertCreated();
+
+    // The stored bytes must be inert even if a host serves the disk directly
+    // (storage:link) and bypasses the streaming route's protective headers.
+    $stored = Storage::disk('public')->get($response->json('path'));
+    expect($stored)
+        ->toContain('<circle')
+        ->toContain('<rect')
+        ->not->toContain('<script')
+        ->not->toContain('onload')
+        ->not->toContain('onclick')
+        ->not->toContain('javascript:')
+        ->not->toContain('foreignObject');
 });
 
 it('serves the uploaded image through the docs _uploads streaming route', function () {

@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace STS\Docent\Http\Controllers\Admin;
 
+use enshrined\svgSanitize\Sanitizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Stores an uploaded image on the configured admin disk under `docent/`, with a
  * hashed filename, and returns its URL and path for embedding. The URL points
  * at the docs `_uploads` streaming route, not the disk — uploads work on any
  * disk (public, local, private S3) with no storage:link or bucket policy.
+ * SVGs are sanitized before storage: the stored bytes must be inert no matter
+ * how a host ends up serving them (a `storage:link` symlink bypasses the
+ * streaming route's protective headers entirely).
  */
 final class UploadController
 {
@@ -21,12 +28,35 @@ final class UploadController
             'file' => ['required', 'file', 'mimes:png,jpg,jpeg,gif,svg,webp', 'max:5120'],
         ]);
 
+        $file = $request->file('file');
         $disk = (string) config('docent.admin.disk', 'public');
-        $path = $request->file('file')->store('docent', ['disk' => $disk]);
+
+        if ($file->guessExtension() === 'svg') {
+            $path = 'docent/'.$file->hashName();
+            Storage::disk($disk)->put($path, $this->sanitizedSvg($file));
+        } else {
+            $path = $file->store('docent', ['disk' => $disk]);
+        }
 
         return response()->json([
             'url' => route('docent.upload', ['path' => $path]),
             'path' => $path,
         ], 201);
+    }
+
+    private function sanitizedSvg(UploadedFile $file): string
+    {
+        $sanitizer = new Sanitizer;
+        $sanitizer->removeRemoteReferences(true);
+
+        $clean = $sanitizer->sanitize((string) $file->get());
+
+        if ($clean === false || trim($clean) === '') {
+            throw ValidationException::withMessages([
+                'file' => 'The SVG could not be sanitized for safe display.',
+            ]);
+        }
+
+        return $clean;
     }
 }
