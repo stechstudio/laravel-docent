@@ -36,7 +36,7 @@ it('honors global and category collection switches', function () {
     $this->getJson('/docs/_search?q=setup')->assertOk();
 
     expect(InsightEvent::query()->where('category', 'pages')->count())->toBe(0)
-        ->and(InsightEvent::query()->where('category', 'search')->count())->toBe(2);
+        ->and(InsightEvent::query()->where('category', 'search')->count())->toBe(1);
 });
 
 it('records reader and widget page views without viewer context', function () {
@@ -75,9 +75,33 @@ it('redacts query text and records impressions, clicks, and no-click searches', 
 
     expect($stored->query)->toContain('[email]', '[secret]', '[number]')
         ->and($serialized)->not->toContain('joe@example.com', 'abcdefghijklmnopqrstuvwxyz123456', '4111 1111')
-        ->and(InsightEvent::query()->where('event', InsightRecorder::SEARCH_RESULTS_IMPRESSED)->count())->toBe(2)
+        ->and($stored->result_count)->toBe($first->json('results') === [] ? 0 : count($first->json('results')))
+        ->and($stored->result_slugs)->toContain($target)
         ->and(InsightEvent::query()->where('event', InsightRecorder::SEARCH_RESULT_CLICKED)->count())->toBe(1)
         ->and(InsightEvent::query()->where('event', InsightRecorder::SEARCH_NO_CLICK)->count())->toBe(1);
+});
+
+it('folds typeahead refinements into one search row per session', function () {
+    $first = $this->getJson('/docs/_search?q=ins')->assertOk();
+    $insightId = $first->json('insight_id');
+
+    $second = $this->getJson('/docs/_search?q=install+setup&insight_id='.$insightId)->assertOk();
+
+    // The refinement updated the open session row instead of adding a prefix row.
+    expect($second->json('insight_id'))->toBe($insightId)
+        ->and(InsightEvent::query()->where('event', InsightRecorder::SEARCH_SUBMITTED)->count())->toBe(1)
+        ->and(InsightEvent::query()->where('event', InsightRecorder::SEARCH_SUBMITTED)->sole()->query)->toBe('install setup');
+
+    // A terminal interaction closes the session: the same id can no longer be continued.
+    $this->postJson('/docs/_insights', [
+        'event' => 'search_no_click',
+        'search_id' => $insightId,
+    ])->assertNoContent();
+
+    $third = $this->getJson('/docs/_search?q=install+setup+again&insight_id='.$insightId)->assertOk();
+
+    expect($third->json('insight_id'))->not->toBe($insightId)
+        ->and(InsightEvent::query()->where('event', InsightRecorder::SEARCH_SUBMITTED)->count())->toBe(2);
 });
 
 it('rejects forged search clicks and deduplicates terminal search events', function () {

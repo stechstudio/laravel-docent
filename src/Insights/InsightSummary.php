@@ -4,75 +4,106 @@ declare(strict_types=1);
 
 namespace STS\Docent\Insights;
 
-use Illuminate\Support\Collection;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use STS\Docent\Insights\Models\InsightEvent;
 
+/**
+ * Aggregates insight events in the database so the admin view stays cheap no
+ * matter how many raw events the retention window holds.
+ */
 final class InsightSummary
 {
     /** @return array<string, mixed> */
     public function forDays(int $days = 30): array
     {
         $days = min(365, max(1, $days));
-        $events = InsightEvent::query()
-            ->where('created_at', '>=', now()->subDays($days))
-            ->orderBy('id')
-            ->get();
-        $searches = $events->where('event', InsightRecorder::SEARCH_SUBMITTED)->whereNotNull('query');
-        $clicked = $events->where('event', InsightRecorder::SEARCH_RESULT_CLICKED)
-            ->pluck('search_id')->filter()->flip();
-        $assistant = $events->where('event', InsightRecorder::ASSISTANT_OUTCOME);
+        $since = now()->subDays($days)->toImmutable();
+
+        $searches = $this->since($since)
+            ->where('event', InsightRecorder::SEARCH_SUBMITTED)
+            ->whereNotNull('query');
+        $outcomes = fn (string $status): Builder => $this->since($since)
+            ->where('event', InsightRecorder::ASSISTANT_OUTCOME)
+            ->where('status', $status);
 
         return [
             'days' => $days,
-            'since' => now()->subDays($days)->toDateString(),
+            'since' => $since->toDateString(),
             'totals' => [
-                'page_views' => $events->where('event', InsightRecorder::PAGE_VIEWED)->count(),
-                'searches' => $searches->count(),
-                'search_clicks' => $events->where('event', InsightRecorder::SEARCH_RESULT_CLICKED)->count(),
-                'assistant_answers' => $assistant->where('status', 'answered')->count(),
-                'assistant_unanswered' => $assistant->where('status', 'unanswered')->count(),
+                'page_views' => $this->since($since)->where('event', InsightRecorder::PAGE_VIEWED)->count(),
+                'searches' => (clone $searches)->count(),
+                'search_clicks' => $this->since($since)->where('event', InsightRecorder::SEARCH_RESULT_CLICKED)->count(),
+                'assistant_answers' => $outcomes('answered')->count(),
+                'assistant_unanswered' => $outcomes('unanswered')->count(),
             ],
-            'top_pages' => $this->counts($events->where('event', InsightRecorder::PAGE_VIEWED), 'page_slug'),
-            'top_searches' => $this->counts($searches, 'query'),
-            'low_ctr_searches' => $this->lowCtr($searches, $clicked),
-            'unanswered_questions' => $this->counts($assistant->where('status', 'unanswered')->whereNotNull('query'), 'query'),
+            'top_pages' => $this->counts($this->since($since)->where('event', InsightRecorder::PAGE_VIEWED), 'page_slug'),
+            'top_searches' => $this->counts(clone $searches, 'query'),
+            'low_ctr_searches' => $this->lowCtr(clone $searches, $since),
+            'unanswered_questions' => $this->counts($outcomes('unanswered'), 'query'),
             'negative_feedback' => $this->counts(
-                $events->where('event', InsightRecorder::ASSISTANT_FEEDBACK)->where('feedback', 'down')->whereNotNull('query'),
+                $this->since($since)->where('event', InsightRecorder::ASSISTANT_FEEDBACK)->where('feedback', 'down'),
                 'query',
             ),
         ];
     }
 
+    /** @return Builder<InsightEvent> */
+    private function since(CarbonImmutable $since): Builder
+    {
+        return InsightEvent::query()->where('created_at', '>=', $since);
+    }
+
     /**
-     * @param  Collection<int, InsightEvent>  $events
+     * @param  Builder<InsightEvent>  $events
      * @return list<array{label: string, count: int}>
      */
-    private function counts(Collection $events, string $field): array
+    private function counts(Builder $events, string $field): array
     {
         return $events
-            ->filter(fn (InsightEvent $event): bool => is_string($event->{$field}) && $event->{$field} !== '')
+            ->whereNotNull($field)
+            ->where($field, '!=', '')
+            ->select($field.' as label')
+            ->selectRaw('count(*) as aggregate')
             ->groupBy($field)
-            ->map(fn (Collection $group, string $label): array => ['label' => $label, 'count' => $group->count()])
-            ->sortBy([['count', 'desc'], ['label', 'asc']])
-            ->take(10)
-            ->values()
+            ->orderByDesc('aggregate')
+            ->orderBy('label')
+            ->limit(10)
+            ->get()
+            ->map(static fn (InsightEvent $row): array => [
+                'label' => (string) $row->getAttribute('label'),
+                'count' => (int) $row->getAttribute('aggregate'),
+            ])
             ->all();
     }
 
     /**
-     * @param  Collection<int, InsightEvent>  $searches
-     * @param  Collection<string, int>  $clicked
+     * Click and no-click interaction rows copy the query from their search, so
+     * per-query click counts group directly — no per-event scan required.
+     *
+     * @param  Builder<InsightEvent>  $searches
      * @return list<array{query: string, searches: int, clicks: int, ctr: float}>
      */
-    private function lowCtr(Collection $searches, Collection $clicked): array
+    private function lowCtr(Builder $searches, CarbonImmutable $since): array
     {
-        return $searches
+        $clicks = $this->since($since)
+            ->where('event', InsightRecorder::SEARCH_RESULT_CLICKED)
+            ->whereNotNull('query')
+            ->selectRaw('count(*) as aggregate')
+            ->addSelect('query')
             ->groupBy('query')
-            ->map(function (Collection $group, string $query) use ($clicked): array {
-                $searchCount = $group->count();
-                $clickCount = $group->filter(
-                    fn (InsightEvent $event): bool => $event->search_id !== null && $clicked->has($event->search_id),
-                )->count();
+            ->pluck('aggregate', 'query');
+
+        return $searches
+            ->where('query', '!=', '')
+            ->select('query')
+            ->selectRaw('count(*) as aggregate')
+            ->groupBy('query')
+            ->get()
+            ->map(static function (InsightEvent $row) use ($clicks): array {
+                $query = (string) $row->getAttribute('query');
+                $searchCount = (int) $row->getAttribute('aggregate');
+                $clickCount = min((int) ($clicks[$query] ?? 0), $searchCount);
 
                 return [
                     'query' => $query,

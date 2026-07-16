@@ -181,7 +181,10 @@ index as search—no vector database or external search service is required.
 
 Docent can collect a small, first-party set of signals for improving the help
 center: page views, searches and result clicks, no-click searches, Assistant
-outcomes and citations, and thumbs feedback. It is off by default.
+outcomes and citations, and thumbs feedback. It is off by default. A typeahead
+session counts once: while a reader refines a query, Docent updates the same
+search event, so reports reflect finished questions rather than keystroke
+prefixes.
 
 ```php
 'insights' => [

@@ -111,8 +111,6 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
         clearTimeout(this._timer);
         const q = this.query.trim();
 
-        if (this.insightId && q !== this.trackedQuery) this.completeNoClick();
-
         if (q === '') {
             this.results = [];
             this.searched = false;
@@ -126,8 +124,12 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
 
     async fetch(q) {
         const seq = ++this._seq;
+        // Echo the open insight session so query refinements update one
+        // server-side search row instead of logging every typeahead prefix.
+        const continued = !this.insightCompleted && this.insightId
+            ? `&insight_id=${encodeURIComponent(this.insightId)}` : '';
         try {
-            const res = await fetch(`${searchUrl}?q=${encodeURIComponent(q)}`, {
+            const res = await fetch(`${searchUrl}?q=${encodeURIComponent(q)}${continued}`, {
                 headers: { Accept: 'application/json' },
             });
             const data = await res.json();
@@ -250,7 +252,6 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
     onInput() {
         clearTimeout(this._timer);
         const query = this.query.trim();
-        if (this.insightId && query !== this.trackedQuery) this.completeNoClick();
         if (query === '') {
             this.results = [];
             this.searched = false;
@@ -263,9 +264,13 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
 
     async fetch(query) {
         const sequence = ++this._seq;
+        // Echo the open insight session so query refinements update one
+        // server-side search row instead of logging every typeahead prefix.
+        const continued = !this.insightCompleted && this.insightId
+            ? `&insight_id=${encodeURIComponent(this.insightId)}` : '';
         try {
             const separator = searchUrl.includes('?') ? '&' : '?';
-            const response = await fetch(`${searchUrl}${separator}q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
+            const response = await fetch(`${searchUrl}${separator}q=${encodeURIComponent(query)}${continued}`, { headers: { Accept: 'application/json' } });
             const data = await response.json();
             if (sequence !== this._seq) return;
             this.results = data.results || [];

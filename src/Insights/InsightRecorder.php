@@ -18,8 +18,6 @@ final class InsightRecorder
 
     public const SEARCH_SUBMITTED = 'search_submitted';
 
-    public const SEARCH_RESULTS_IMPRESSED = 'search_results_impressed';
-
     public const SEARCH_RESULT_CLICKED = 'search_result_clicked';
 
     public const SEARCH_NO_CLICK = 'search_no_click';
@@ -48,31 +46,67 @@ final class InsightRecorder
         ]);
     }
 
-    /** @param list<SearchResult> $results */
-    public function searchSubmitted(string $query, array $results, string $surface): ?string
+    /**
+     * Records the submitted-search row for one search session, including the
+     * impressed results. The client echoes the previous insight id while the
+     * reader refines a query, so a typeahead session lands as a single row
+     * holding the final query — not a trail of prefix fragments. A session
+     * that already has a terminal click/no-click starts a new row.
+     *
+     * @param  list<SearchResult>  $results
+     */
+    public function searchSubmitted(string $query, array $results, string $surface, ?string $previousId = null): ?string
     {
         if (! $this->enabled('search')) {
             return null;
         }
 
-        $searchId = (string) Str::uuid();
-        $slugs = array_values(array_unique(array_map(
-            static fn (SearchResult $result): string => $result->slug,
-            $results,
-        )));
         $attributes = [
-            'category' => 'search',
-            'surface' => $this->surface($surface),
             'query' => $this->query($query),
-            'search_id' => $searchId,
             'result_count' => count($results),
-            'result_slugs' => $slugs,
+            'result_slugs' => array_values(array_unique(array_map(
+                static fn (SearchResult $result): string => $result->slug,
+                $results,
+            ))),
         ];
 
-        $this->create([...$attributes, 'event' => self::SEARCH_SUBMITTED]);
-        $this->create([...$attributes, 'event' => self::SEARCH_RESULTS_IMPRESSED]);
+        if (($existing = $this->continuableSearch($previousId)) !== null) {
+            $existing->forceFill($attributes)->save();
+
+            return $existing->search_id;
+        }
+
+        $searchId = (string) Str::uuid();
+        $this->create([
+            ...$attributes,
+            'category' => 'search',
+            'event' => self::SEARCH_SUBMITTED,
+            'surface' => $this->surface($surface),
+            'search_id' => $searchId,
+        ]);
 
         return $searchId;
+    }
+
+    private function continuableSearch(?string $id): ?InsightEvent
+    {
+        if ($id === null || ! Str::isUuid($id)) {
+            return null;
+        }
+
+        $search = InsightEvent::query()
+            ->where('event', self::SEARCH_SUBMITTED)
+            ->where('search_id', $id)
+            ->first();
+
+        if ($search === null || InsightEvent::query()
+            ->whereIn('event', [self::SEARCH_RESULT_CLICKED, self::SEARCH_NO_CLICK])
+            ->where('search_id', $id)
+            ->exists()) {
+            return null;
+        }
+
+        return $search;
     }
 
     public function searchInteraction(string $event, string $searchId, ?string $targetSlug = null): bool

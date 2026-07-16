@@ -34,7 +34,12 @@ final class SearchController
         $query = $request->string('q')->toString();
 
         $results = $this->engine->search($query, $this->docent->contextFor($request));
-        $searchId = $this->insights->searchSubmitted($query, $results, $widget ? 'widget' : 'reader');
+        $searchId = $this->insights->searchSubmitted(
+            $query,
+            $results,
+            $widget ? 'widget' : 'reader',
+            $request->string('insight_id')->toString() ?: null,
+        );
 
         $payload = [
             'results' => array_map(fn ($result): array => $result->toArray(), $results),
