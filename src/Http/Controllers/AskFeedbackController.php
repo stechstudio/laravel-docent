@@ -7,9 +7,14 @@ namespace STS\Docent\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use STS\Docent\Ai\Models\AiQuestion;
+use STS\Docent\Insights\InsightRecorder;
 
 final class AskFeedbackController
 {
+    public function __construct(
+        private readonly InsightRecorder $insights,
+    ) {}
+
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
@@ -23,6 +28,7 @@ final class AskFeedbackController
         abort_unless(hash_equals($question->feedbackToken(), (string) $validated['feedback_token']), 403);
 
         $question->forceFill(['thumbs' => $validated['thumbs']])->save();
+        $this->insights->assistantFeedback($question, (string) $validated['thumbs']);
 
         return response()->noContent();
     }

@@ -23,6 +23,7 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.database.enabled' => true,
             // Demo the admin panel (gated below to the account owner).
             'docent.admin.enabled' => true,
+            'docent.insights.enabled' => true,
             // Dogfood the same-origin help widget on the demo dashboard.
             'docent.widget.enabled' => true,
             // Browser-verifiable grounded answers without a key or network call.

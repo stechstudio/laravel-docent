@@ -19,6 +19,7 @@ use STS\Docent\Ai\PrismGuard;
 use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\InstallCommand;
+use STS\Docent\Console\PruneInsightsCommand;
 use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\Content\Repositories\CompositeRepository;
 use STS\Docent\Content\Repositories\DatabaseRepository;
@@ -33,6 +34,8 @@ use STS\Docent\Http\Controllers\Admin\AdminController;
 use STS\Docent\Http\Controllers\Admin\ExportController;
 use STS\Docent\Http\Controllers\Admin\GroupController;
 use STS\Docent\Http\Controllers\Admin\IconController;
+use STS\Docent\Http\Controllers\Admin\InsightsController as AdminInsightsController;
+use STS\Docent\Http\Controllers\Admin\InsightsExportController;
 use STS\Docent\Http\Controllers\Admin\MetaController;
 use STS\Docent\Http\Controllers\Admin\PageController as AdminPageController;
 use STS\Docent\Http\Controllers\Admin\PageStateController;
@@ -43,12 +46,15 @@ use STS\Docent\Http\Controllers\AskController;
 use STS\Docent\Http\Controllers\AskConversationController;
 use STS\Docent\Http\Controllers\AskFeedbackController;
 use STS\Docent\Http\Controllers\AssetController;
+use STS\Docent\Http\Controllers\InsightsController;
 use STS\Docent\Http\Controllers\LlmsController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Http\Controllers\UploadsController;
 use STS\Docent\Http\Controllers\WidgetController;
 use STS\Docent\Http\Controllers\WidgetSuggestionsController;
+use STS\Docent\Insights\InsightRecorder;
+use STS\Docent\Insights\InsightSummary;
 use STS\Docent\Navigation\NavigationBuilder;
 use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
@@ -149,6 +155,8 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(PrismGuard::class),
         ));
         $this->app->singleton(AiQuestionLogger::class);
+        $this->app->singleton(InsightRecorder::class);
+        $this->app->singleton(InsightSummary::class);
     }
 
     public function boot(): void
@@ -164,7 +172,7 @@ final class DocentServiceProvider extends ServiceProvider
             $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/docent')], 'docent-assets');
             $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'docent-migrations');
 
-            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class]);
+            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class, PruneInsightsCommand::class]);
         }
 
         $this->registerAboutCommand();
@@ -189,6 +197,10 @@ final class DocentServiceProvider extends ServiceProvider
 
             if (config('docent.search.enabled', true)) {
                 Route::get('/_search', SearchController::class)->name('docent.search');
+            }
+
+            if (config('docent.insights.enabled', false)) {
+                Route::post('/_insights', InsightsController::class)->name('docent.insights.store');
             }
 
             if (config('docent.ai.enabled', false)) {
@@ -236,6 +248,11 @@ final class DocentServiceProvider extends ServiceProvider
             Route::get('api/icons', IconController::class)->name('docent.admin.icons');
             Route::post('api/preview', PreviewController::class)->name('docent.admin.preview');
             Route::post('api/uploads', UploadController::class)->name('docent.admin.uploads');
+
+            if (config('docent.insights.enabled', false)) {
+                Route::get('insights', AdminInsightsController::class)->name('docent.admin.insights');
+                Route::get('insights.csv', InsightsExportController::class)->name('docent.admin.insights.export');
+            }
 
             // Group metadata — declared before the api/pages/{slug} catch-alls so
             // the more specific paths win.

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use STS\Docent\DocentManager;
+use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Page;
 use STS\Docent\Runtime\DocumentationContext;
 
@@ -19,6 +20,7 @@ final class PageController
 {
     public function __construct(
         private readonly DocentManager $docent,
+        private readonly InsightRecorder $insights,
     ) {}
 
     public function home(Request $request): Response|RedirectResponse
@@ -66,6 +68,8 @@ final class PageController
             ]);
         }
 
+        $this->insights->pageViewed($slug, 'reader');
+
         if ($page->isLanding()) {
             return response()->view('docent::landing', [
                 'docent' => $this->docent,
@@ -80,6 +84,7 @@ final class PageController
                 'heroCta' => $page->heroCta(),
                 'sections' => $this->docent->navigationSections($context, $slug),
                 'topbarLinks' => $this->docent->topbarLinks($context, $slug),
+                'currentSlug' => $slug,
                 'landing' => true,
             ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
         }

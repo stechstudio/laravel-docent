@@ -209,6 +209,7 @@
         if (!openState) return;
         openState = false;
         analytics('widget_closed');
+        send({ docent: 'closed' });
         applyPush(false);
 
         if (launcher) {

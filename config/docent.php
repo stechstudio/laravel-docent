@@ -183,6 +183,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Documentation Insights
+    |--------------------------------------------------------------------------
+    |
+    | Optional, first-party signals for improving the help center. Events use a
+    | fixed schema and never store user IDs, IPs, sessions, referrers, user
+    | agents, audience/gate context, or generated answer text. Common sensitive
+    | patterns in search and question text are redacted before storage.
+    |
+    */
+
+    'insights' => [
+        'enabled' => false,
+        'categories' => [
+            'pages' => true,
+            'search' => true,
+            'assistant' => true,
+        ],
+        'retention_days' => 90,
+        'store_query_text' => true,
+        'redact_query_text' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Navigation
     |--------------------------------------------------------------------------
     |

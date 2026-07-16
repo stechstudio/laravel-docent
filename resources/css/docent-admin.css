@@ -2,6 +2,7 @@
 
 /* Scan the admin shell and its partials for utility classes. */
 @source '../views/admin.blade.php';
+@source '../views/admin-insights.blade.php';
 @source '../views/partials/admin/**/*.blade.php';
 
 /* Class-based dark mode: toggled by `.dark` on <html> (same as the reader). */

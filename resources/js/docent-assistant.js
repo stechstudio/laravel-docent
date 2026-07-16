@@ -38,9 +38,17 @@ async function consumeEventStream(response, onEvent) {
     consume(buffer);
 }
 
-function widgetAnalytics(event, detail = {}) {
-    if (window.parent === window) return;
-    window.parent.postMessage({ docent: 'event', event, detail }, window.location.origin);
+function assistantAnalytics(event, detail = {}, mode = 'reader') {
+    const payload = { schema: 1, surface: mode === 'widget' ? 'widget' : 'reader', ...detail };
+
+    if (mode === 'widget' && window.parent !== window) {
+        window.parent.postMessage({ docent: 'event', event, detail: payload }, window.location.origin);
+        return;
+    }
+
+    window.dispatchEvent(new CustomEvent('docent:analytics', {
+        detail: { event, ...payload },
+    }));
 }
 
 function focusableElements(root) {
@@ -410,6 +418,10 @@ export function registerDocentAssistant(Alpine) {
 
                 if (!assistant.error && assistant.content && assistant.html) {
                     assistant.status = 'complete';
+                    assistantAnalytics('assistant_outcome', {
+                        status: 'answered',
+                        citation_slugs: assistant.citations.map((citation) => citation.slug),
+                    }, this.mode);
                     this.announcement = 'The Assistant answer is ready.';
                     this.persist();
                     this.$nextTick(() => {
@@ -419,6 +431,7 @@ export function registerDocentAssistant(Alpine) {
                 } else {
                     assistant.status = 'error';
                     assistant.error ||= 'The documentation did not return an answer. Try another question.';
+                    assistantAnalytics('assistant_outcome', { status: 'unanswered', citation_slugs: [] }, this.mode);
                     this.announcement = assistant.error;
                     this.persist();
                 }
@@ -426,6 +439,7 @@ export function registerDocentAssistant(Alpine) {
                 if (error.name !== 'AbortError') {
                     assistant.status = 'error';
                     assistant.error = error.message || 'The documentation answer is unavailable.';
+                    assistantAnalytics('assistant_outcome', { status: 'unanswered', citation_slugs: [] }, this.mode);
                     this.announcement = assistant.error;
                     this.persist();
                 }
@@ -456,7 +470,7 @@ export function registerDocentAssistant(Alpine) {
         navigateCitation(citation) {
             if (!citation?.url) return;
             this.persist();
-            if (this.mode === 'widget') widgetAnalytics('assistant_citation_clicked', { slug: citation.slug });
+            assistantAnalytics('assistant_citation_clicked', { slug: citation.slug }, this.mode);
             window.location.href = citation.url;
         },
 
@@ -511,6 +525,7 @@ export function registerDocentAssistant(Alpine) {
             });
             if (response.ok) {
                 message.feedback = thumbs;
+                assistantAnalytics('assistant_feedback', { thumbs }, this.mode);
                 this.persist();
             }
         },

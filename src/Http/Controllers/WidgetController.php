@@ -8,18 +8,21 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use STS\Docent\DocentManager;
+use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Runtime\DocumentationContext;
 
 final class WidgetController
 {
     public function __construct(
         private readonly DocentManager $docent,
+        private readonly InsightRecorder $insights,
     ) {}
 
     public function home(Request $request): Response
     {
         $this->docent->enableWidgetMode();
         $context = $this->docent->contextFor($request);
+        $this->insights->pageViewed('', 'widget');
 
         return response()->view('docent::widget.home', [
             'docent' => $this->docent,
@@ -49,6 +52,8 @@ final class WidgetController
         if (! $page->authorize($context)) {
             return $this->denied();
         }
+
+        $this->insights->pageViewed($slug, 'widget');
 
         return response()->view('docent::widget.page', [
             'docent' => $this->docent,

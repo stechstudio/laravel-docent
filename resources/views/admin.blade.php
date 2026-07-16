@@ -54,6 +54,12 @@
             </div>
 
             <div class="ml-auto flex items-center gap-1">
+                @if(config('docent.insights.enabled', false))
+                    <a href="{{ route('docent.admin.insights') }}" class="dax-btn dax-btn-ghost gap-1.5 text-[13px]">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
+                        Insights
+                    </a>
+                @endif
                 <a :href="docsHome" class="dax-btn dax-btn-ghost gap-1.5 text-[13px]" target="_blank" rel="noopener">
                     View docs
                     <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>

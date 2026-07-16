@@ -22,6 +22,7 @@ use STS\Docent\Ai\Conversation\AiConversationForbidden;
 use STS\Docent\Ai\Conversation\AiConversationResolution;
 use STS\Docent\Ai\Models\AiQuestion;
 use STS\Docent\DocentManager;
+use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Support\DocentCache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -36,6 +37,7 @@ final class AskController
         private readonly AiQuestionLogger $questions,
         private readonly DocentCache $cache,
         private readonly AiConversationStore $conversations,
+        private readonly InsightRecorder $insights,
     ) {}
 
     public function __invoke(Request $request): StreamedResponse|JsonResponse
@@ -91,11 +93,12 @@ final class AskController
             $conversation = $conversation->withoutLastTurn();
         }
 
+        $currentSlug = trim((string) ($validated['current_slug'] ?? ''));
         $corpus = $this->corpus->build(
             $context,
             $question,
             $conversation->turns,
-            trim((string) ($validated['current_slug'] ?? '')),
+            $currentSlug,
             $widget,
         );
 
@@ -111,11 +114,12 @@ final class AskController
 
         if (is_array($cached) && is_string($cached['answer'] ?? null)) {
             $this->questions->finish($log, $cached['answer']);
+            $this->insights->assistantOutcome($question, $cached['answer'], $corpus, $mode, $currentSlug, $log);
 
             return $this->cachedResponse($corpus, $resolution, $conversation, $question, $log, $cached['answer']);
         }
 
-        return $this->liveResponse($corpus, $resolution, $conversation, $question, $cacheKey, $log);
+        return $this->liveResponse($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug);
     }
 
     private function cachedResponse(
@@ -151,8 +155,10 @@ final class AskController
         string $question,
         string $cacheKey,
         ?AiQuestion $log,
+        string $mode,
+        string $currentSlug,
     ): StreamedResponse {
-        return $this->eventStream(function () use ($corpus, $resolution, $conversation, $question, $cacheKey, $log): void {
+        return $this->eventStream(function () use ($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug): void {
             try {
                 $this->emitConversation($resolution, $conversation);
                 $this->emit('citations', $this->citationsPayload($corpus, $log));
@@ -181,6 +187,7 @@ final class AskController
                 }
 
                 $this->questions->finish($log, $failed ? '' : $answer);
+                $this->insights->assistantOutcome($question, $failed ? '' : $answer, $corpus, $mode, $currentSlug, $log);
                 $committed = false;
 
                 if (! $failed && $answer !== '') {

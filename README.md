@@ -175,6 +175,40 @@ index as search—no vector database or external search service is required.
 ],
 ```
 
+## Privacy-conscious insights
+
+Docent can collect a small, first-party set of signals for improving the help
+center: page views, searches and result clicks, no-click searches, Assistant
+outcomes and citations, and thumbs feedback. It is off by default.
+
+```php
+'insights' => [
+    'enabled' => true,
+    'categories' => [
+        'pages' => true,
+        'search' => true,
+        'assistant' => true,
+    ],
+    'retention_days' => 90,
+    'store_query_text' => true,
+    'redact_query_text' => true,
+],
+```
+
+Publish and run the Docent migrations, then open **Insights** in the gated
+admin panel. The dashboard highlights top pages and searches, low-click
+searches, unanswered questions, and negative feedback; the same privacy-safe
+events can be exported as CSV. Schedule `php artisan docent:insights:prune` to
+enforce retention.
+
+The insight table never includes a user ID, IP address, session or conversation
+ID, referrer, user agent, authorization/audience context, or generated answer
+text. Common sensitive patterns in query and question text are redacted, and
+the value is capped at 500 characters by default; set `store_query_text` to
+`false` to omit it entirely. The existing
+Assistant question log is separate, so also set `ai.log_questions` to `false`
+when no raw Assistant questions should be retained anywhere.
+
 ## Search that understands questions
 
 Docent ranks search results by title, section heading, description, author

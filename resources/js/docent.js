@@ -5,9 +5,38 @@ import { registerDocentAssistant } from './docent-assistant';
 Alpine.plugin(collapse);
 registerDocentAssistant(Alpine);
 
+function docentAnalytics(event, detail = {}) {
+    const surface = document.documentElement.hasAttribute('data-docent-widget') ? 'widget' : 'reader';
+    const payload = { schema: 1, surface, ...detail };
+
+    if (surface === 'widget' && window.parent !== window) {
+        window.parent.postMessage({ docent: 'event', event, detail: payload }, window.location.origin);
+        return;
+    }
+
+    window.dispatchEvent(new CustomEvent('docent:analytics', {
+        detail: { event, ...payload },
+    }));
+}
+
 function widgetAnalytics(event, detail = {}) {
-    if (window.parent === window) return;
-    window.parent.postMessage({ docent: 'event', event, detail }, window.location.origin);
+    docentAnalytics(event, detail);
+}
+
+function recordSearchInsight(url, payload) {
+    if (!url || !payload.search_id) return;
+
+    fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify(payload),
+    }).catch(() => {});
 }
 
 /* ---------------------------------------------------------------------------
@@ -41,6 +70,10 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
     _timer: null,
     _seq: 0,
     _previousFocus: null,
+    insightId: null,
+    insightsUrl: null,
+    insightCompleted: true,
+    trackedQuery: '',
 
     canAsk() {
         return this.assistantEnabled && this.query.trim() !== '';
@@ -55,6 +88,7 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
     },
 
     hide(restoreFocus = true) {
+        this.completeNoClick();
         this.open = false;
         document.body.style.overflow = '';
         window.dispatchEvent(new CustomEvent('docent:surface-closed'));
@@ -67,11 +101,17 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
         this.selected = 0;
         this.searched = false;
         this.loading = false;
+        this.insightId = null;
+        this.insightsUrl = null;
+        this.insightCompleted = true;
+        this.trackedQuery = '';
     },
 
     onInput() {
         clearTimeout(this._timer);
         const q = this.query.trim();
+
+        if (this.insightId && q !== this.trackedQuery) this.completeNoClick();
 
         if (q === '') {
             this.results = [];
@@ -93,8 +133,19 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
             const data = await res.json();
             if (seq !== this._seq) return;
             this.results = data.results || [];
+            this.insightId = data.insight_id || null;
+            this.insightsUrl = data.insights_url || null;
+            this.insightCompleted = !this.insightId;
+            this.trackedQuery = q;
             this.selected = 0;
             this.searched = true;
+            docentAnalytics('search_submitted', { query: q, search_id: this.insightId });
+            docentAnalytics('search_results_impressed', {
+                query: q,
+                search_id: this.insightId,
+                result_count: this.results.length,
+                result_slugs: this.results.map((result) => result.slug),
+            });
         } catch (e) {
             if (seq !== this._seq) return;
             this.results = [];
@@ -116,6 +167,7 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
 
     go(result) {
         if (!result) return;
+        this.completeInsight('search_result_clicked', result.slug);
         window.location.href = result.anchor ? `${result.url}#${result.anchor}` : result.url;
     },
 
@@ -130,8 +182,22 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
     handoff() {
         const question = this.query.trim();
         if (!this.canAsk()) return;
+        this.completeNoClick();
         this.hide(false);
         window.dispatchEvent(new CustomEvent('docent:assistant-open', { detail: { question, mode: 'reader' } }));
+    },
+
+    completeInsight(event, targetSlug = null) {
+        if (!this.insightId || this.insightCompleted) return;
+        this.insightCompleted = true;
+        const payload = { event, search_id: this.insightId };
+        if (targetSlug) payload.target_slug = targetSlug;
+        recordSearchInsight(this.insightsUrl, payload);
+        docentAnalytics(event, { query: this.trackedQuery, search_id: this.insightId, target_slug: targetSlug });
+    },
+
+    completeNoClick() {
+        this.completeInsight('search_no_click');
     },
 
     trap(event) {
@@ -163,6 +229,19 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
     searched: false,
     _timer: null,
     _seq: 0,
+    insightId: null,
+    insightsUrl: null,
+    insightCompleted: true,
+    trackedQuery: '',
+
+    init() {
+        this._surfaceClosed = () => this.completeNoClick();
+        window.addEventListener('docent:surface-closed', this._surfaceClosed);
+    },
+
+    destroy() {
+        window.removeEventListener('docent:surface-closed', this._surfaceClosed);
+    },
 
     canAsk() {
         return this.assistantEnabled && this.query.trim() !== '';
@@ -171,6 +250,7 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
     onInput() {
         clearTimeout(this._timer);
         const query = this.query.trim();
+        if (this.insightId && query !== this.trackedQuery) this.completeNoClick();
         if (query === '') {
             this.results = [];
             this.searched = false;
@@ -183,15 +263,25 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
 
     async fetch(query) {
         const sequence = ++this._seq;
-        widgetAnalytics('search_submitted', { query });
         try {
             const separator = searchUrl.includes('?') ? '&' : '?';
             const response = await fetch(`${searchUrl}${separator}q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
             const data = await response.json();
             if (sequence !== this._seq) return;
             this.results = data.results || [];
+            this.insightId = data.insight_id || null;
+            this.insightsUrl = data.insights_url || null;
+            this.insightCompleted = !this.insightId;
+            this.trackedQuery = query;
             this.selected = 0;
             this.searched = true;
+            widgetAnalytics('search_submitted', { query, search_id: this.insightId });
+            widgetAnalytics('search_results_impressed', {
+                query,
+                search_id: this.insightId,
+                result_count: this.results.length,
+                result_slugs: this.results.map((result) => result.slug),
+            });
         } catch (error) {
             if (sequence !== this._seq) return;
             this.results = [];
@@ -213,7 +303,7 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
 
     go(result) {
         if (!result) return;
-        widgetAnalytics('search_result_clicked', { query: this.query.trim(), slug: result.slug });
+        this.completeInsight('search_result_clicked', result.slug);
         window.location.href = this.href(result);
     },
 
@@ -234,9 +324,23 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
     handoff() {
         const question = this.query.trim();
         if (!this.canAsk()) return;
+        this.completeNoClick();
         this.results = [];
         this.searched = false;
         window.dispatchEvent(new CustomEvent('docent:assistant-open', { detail: { question, mode: 'widget' } }));
+    },
+
+    completeInsight(event, targetSlug = null) {
+        if (!this.insightId || this.insightCompleted) return;
+        this.insightCompleted = true;
+        const payload = { event, search_id: this.insightId };
+        if (targetSlug) payload.target_slug = targetSlug;
+        recordSearchInsight(this.insightsUrl, payload);
+        widgetAnalytics(event, { query: this.trackedQuery, search_id: this.insightId, target_slug: targetSlug });
+    },
+
+    completeNoClick() {
+        this.completeInsight('search_no_click');
     },
 }));
 
@@ -575,23 +679,33 @@ function bootWidgetFrame() {
         } else if (message.docent === 'focus') {
             const input = document.querySelector('[data-docent-widget-search]');
             if (input) input.focus();
+        } else if (message.docent === 'closed') {
+            window.dispatchEvent(new CustomEvent('docent:surface-closed'));
         }
     });
     window.setTimeout(() => {
         send({ docent: 'ready' });
         const slug = document.body.dataset.widgetSlug || '';
+        widgetAnalytics('page_viewed', { slug });
         if (slug) widgetAnalytics('article_viewed', { slug });
     }, 0);
+}
+
+function emitReaderPageView() {
+    if (document.documentElement.hasAttribute('data-docent-widget')) return;
+    docentAnalytics('page_viewed', { slug: document.body.dataset.docentSlug || '' });
 }
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         enhance();
         bootWidgetFrame();
+        emitReaderPageView();
     });
 } else {
     enhance();
     bootWidgetFrame();
+    emitReaderPageView();
 }
 
 window.Alpine = Alpine;
