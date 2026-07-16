@@ -135,6 +135,22 @@ final class CheckContext
         return $set;
     }
 
+    /** @return array<string, PageReference> */
+    public function pageMap(): array
+    {
+        $pages = [];
+
+        foreach ($this->allReferences() as $page) {
+            $pages[$page->slug] = $page;
+        }
+
+        if ($this->overrideSlug !== null) {
+            $pages[$this->overrideSlug] = $this->overrideReference();
+        }
+
+        return $pages;
+    }
+
     /**
      * All enumerable pages (front-matter-only references), cached per run.
      *
@@ -155,19 +171,22 @@ final class CheckContext
         $frontMatter = $this->document((string) $this->overrideSlug)?->frontMatter() ?? new FrontMatter;
 
         $slug = (string) $this->overrideSlug;
+        $redirectStub = $frontMatter->hasRedirect();
 
         return new PageReference(
             slug: $slug,
             title: $frontMatter->title() ?? '',
             order: $frontMatter->order(),
-            hidden: $frontMatter->hidden(),
+            hidden: $frontMatter->hidden() || $redirectStub,
             authorize: $frontMatter->authorize(),
             audience: $frontMatter->audience(),
-            searchExcluded: $frontMatter->searchExcluded(),
+            searchExcluded: $frontMatter->searchExcluded() || $redirectStub,
             description: $frontMatter->description(),
             directory: str_contains($slug, '/') ? substr($slug, 0, (int) strrpos($slug, '/')) : '',
             locked: false,
             searchKeywords: $frontMatter->searchKeywords(),
+            redirect: $frontMatter->redirect(),
+            redirectStub: $redirectStub,
         );
     }
 

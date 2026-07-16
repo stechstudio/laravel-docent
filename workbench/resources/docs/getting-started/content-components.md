@@ -13,6 +13,33 @@ search:
 Use these components to make a guide easier to scan without hiding its meaning
 from search, print, or agent-readable Markdown.
 
+## Move a page safely
+
+After moving a guide, replace the old file with a redirect stub that points to
+the new internal slug:
+
+```markdown
+---
+title: Previous setup guide
+redirect: getting-started/quickstart
+---
+```
+
+The old URL now returns a permanent redirect for viewers who may open the new
+page. It preserves query strings, while URL fragments remain in the browser
+and are not sent to the server. The stub itself does not appear in navigation,
+search, agent-readable output, Assistant retrieval, or widget suggestions.
+
+Run the checker after every move:
+
+```text
+$ php artisan docent:check
+Docent looks great — no problems found in 11 pages.
+```
+
+If one stub points to another, the checker reports the full chain so you can
+point the oldest slug directly at the final page.
+
 ## Complete a setup
 
 ::::steps

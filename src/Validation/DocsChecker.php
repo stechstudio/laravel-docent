@@ -16,6 +16,7 @@ use STS\Docent\Validation\Checks\MissingImageCheck;
 use STS\Docent\Validation\Checks\MissingIncludeCheck;
 use STS\Docent\Validation\Checks\NavigationLinkCheck;
 use STS\Docent\Validation\Checks\NavigationSectionCheck;
+use STS\Docent\Validation\Checks\RedirectCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
@@ -44,6 +45,7 @@ final class DocsChecker
     {
         return new self([
             new FrontMatterCheck,
+            new RedirectCheck,
             new AiCorpusSizeCheck,
             new DuplicateSlugCheck,
             new BrokenLinkCheck,
@@ -78,6 +80,7 @@ final class DocsChecker
     public static function references(): self
     {
         return new self([
+            new RedirectCheck,
             new BrokenLinkCheck,
             new UnknownConditionCheck,
             new UnknownValueCheck,

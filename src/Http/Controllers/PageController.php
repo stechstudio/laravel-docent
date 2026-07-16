@@ -60,6 +60,20 @@ final class PageController
             return $this->denied();
         }
 
+        if ($page->isRedirect()) {
+            $target = $this->docent->redirectTarget($page, $context);
+
+            if ($target === null) {
+                abort(404);
+            }
+
+            $url = $markdown
+                ? $this->docent->markdownUrl($target->slug)
+                : $this->docent->fullUrl($target->slug);
+
+            return redirect()->to($this->withQueryString($url, $request), 301);
+        }
+
         if ($markdown) {
             return response($this->docent->agentMarkdown($page, $context), 200, [
                 'Content-Type' => 'text/markdown; charset=utf-8',
@@ -130,5 +144,12 @@ final class PageController
         return config('docent.ai.enabled', false)
             ? $this->docent->assistantStateNamespace($request, $context)
             : null;
+    }
+
+    private function withQueryString(string $url, Request $request): string
+    {
+        $query = $request->getQueryString();
+
+        return $query === null ? $url : $url.(str_contains($url, '?') ? '&' : '?').$query;
     }
 }

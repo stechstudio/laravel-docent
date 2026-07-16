@@ -26,5 +26,7 @@ final class PageReference
         public readonly bool $locked = false,
         /** @var list<string> */
         public readonly array $searchKeywords = [],
+        public readonly ?string $redirect = null,
+        public readonly bool $redirectStub = false,
     ) {}
 }

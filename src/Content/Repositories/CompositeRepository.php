@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace STS\Docent\Content\Repositories;
 
 use STS\Docent\Content\DocumentSource;
+use STS\Docent\Documents\FrontMatter;
+use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Composes an ordered list of repositories into one. The first child that can
@@ -12,7 +15,7 @@ use STS\Docent\Content\DocumentSource;
  * wiring places the database store ahead of the filesystem. {@see shadowed()}
  * surfaces the drift: file pages an earlier store has taken over.
  */
-final class CompositeRepository implements DocumentationRepository
+final class CompositeRepository implements DocumentationRepository, RedirectCollisionRepository
 {
     /** @var list<DocumentationRepository> */
     private readonly array $children;
@@ -30,18 +33,29 @@ final class CompositeRepository implements DocumentationRepository
             }
         }
 
+        $redirect = null;
+
         foreach ($this->children as $child) {
-            if (($source = $child->find($slug)) !== null) {
+            $source = $child->find($slug);
+
+            if ($source === null) {
+                continue;
+            }
+
+            if (! $this->isRedirect($source)) {
                 return $source;
             }
+
+            $redirect ??= $source;
         }
 
-        return null;
+        return $redirect;
     }
 
     public function all(): iterable
     {
-        $seen = [];
+        $references = [];
+        $order = [];
         $lockedOwners = $this->lockedPageOwners();
 
         foreach ($this->children as $index => $child) {
@@ -50,15 +64,44 @@ final class CompositeRepository implements DocumentationRepository
                     continue;
                 }
 
-                if (isset($seen[$reference->slug])) {
-                    continue;
+                if (! isset($references[$reference->slug])) {
+                    $order[] = $reference->slug;
+                    $references[$reference->slug] = $reference;
+                } elseif ($references[$reference->slug]->redirectStub && ! $reference->redirectStub) {
+                    $references[$reference->slug] = $reference;
                 }
-
-                $seen[$reference->slug] = true;
-
-                yield $reference;
             }
         }
+
+        foreach ($order as $slug) {
+            yield $references[$slug];
+        }
+    }
+
+    public function redirectCollisions(): array
+    {
+        $types = [];
+        $collisions = [];
+
+        foreach ($this->children as $child) {
+            if ($child instanceof RedirectCollisionRepository) {
+                foreach ($child->redirectCollisions() as $slug) {
+                    $collisions[$slug] = true;
+                }
+            }
+
+            foreach ($child->all() as $reference) {
+                $types[$reference->slug][$reference->redirectStub ? 'redirect' : 'page'] = true;
+            }
+        }
+
+        foreach ($types as $slug => $found) {
+            if (isset($found['redirect'], $found['page'])) {
+                $collisions[$slug] = true;
+            }
+        }
+
+        return array_keys($collisions);
     }
 
     public function partial(string $name): ?DocumentSource
@@ -219,5 +262,22 @@ final class CompositeRepository implements DocumentationRepository
             },
             $this->children,
         );
+    }
+
+    private function isRedirect(DocumentSource $source): bool
+    {
+        $data = $source->frontMatter;
+
+        if ($data === null && str_starts_with($source->rawContent, '---')
+            && preg_match('/^---\R(.*?)\R---\s*(?:\R|$)/s', $source->rawContent, $matches) === 1) {
+            try {
+                $parsed = Yaml::parse($matches[1]);
+                $data = is_array($parsed) ? $parsed : [];
+            } catch (ParseException) {
+                $data = [];
+            }
+        }
+
+        return (new FrontMatter($data ?? []))->hasRedirect();
     }
 }

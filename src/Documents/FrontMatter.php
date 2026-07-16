@@ -93,6 +93,11 @@ final class FrontMatter
         return is_scalar($redirect) ? (string) $redirect : null;
     }
 
+    public function hasRedirect(): bool
+    {
+        return array_key_exists('redirect', $this->data);
+    }
+
     /**
      * The page layout: `docs` (default, full navigation chrome) or `landing`
      * (hero + centered body, no sidebar/TOC/prev-next).

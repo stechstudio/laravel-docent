@@ -47,19 +47,22 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
             }
 
             $frontMatter = new FrontMatter($page->publishedRevision->front_matter ?? []);
+            $redirectStub = $frontMatter->hasRedirect();
 
             yield new PageReference(
                 slug: $page->slug,
                 title: $frontMatter->title() ?? $this->deriveTitle($page->slug),
                 order: $frontMatter->order(),
-                hidden: $frontMatter->hidden(),
+                hidden: $frontMatter->hidden() || $redirectStub,
                 authorize: $frontMatter->authorize(),
                 audience: $frontMatter->audience(),
-                searchExcluded: $frontMatter->searchExcluded(),
+                searchExcluded: $frontMatter->searchExcluded() || $redirectStub,
                 description: $frontMatter->description(),
                 directory: $this->baseDirOf($page->slug),
                 locked: false,
                 searchKeywords: $frontMatter->searchKeywords(),
+                redirect: $frontMatter->redirect(),
+                redirectStub: $redirectStub,
             );
         }
     }

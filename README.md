@@ -54,6 +54,32 @@ Your account is on the **{{ value:account.plan }}** plan.
 
 Directories become navigation groups (customize with a `_group.yml`), `_partials/` holds reusable fragments for `:::include`, and callouts use the same fence syntax: `:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`.
 
+### Move a page without breaking saved links
+
+Leave a small redirect stub at the old slug after moving its content:
+
+```markdown
+---
+title: Previous payment guide
+redirect: billing/payment-methods
+---
+```
+
+The old URL returns a permanent redirect only when the viewer can open the
+destination. Redirect stubs stay out of navigation, search, agent-readable
+output, and Assistant retrieval. Query strings carry across the redirect;
+fragments remain client-side because browsers do not send them to the server.
+Keep the destination as an internal Docent slug, then validate the move:
+
+```text
+$ php artisan docent:check
+Docent looks great — no problems found in 24 pages.
+```
+
+The checker reports missing destinations, unsafe targets, self-redirects,
+cycles, chains that should be flattened, narrower destination access, and
+reserved-route or real-page collisions.
+
 Task-focused guides can also use `:::steps` with titled `:::step` items,
 collapsible `:::accordion` answers, `:::tabs` with labeled `:::tab` panels,
 `:::frame caption="…"` around screenshots, click-to-load `:::video` embeds, and

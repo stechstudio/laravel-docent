@@ -1,0 +1,4 @@
+---
+title: Narrow
+redirect: destination
+---

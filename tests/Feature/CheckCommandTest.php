@@ -131,6 +131,22 @@ it('validates persistent navigation link targets and icons', function () {
         ->assertFailed();
 });
 
+it('reports unsafe and inconsistent redirect definitions', function () {
+    [$exit, $output] = check('redirect-check-docs');
+
+    expect($exit)->toBe(1)
+        ->and($output)->toContain('redirect-missing')
+        ->and($output)->toContain('redirect-external')
+        ->and($output)->toContain('redirect-self')
+        ->and($output)->toContain('redirect-cycle')
+        ->and($output)->toContain('redirect-chain')
+        ->and($output)->toContain('redirect-authorization')
+        ->and($output)->toContain('redirect-reserved')
+        ->and($output)->toContain('redirect-collision')
+        ->and($output)->toContain('cycle-a -> cycle-b -> cycle-a')
+        ->and($output)->toContain('chain -> narrow -> destination');
+});
+
 it('reports invalid and empty content component structures in draft checks', function () {
     $document = (new MarkdownDocumentParser)->parse(<<<'MD'
     :::step Orphaned

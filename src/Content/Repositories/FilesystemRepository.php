@@ -21,7 +21,7 @@ use Symfony\Component\Yaml\Yaml;
  *   file beginning with `_` is excluded from pages; `_partials/` files are
  *   reachable as includes via {@see partial()}.
  */
-final class FilesystemRepository implements DocumentationRepository, LockAwareRepository
+final class FilesystemRepository implements DocumentationRepository, LockAwareRepository, RedirectCollisionRepository
 {
     public function __construct(
         private readonly string $path,
@@ -98,10 +98,34 @@ final class FilesystemRepository implements DocumentationRepository, LockAwareRe
                 continue;
             }
 
-            $map[$this->slugOf($relative)] = $relative;
+            $slug = $this->slugOf($relative);
+
+            if (! isset($map[$slug])
+                || ($this->isRedirectFile($map[$slug]) && ! $this->isRedirectFile($relative))) {
+                $map[$slug] = $relative;
+            }
         }
 
         return $map;
+    }
+
+    public function redirectCollisions(): array
+    {
+        $types = [];
+
+        foreach ($this->markdownFiles() as $relative) {
+            if ($this->isUnderscored($relative)) {
+                continue;
+            }
+
+            $slug = $this->slugOf($relative);
+            $types[$slug][$this->isRedirectFile($relative) ? 'redirect' : 'page'] = true;
+        }
+
+        return array_keys(array_filter(
+            $types,
+            static fn (array $found): bool => isset($found['redirect'], $found['page']),
+        ));
     }
 
     /**
@@ -128,20 +152,28 @@ final class FilesystemRepository implements DocumentationRepository, LockAwareRe
     private function reference(string $slug, string $relative): PageReference
     {
         $frontMatter = new FrontMatter($this->frontMatterOf($relative));
+        $redirectStub = $frontMatter->hasRedirect();
 
         return new PageReference(
             slug: $slug,
             title: $frontMatter->title() ?? $this->deriveTitle($slug),
             order: $frontMatter->order(),
-            hidden: $frontMatter->hidden(),
+            hidden: $frontMatter->hidden() || $redirectStub,
             authorize: $frontMatter->authorize(),
             audience: $frontMatter->audience(),
-            searchExcluded: $frontMatter->searchExcluded(),
+            searchExcluded: $frontMatter->searchExcluded() || $redirectStub,
             description: $frontMatter->description(),
             directory: $this->directoryOf($relative),
             locked: $this->relativeLocked($relative),
             searchKeywords: $frontMatter->searchKeywords(),
+            redirect: $frontMatter->redirect(),
+            redirectStub: $redirectStub,
         );
+    }
+
+    private function isRedirectFile(string $relative): bool
+    {
+        return (new FrontMatter($this->frontMatterOf($relative)))->hasRedirect();
     }
 
     private function relativeLocked(string $relative): bool

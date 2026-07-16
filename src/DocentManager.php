@@ -59,6 +59,8 @@ final class DocentManager
 {
     public const VERSION = '0.1.0';
 
+    public const MAX_REDIRECT_HOPS = 3;
+
     public function __construct(
         private readonly IntegrationRegistry $registry,
         private readonly DocumentationRepository $repository,
@@ -147,6 +149,44 @@ final class DocentManager
         $source = $this->repository->find($slug);
 
         return $source === null ? null : new Page($slug, $source, $this->document($source), $this);
+    }
+
+    /**
+     * Resolve a redirect stub to its final page without revealing a missing or
+     * unauthorized destination. Authors are expected to flatten chains; the
+     * hard hop limit keeps malformed database-authored redirects bounded.
+     */
+    public function redirectTarget(Page $stub, DocumentationContext $context): ?Page
+    {
+        if (! $stub->isRedirect()) {
+            return null;
+        }
+
+        $current = $stub;
+        $visited = [$stub->slug => true];
+
+        for ($hop = 0; $hop < self::MAX_REDIRECT_HOPS; $hop++) {
+            $slug = $this->validRedirectSlug($current->redirect());
+
+            if ($slug === null || isset($visited[$slug])) {
+                return null;
+            }
+
+            $target = $this->page($slug);
+
+            if ($target === null || ! $target->authorize($context)) {
+                return null;
+            }
+
+            if (! $target->isRedirect()) {
+                return $target;
+            }
+
+            $visited[$slug] = true;
+            $current = $target;
+        }
+
+        return null;
     }
 
     /**
@@ -403,7 +443,7 @@ final class DocentManager
         foreach (array_slice(array_values(array_unique($slugs)), 0, 5) as $slug) {
             $page = $this->page($slug);
 
-            if ($page === null || ! $page->authorize($context)) {
+            if ($page === null || $page->isRedirect() || ! $page->authorize($context)) {
                 continue;
             }
 
@@ -738,6 +778,7 @@ final class DocentManager
             }
 
             $frontMatter = new FrontMatter($page->front_matter ?? []);
+            $redirectStub = $frontMatter->hasRedirect();
 
             $entries[] = [
                 'slug' => $page->slug,
@@ -747,7 +788,7 @@ final class DocentManager
                 'shadowed' => isset($files[$page->slug]),
                 'published' => $page->isPublished(),
                 'hasUnpublishedChanges' => $page->hasUnpublishedChanges(),
-                'hidden' => $frontMatter->hidden(),
+                'hidden' => $frontMatter->hidden() || $redirectStub,
                 'locked' => isset($files[$page->slug]) && $files[$page->slug]->locked,
             ];
         }
@@ -762,7 +803,7 @@ final class DocentManager
                 'published' => null,
                 'hasUnpublishedChanges' => null,
                 'hidden' => $reference->hidden,
-                'locked' => $reference->locked,
+                'locked' => $reference->locked || $reference->redirectStub,
             ];
         }
 
@@ -801,7 +842,19 @@ final class DocentManager
             return $this->filesystem->partialLocked(substr($slug, strlen('_partials/')));
         }
 
-        return $this->filesystem->pageLocked($slug);
+        if ($this->filesystem->pageLocked($slug)) {
+            return true;
+        }
+
+        $source = $this->filesystem->find($slug);
+
+        if ($source === null) {
+            return false;
+        }
+
+        [$frontMatter] = $this->splitFrontMatter($source->rawContent);
+
+        return (new FrontMatter($frontMatter))->hasRedirect();
     }
 
     /**
@@ -900,6 +953,10 @@ final class DocentManager
         }
 
         [$frontMatter, $content] = $this->splitFrontMatter($source->rawContent);
+
+        if ((new FrontMatter($frontMatter))->hasRedirect()) {
+            return null;
+        }
 
         return DocentPage::write($slug, $content, $frontMatter, $authorId);
     }
@@ -1099,6 +1156,7 @@ final class DocentManager
     private function filesystemDetail(string $slug, DocumentSource $source): array
     {
         [$frontMatter, $content] = $this->splitFrontMatter($source->rawContent);
+        $redirectStub = (new FrontMatter($frontMatter))->hasRedirect();
 
         return [
             'slug' => $slug,
@@ -1109,8 +1167,21 @@ final class DocentManager
             'format' => $source->format,
             'store' => 'filesystem',
             'readonly' => true,
-            'locked' => $this->filesystemSlugLocked($slug),
+            'locked' => $this->filesystemSlugLocked($slug) || $redirectStub,
         ];
+    }
+
+    private function validRedirectSlug(?string $slug): ?string
+    {
+        if ($slug === null) {
+            return null;
+        }
+
+        $slug = trim($slug);
+
+        return $slug !== '' && preg_match('#^[a-z0-9]([a-z0-9/-]*[a-z0-9])?$#', $slug) === 1
+            ? $slug
+            : null;
     }
 
     /**

@@ -1,0 +1,4 @@
+---
+title: Self
+redirect: self
+---

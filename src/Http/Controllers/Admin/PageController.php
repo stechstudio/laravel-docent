@@ -27,7 +27,7 @@ final class PageController
      * can never silently persist as meaningless metadata.
      */
     private const FRONT_MATTER_KEYS = [
-        'title', 'description', 'authorize', 'audience', 'order', 'hidden', 'layout', 'hero', 'search',
+        'title', 'description', 'authorize', 'audience', 'order', 'hidden', 'layout', 'hero', 'search', 'redirect',
     ];
 
     public function store(Request $request, DocentManager $docent): JsonResponse

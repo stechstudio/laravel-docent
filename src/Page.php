@@ -51,6 +51,16 @@ final class Page
         return $this->frontMatter()->searchExcluded();
     }
 
+    public function isRedirect(): bool
+    {
+        return $this->frontMatter()->hasRedirect();
+    }
+
+    public function redirect(): ?string
+    {
+        return $this->frontMatter()->redirect();
+    }
+
     /**
      * The page layout: `docs` (default) or `landing`. The controller uses this
      * to pick the view and suppress the sidebar/TOC chrome.

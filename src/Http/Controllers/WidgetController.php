@@ -53,6 +53,19 @@ final class WidgetController
             return $this->denied();
         }
 
+        if ($page->isRedirect()) {
+            $target = $this->docent->redirectTarget($page, $context);
+
+            if ($target === null) {
+                abort(404);
+            }
+
+            $url = $this->docent->widgetUrl($target->slug);
+            $query = $request->getQueryString();
+
+            return redirect()->to($query === null ? $url : $url.'?'.$query, 301);
+        }
+
         $this->insights->pageViewed($slug, 'widget');
 
         return response()->view('docent::widget.page', [
