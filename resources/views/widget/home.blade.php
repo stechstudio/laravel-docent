@@ -3,7 +3,7 @@
 @section('content')
     <div class="px-5 py-6 sm:px-6">
         <div class="mb-6">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--docent-accent)]">Help center</p>
+            <p class="docent-contrast-accent text-[11px] font-semibold uppercase tracking-[0.16em]">Help center</p>
             <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">How can we help?</h1>
             <p class="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">Browse the guides below or search for an answer.</p>
         </div>
@@ -61,7 +61,7 @@
             <ul class="space-y-5" role="list">
                 @foreach($sections as $section)
                     <li>
-                        <p class="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{{ $section->label }}</p>
+                        <p class="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ $section->label }}</p>
                         <ul class="space-y-1" role="list">
                             @foreach($section->navigation as $node)
                                 @include('docent::widget.nav-node', ['node' => $node, 'depth' => 1])

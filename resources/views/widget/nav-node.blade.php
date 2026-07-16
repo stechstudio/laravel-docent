@@ -2,7 +2,7 @@
 
 @if($isGroup)
     <li>
-        <p class="mb-1.5 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+        <p class="mb-1.5 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             @if($node->icon && ($groupIcon = \STS\Docent\Support\Icon::svg($node->icon)))
                 <span class="inline-flex text-[var(--docent-faint)] [&_svg]:h-4 [&_svg]:w-4" aria-hidden="true">{!! $groupIcon !!}</span>
             @endif

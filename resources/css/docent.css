@@ -149,11 +149,15 @@
     }
 
     .docent-assistant-link {
-        color: var(--docent-accent);
+        color: color-mix(in srgb, var(--docent-accent) 75%, black);
         font-weight: var(--font-weight-medium);
         text-decoration: underline;
         text-decoration-color: color-mix(in srgb, var(--docent-accent) 35%, transparent);
         text-underline-offset: 0.2em;
+    }
+
+    .docent-contrast-accent {
+        color: color-mix(in srgb, var(--docent-accent) 75%, black);
     }
 
     .docent-assistant-link:hover {
@@ -200,6 +204,11 @@
 
     .dark .docent-assistant-prose blockquote {
         color: var(--color-slate-300);
+    }
+
+    .dark .docent-assistant-link,
+    .dark .docent-contrast-accent {
+        color: color-mix(in srgb, var(--docent-accent) 65%, white);
     }
 
     @media (min-width: 640px) {

@@ -29,7 +29,7 @@
                             <kbd data-docent-ask-kbd class="rounded bg-white/80 px-1.5 py-0.5 font-sans text-[0.6875rem] text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">⌘↵</kbd>
                         </button>
                     @endif
-                    <kbd class="rounded border border-slate-200 px-1.5 py-0.5 text-[11px] font-medium text-slate-400 dark:border-slate-700">Esc</kbd>
+                    <kbd class="rounded border border-slate-200 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">Esc</kbd>
                 </div>
 
                 <div x-ref="list" class="docent-scroll max-h-[60vh] overflow-y-auto">
@@ -67,7 +67,7 @@
                     </div>
 
                     {{-- Initial hint --}}
-                    <div x-show="!searched && !loading" class="px-3 py-8 text-center text-sm text-slate-400">
+                    <div x-show="!searched && !loading" class="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                         Type to search the documentation.
                     </div>
                     </div>

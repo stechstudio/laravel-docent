@@ -22,7 +22,7 @@
             <nav class="docent-pagination mt-14 grid gap-4 border-t border-slate-200 pt-8 sm:grid-cols-2 dark:border-slate-800" aria-label="Pagination">
                 @if($prev)
                     <a rel="prev" href="{{ $prev->url }}" class="group flex flex-col rounded-xl border border-slate-200 p-4 transition hover:border-[var(--docent-accent)] dark:border-slate-800">
-                        <span class="flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
+                        <span class="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                             Previous
                         </span>
@@ -33,7 +33,7 @@
                 @endif
                 @if($next)
                     <a rel="next" href="{{ $next->url }}" class="group flex flex-col items-end rounded-xl border border-slate-200 p-4 text-right transition hover:border-[var(--docent-accent)] dark:border-slate-800">
-                        <span class="flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
+                        <span class="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                             Next
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                         </span>

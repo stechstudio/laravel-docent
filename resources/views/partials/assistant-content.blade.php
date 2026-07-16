@@ -93,7 +93,7 @@
                                         <template x-for="citation in citedPages(message)" :key="citation.slug">
                                             <li>
                                                 <a :href="citation.url" @click.prevent="navigateCitation(citation)"
-                                                   class="flex min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-2 text-base font-medium text-[var(--docent-accent)] hover:bg-slate-950/5 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--docent-accent)] dark:hover:bg-white/10 sm:text-sm">
+                                                   class="docent-contrast-accent flex min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-2 text-base font-medium hover:bg-slate-950/5 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--docent-accent)] dark:hover:bg-white/10 sm:text-sm">
                                                     <span class="min-w-0 truncate" x-text="citation.title"></span>
                                                     <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('chevron-right') !!}</span>
                                                 </a>

@@ -7,6 +7,11 @@ import {
     searchDialog,
 } from './helpers.js';
 
+async function useDarkTheme(page) {
+    await page.locator('html').evaluate((element) => element.classList.add('dark'));
+    await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+}
+
 test('reader headings are ordered and the page passes axe', async ({ page }) => {
     await page.goto('/docs/announcements');
     const main = page.locator('main');
@@ -18,10 +23,9 @@ test('reader headings are ordered and the page passes axe', async ({ page }) => 
     for (let index = 1; index < levels.length; index += 1) {
         expect(levels[index] - levels[index - 1]).toBeLessThanOrEqual(1);
     }
-    await expectNoSeriousAxeViolations(page, {
-        include: 'main',
-        exclude: ['.docent-pagination > a > span:first-child'],
-    });
+    await expectNoSeriousAxeViolations(page, { include: 'main' });
+    await useDarkTheme(page);
+    await expectNoSeriousAxeViolations(page, { include: 'main' });
 });
 
 test('open search dialog passes axe', async ({ page }) => {
@@ -33,15 +37,9 @@ test('open search dialog passes axe', async ({ page }) => {
     // the scan result depends on machine speed.
     await expect(dialog.locator('.overflow-hidden')).toHaveCSS('opacity', '1');
 
-    await expectNoSeriousAxeViolations(page, {
-        include: searchDialog,
-        // Pre-existing slate-400 contrast findings tracked in DOC-29: the
-        // Esc keyboard hint and the empty-state prompt.
-        exclude: [
-            'kbd',
-            'div[x-show="!searched && !loading"]',
-        ],
-    });
+    await expectNoSeriousAxeViolations(page, { include: searchDialog });
+    await useDarkTheme(page);
+    await expectNoSeriousAxeViolations(page, { include: searchDialog });
 });
 
 test('completed Assistant passes axe and supports a keyboard-only feedback path', async ({ page }) => {
@@ -61,24 +59,18 @@ test('completed Assistant passes axe and supports a keyboard-only feedback path'
     await page.keyboard.press('Enter');
     await expect(helpful).toHaveAttribute('aria-pressed', 'true');
 
-    await expectNoSeriousAxeViolations(page, {
-        include: assistantPanel,
-        exclude: [
-            '.docent-assistant-link',
-            '[x-text="citation.title"]',
-        ],
-    });
+    await expectNoSeriousAxeViolations(page, { include: assistantPanel });
+    await useDarkTheme(page);
+    await expectNoSeriousAxeViolations(page, { include: assistantPanel });
 });
 
 test('widget home passes axe', async ({ page }) => {
     await page.goto('/');
-    await openWidget(page);
+    const frame = await openWidget(page);
 
-    await expectNoSeriousAxeViolations(page, {
-        include: 'iframe[title="Documentation"]',
-        exclude: [
-            ['iframe[title="Documentation"]', '.tracking-\\[0\\.16em\\]'],
-            ['iframe[title="Documentation"]', '.docent-widget-nav .text-slate-400'],
-        ],
-    });
+    await expectNoSeriousAxeViolations(page, { include: 'iframe[title="Documentation"]' });
+    await frame.locator('html').evaluate((element) => element.classList.add('dark'));
+    await expect(frame.locator('html')).toHaveClass(/\bdark\b/);
+    await page.waitForTimeout(200);
+    await expectNoSeriousAxeViolations(page, { include: 'iframe[title="Documentation"]' });
 });
