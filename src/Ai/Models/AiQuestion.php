@@ -18,6 +18,13 @@ final class AiQuestion extends Model
     /** Rows have no viewer binding, so feedback authorization rides this token. */
     public function feedbackToken(): string
     {
-        return hash_hmac('sha256', 'docent-ai-feedback:'.$this->getKey(), (string) config('app.key'));
+        $key = (string) config('app.key');
+
+        if ($key === '') {
+            // An empty HMAC key would make feedback tokens forgeable.
+            throw new \RuntimeException('Docent AI feedback tokens require a configured application key (app.key).');
+        }
+
+        return hash_hmac('sha256', 'docent-ai-feedback:'.$this->getKey(), $key);
     }
 }

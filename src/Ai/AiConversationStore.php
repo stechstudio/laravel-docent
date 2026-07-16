@@ -16,7 +16,10 @@ use STS\Docent\Support\DocentCache;
 
 final class AiConversationStore
 {
-    public function __construct(private readonly DocentCache $cache) {}
+    public function __construct(
+        private readonly DocentCache $cache,
+        private readonly DocentManager $manager,
+    ) {}
 
     public function resolve(
         Request $request,
@@ -146,9 +149,7 @@ final class AiConversationStore
 
     private function viewerFingerprint(DocumentationContext $context): string
     {
-        $manager = app(DocentManager::class);
-
-        return $manager->viewerFingerprint($context);
+        return $this->manager->viewerFingerprint($context);
     }
 
     private function token(string $id, string $owner, string $mode): string
@@ -158,9 +159,15 @@ final class AiConversationStore
 
     private function keyMaterial(): string
     {
-        $key = (string) config('app.key', 'docent');
+        $key = (string) config('app.key');
 
-        return $key === '' ? 'docent' : $key;
+        if ($key === '') {
+            // Conversation ownership tokens are HMACs; signing them with a
+            // known constant would make them forgeable.
+            throw new \RuntimeException('Docent AI conversations require a configured application key (app.key).');
+        }
+
+        return $key;
     }
 
     private function ttl(): int

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Closure;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\Emphasis;

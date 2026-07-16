@@ -94,6 +94,23 @@ final class SearchEngine
             'keywords' => implode(' ', $record->keywords),
         ];
 
+        // Title/description/keywords scores are per-record and cannot vary by
+        // section, so compute them once instead of inside the section loop.
+        $globalScores = [];
+
+        foreach ($query->terms as $position => $term) {
+            $termScore = 0.0;
+            $termMatched = false;
+
+            foreach ($globalFields as $field => $tokens) {
+                [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);
+                $termScore += $fieldScore;
+                $termMatched = $termMatched || $fieldMatched;
+            }
+
+            $globalScores[$position] = [$termScore, $termMatched];
+        }
+
         $best = null;
 
         foreach ($record->sections as $section) {
@@ -101,14 +118,7 @@ final class SearchEngine
             $matched = [];
 
             foreach ($query->terms as $position => $term) {
-                $termScore = 0.0;
-                $termMatched = false;
-
-                foreach ($globalFields as $field => $tokens) {
-                    [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);
-                    $termScore += $fieldScore;
-                    $termMatched = $termMatched || $fieldMatched;
-                }
+                [$termScore, $termMatched] = $globalScores[$position];
 
                 foreach (['heading' => $section->headingTokens, 'body' => $section->bodyTokens] as $field => $tokens) {
                     [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);

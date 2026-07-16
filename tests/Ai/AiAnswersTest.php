@@ -565,3 +565,24 @@ it('rejects overlapping work with a short per-conversation lock', function () {
 
     $store->release($resolution->conversation);
 });
+
+it('refuses to sign conversation tokens without an application key', function () {
+    config(['app.key' => '']);
+
+    $request = Request::create('/docs/_ask', 'POST');
+    $docent = app(DocentManager::class);
+    $context = $docent->contextFor($request);
+    $store = app(AiConversationStore::class);
+
+    expect(fn () => $store->resolve($request, $context, 'corpus', 'reader', null, null))
+        ->toThrow(RuntimeException::class, 'app.key');
+});
+
+it('refuses to sign feedback tokens without an application key', function () {
+    config(['app.key' => '']);
+
+    $question = new AiQuestion(['id' => 1]);
+
+    expect(fn () => $question->feedbackToken())
+        ->toThrow(RuntimeException::class, 'app.key');
+});
