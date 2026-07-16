@@ -101,11 +101,41 @@ jobs:
       - name: Audit dependencies
         run: npm audit --omit=dev --audit-level=high
 
-  # Placeholder for the DOC-18 browser suite (Playwright + axe-core). Uncomment
-  # and flesh out once that suite lands; until then no browsers are installed.
-  #
-  # browser:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - run: echo "Run the DOC-18 Playwright + axe-core suite here"
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer update --prefer-dist --no-interaction
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser suite
+        run: npm run test:browser
+
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -4,6 +4,8 @@ composer.lock
 .phpunit.cache
 .phpunit.result.cache
 /coverage
+/playwright-report
+/test-results
 .env
 .DS_Store
 /workbench/bootstrap/cache/*

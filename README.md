@@ -318,6 +318,8 @@ composer serve     # boots a demo SaaS with docs at /docs
 composer test
 composer lint      # Pint code style
 composer analyse   # PHPStan (larastan), level 6
+npx playwright install chromium
+npm run test:browser  # Chromium browser and accessibility suite
 ```
 
 Log in as `/demo/login/admin` or `/demo/login/member` to see contextual documentation change with the viewer.
