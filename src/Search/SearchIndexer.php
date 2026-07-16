@@ -105,8 +105,14 @@ final class SearchIndexer
     {
         $renderer = $this->renderer();
         $sections = [];
+
+        /** @var string|null $title */
         $title = null;
+
+        /** @var string|null $slug */
         $slug = null;
+
+        /** @var list<string> $chunks */
         $chunks = [];
         $order = 0;
 
@@ -162,7 +168,10 @@ final class SearchIndexer
         return $sections;
     }
 
-    /** @param list<SearchRecord> $records @return array<string, int> */
+    /**
+     * @param  list<SearchRecord>  $records
+     * @return array<string, int>
+     */
     private function documentFrequencies(array $records): array
     {
         $frequencies = [];
@@ -181,7 +190,10 @@ final class SearchIndexer
         return $frequencies;
     }
 
-    /** @param list<SearchRecord> $records @return array<string, float> */
+    /**
+     * @param  list<SearchRecord>  $records
+     * @return array<string, float>
+     */
     private function averageFieldLengths(array $records): array
     {
         $totals = ['title' => 0, 'description' => 0, 'keywords' => 0, 'heading' => 0, 'body' => 0];
@@ -238,10 +250,9 @@ final class SearchIndexer
             return '';
         }
 
-        $meta = $this->repository->groupMeta($directory);
+        // The label comes from user-authored _group.yml, so guard the type.
+        $label = $this->repository->groupMeta($directory)['label'] ?? null;
 
-        return isset($meta['label']) && is_string($meta['label'])
-            ? $meta['label']
-            : Str::headline(basename($directory));
+        return is_string($label) ? $label : Str::headline(basename($directory));
     }
 }

@@ -21,6 +21,7 @@ final class NavigationLinkCheck implements Check
         }
     }
 
+    /** @return iterable<Issue> */
     private function checkList(string $list, CheckContext $context): iterable
     {
         $links = config('docent.navigation.'.$list, []);

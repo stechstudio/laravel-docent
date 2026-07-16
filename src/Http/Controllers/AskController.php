@@ -268,7 +268,7 @@ final class AskController
     {
         $parts = array_map('trim', explode(',', (string) config('docent.ai.throttle', '10,1')));
 
-        return [max(1, (int) ($parts[0] ?? 10)), max(1, (int) ($parts[1] ?? 1))];
+        return [max(1, (int) $parts[0]), max(1, (int) ($parts[1] ?? 1))];
     }
 
     private function normalize(string $question): string

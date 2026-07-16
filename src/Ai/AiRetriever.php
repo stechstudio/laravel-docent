@@ -132,7 +132,7 @@ final class AiRetriever
 
         preg_match_all('/[\pL\pN]+/u', $question, $words);
 
-        return count($words[0] ?? []) <= 4 || $direct === [];
+        return count($words[0]) <= 4 || $direct === [];
     }
 
     private function visibleRecord(string $slug, DocumentationContext $context): ?SearchRecord

@@ -72,7 +72,7 @@ final class TokenSyntax
             return null;
         }
 
-        return self::fromMatch($m[1], $m[2], $m[3] ?? '', $line);
+        return self::fromMatch($m[1], $m[2], $m[3], $line);
     }
 
     /**
@@ -86,6 +86,7 @@ final class TokenSyntax
             'value' => new DynamicValue($key, $arguments, $line),
             'link' => new AppLink(AppLinkKind::Link, $key, $arguments, $line),
             'route' => new AppLink(AppLinkKind::Route, $key, $arguments, $line),
+            default => throw new \InvalidArgumentException('Unknown token kind: '.$kind),
         };
     }
 

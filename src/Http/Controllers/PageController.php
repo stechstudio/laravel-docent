@@ -114,7 +114,7 @@ final class PageController
         ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
     }
 
-    private function denied(): Response|RedirectResponse
+    private function denied(): RedirectResponse
     {
         $response = config('docent.authorization.denied_response', 404);
 

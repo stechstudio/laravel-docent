@@ -98,7 +98,7 @@ final readonly class AiConversation
             $this->ownerHash,
             $this->viewerFingerprint,
             $this->corpusVersion,
-            array_values($turns),
+            $turns,
             $this->turnCount + 1,
             $this->createdAt,
             $now,

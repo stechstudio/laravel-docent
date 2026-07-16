@@ -241,6 +241,7 @@ final class NavigationBuilder
      */
     private function build(): array
     {
+        /** @var array{items: list<PageReference>, children: array<string, mixed>} $tree */
         $tree = ['items' => [], 'children' => []];
 
         foreach ($this->repository->all() as $page) {

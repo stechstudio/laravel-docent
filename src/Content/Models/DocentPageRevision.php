@@ -6,6 +6,7 @@ namespace STS\Docent\Content\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * An immutable content snapshot of a {@see DocentPage}. Revisions are never
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $format
  * @property array<string, mixed>|null $front_matter
  * @property int|null $created_by
+ * @property Carbon|null $created_at
  */
 final class DocentPageRevision extends Model
 {

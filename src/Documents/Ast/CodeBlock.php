@@ -35,7 +35,7 @@ final class CodeBlock extends Node
     public function title(): ?string
     {
         if ($this->info !== null && preg_match('/title=(?:"([^"]*)"|(\S+))/', $this->info, $m) === 1) {
-            return ($m[1] ?? '') !== '' ? $m[1] : ($m[2] ?? null);
+            return $m[1] !== '' ? $m[1] : ($m[2] ?? null);
         }
 
         return null;

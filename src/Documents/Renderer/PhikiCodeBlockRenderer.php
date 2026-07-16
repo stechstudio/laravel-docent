@@ -75,7 +75,7 @@ final class PhikiCodeBlockRenderer implements CodeBlockRenderer
     private function title(?string $info): ?string
     {
         if ($info !== null && preg_match('/title=(?:"([^"]*)"|(\S+))/', $info, $m) === 1) {
-            return ($m[1] ?? '') !== '' ? $m[1] : ($m[2] ?? null);
+            return $m[1] !== '' ? $m[1] : ($m[2] ?? null);
         }
 
         return null;

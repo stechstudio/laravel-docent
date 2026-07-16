@@ -47,7 +47,7 @@ final class DirectiveBlockParser extends AbstractBlockContinueParser
         return true;
     }
 
-    public function tryContinue(Cursor $cursor, BlockContinueParserInterface $activeBlockParser): ?BlockContinue
+    public function tryContinue(Cursor $cursor, BlockContinueParserInterface $activeBlockParser): BlockContinue
     {
         $fenceLength = $this->closingFenceLength($cursor);
 

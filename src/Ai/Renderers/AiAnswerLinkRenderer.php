@@ -15,9 +15,12 @@ final readonly class AiAnswerLinkRenderer implements NodeRendererInterface
     /** @param list<string> $allowedUrls */
     public function __construct(private array $allowedUrls) {}
 
-    public function render(Node $node, ChildNodeRendererInterface $childRenderer): \Stringable|string|null
+    public function render(Node $node, ChildNodeRendererInterface $childRenderer): \Stringable|string
     {
-        Link::assertInstanceOf($node);
+        if (! $node instanceof Link) {
+            throw new \InvalidArgumentException('Incompatible node type: '.$node::class);
+        }
+
         $label = $childRenderer->renderNodes($node->children());
 
         if (! in_array($node->getUrl(), $this->allowedUrls, true)) {

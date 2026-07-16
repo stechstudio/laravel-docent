@@ -33,7 +33,7 @@ final class InsightsExportController
                 ->chunkById(500, function ($events) use ($stream): void {
                     foreach ($events as $event) {
                         fputcsv($stream, [
-                            $event->created_at?->toIso8601String(),
+                            $event->created_at->toIso8601String(),
                             $event->category,
                             $event->event,
                             $event->surface,

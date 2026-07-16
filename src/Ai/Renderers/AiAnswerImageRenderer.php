@@ -11,7 +11,7 @@ use League\CommonMark\Renderer\NodeRendererInterface;
 
 final class AiAnswerImageRenderer implements NodeRendererInterface
 {
-    public function render(Node $node, ChildNodeRendererInterface $childRenderer): \Stringable|string|null
+    public function render(Node $node, ChildNodeRendererInterface $childRenderer): string
     {
         Image::assertInstanceOf($node);
 

@@ -92,7 +92,7 @@ final class Icon
         $merged = array_unique([...self::heroiconNames(), ...array_keys(self::ICONS)]);
         sort($merged);
 
-        return array_values($merged);
+        return $merged;
     }
 
     /**

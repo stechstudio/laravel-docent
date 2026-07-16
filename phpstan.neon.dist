@@ -1,0 +1,16 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+    paths:
+        - src
+        - database
+    reportUnmatchedIgnoredErrors: true
+    ignoreErrors:
+        # InteractsWithDocs is public API for host applications' test suites
+        # (and this package's own tests, which sit outside the analysed paths),
+        # so it is never used inside src/.
+        -
+            identifier: trait.unused
+            path: src/Testing/InteractsWithDocs.php

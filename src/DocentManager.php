@@ -748,7 +748,7 @@ final class DocentManager
                 'published' => $page->isPublished(),
                 'hasUnpublishedChanges' => $page->hasUnpublishedChanges(),
                 'hidden' => $frontMatter->hidden(),
-                'locked' => ($files[$page->slug] ?? null)?->locked ?? false,
+                'locked' => isset($files[$page->slug]) && $files[$page->slug]->locked,
             ];
         }
 

@@ -24,6 +24,7 @@ final class DocumentSource
     public const ORIGIN_DATABASE = 'database';
 
     /**
+     * @param  self::FORMAT_*  $format
      * @param  array<string, mixed>|null  $frontMatter  When set, overrides the
      *                                                  document's parsed front matter. Tiptap sources carry no front
      *                                                  matter inside the JSON body — it lives in the `docent_pages`

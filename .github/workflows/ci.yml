@@ -63,6 +63,22 @@ jobs:
       - name: Audit dependencies
         run: composer audit
 
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction
+
+      - name: Run static analysis
+        run: composer analyse
+
   assets:
     runs-on: ubuntu-latest
     steps:

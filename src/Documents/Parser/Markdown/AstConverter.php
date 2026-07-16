@@ -96,6 +96,10 @@ final class AstConverter
         $root = new Document($frontMatter, $document->getStartLine());
 
         foreach ($document->children() as $child) {
+            if (! $child instanceof AbstractBlock) {
+                continue;
+            }
+
             $node = $this->convertBlock($child);
             if ($node !== null) {
                 $root->appendChild($node);
@@ -233,6 +237,10 @@ final class AstConverter
     private function withBlockChildren(AstNode $target, AbstractBlock $node): AstNode
     {
         foreach ($node->children() as $child) {
+            if (! $child instanceof AbstractBlock) {
+                continue;
+            }
+
             $converted = $this->convertBlock($child);
             if ($converted !== null) {
                 $target->appendChild($converted);

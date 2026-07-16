@@ -137,7 +137,10 @@ final class SearchEngine
         return $best;
     }
 
-    /** @param list<string> $tokens @return array{float, bool} */
+    /**
+     * @param  list<string>  $tokens
+     * @return array{float, bool}
+     */
     private function fieldScore(array $tokens, string $field, SearchTerm $term, SearchIndex $index): array
     {
         if ($tokens === []) {
@@ -235,7 +238,6 @@ final class SearchEngine
             return '';
         }
 
-        /** @var list<array{0: string, 1: int}> $words */
         $words = $matches[0];
         $center = 0;
 
@@ -252,7 +254,10 @@ final class SearchEngine
         return ($from > 0 ? '…' : '').$this->highlight($slice, $query).($to < strlen($body) ? '…' : '');
     }
 
-    /** @param list<array{0: string, 1: int}> $words @return array{int, int} */
+    /**
+     * @param  list<array{0: string, 1: int}>  $words
+     * @return array{int, int}
+     */
     private function window(array $words, int $center, int $length): array
     {
         $start = $center;

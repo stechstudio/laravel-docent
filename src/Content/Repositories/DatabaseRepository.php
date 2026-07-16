@@ -46,7 +46,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
                 continue;
             }
 
-            $frontMatter = new FrontMatter($page->publishedRevision?->front_matter ?? []);
+            $frontMatter = new FrontMatter($page->publishedRevision->front_matter ?? []);
 
             yield new PageReference(
                 slug: $page->slug,

@@ -105,9 +105,11 @@ final class IntegrationRegistry
 
     /**
      * Register documentation pages to suggest for a host application's page
-     * identifier. Patterns use Laravel's simple wildcard matching.
+     * identifier. Patterns use Laravel's simple wildcard matching. The slug
+     * list is host-app input, so it is validated at runtime rather than
+     * trusted to match the advertised list<string> shape.
      *
-     * @param  list<string>  $slugs
+     * @param  array<array-key, mixed>  $slugs
      */
     public function suggest(string $pattern, array $slugs): self
     {

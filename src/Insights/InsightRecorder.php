@@ -173,7 +173,7 @@ final class InsightRecorder
             'reference_id' => $questionLog === null ? null : (string) $questionLog->getKey(),
             'status' => trim($answer) === '' ? 'unanswered' : 'answered',
             'citations' => array_values(array_filter(array_map(
-                fn (array $citation): ?string => $this->slug((string) ($citation['slug'] ?? '')),
+                fn (array $citation): ?string => $this->slug($citation['slug']),
                 $corpus->citations,
             ))),
         ]);

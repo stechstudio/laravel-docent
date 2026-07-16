@@ -79,7 +79,7 @@ final class VideoSource
     private static function youtubeId(string $url, string $host, string $path): ?string
     {
         if ($host === 'youtu.be') {
-            return self::safeId(explode('/', trim($path, '/'))[0] ?? '');
+            return self::safeId(explode('/', trim($path, '/'))[0]);
         }
 
         parse_str((string) (parse_url($url, PHP_URL_QUERY) ?? ''), $query);

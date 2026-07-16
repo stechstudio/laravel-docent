@@ -27,7 +27,7 @@ final class ComponentBlockStartParser implements BlockStartParserInterface
             return BlockStart::none();
         }
 
-        $parsed = AttributeParser::parse($m[1] ?? '');
+        $parsed = AttributeParser::parse($m[1]);
         $name = $parsed['attributes']['name'] ?? $parsed['shorthand'] ?? '';
 
         $attributes = $parsed['attributes'];

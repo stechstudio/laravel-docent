@@ -46,7 +46,7 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
             return BlockStart::none();
         }
 
-        $parsed = AttributeParser::parse($m[3] ?? '');
+        $parsed = AttributeParser::parse($m[3]);
 
         $cursor->advanceToEnd();
 
