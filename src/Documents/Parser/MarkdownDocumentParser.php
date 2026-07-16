@@ -7,6 +7,7 @@ namespace STS\Docent\Documents\Parser;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\Autolink\AutolinkExtension;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+use League\CommonMark\Extension\FrontMatter\Data\SymfonyYamlFrontMatterParser;
 use League\CommonMark\Extension\FrontMatter\FrontMatterExtension;
 use League\CommonMark\Extension\Strikethrough\StrikethroughExtension;
 use League\CommonMark\Extension\Table\TableExtension;
@@ -32,7 +33,9 @@ final class MarkdownDocumentParser implements DocumentParser
     {
         $environment = new Environment;
         $environment->addExtension(new CommonMarkCoreExtension);
-        $environment->addExtension(new FrontMatterExtension);
+        // Pin the Symfony YAML parser: when ext-yaml is loaded, CommonMark
+        // silently switches to libyaml, which parses differently.
+        $environment->addExtension(new FrontMatterExtension(new SymfonyYamlFrontMatterParser));
         $environment->addExtension(new TableExtension);
         $environment->addExtension(new StrikethroughExtension);
         $environment->addExtension(new TaskListExtension);
