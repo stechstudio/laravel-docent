@@ -12,6 +12,7 @@ return new class extends Migration
     {
         Schema::create('docent_insight_events', function (Blueprint $table): void {
             $table->id();
+            $table->string('site')->default('docs')->index();
             $table->uuid('event_id')->unique();
             $table->string('category', 20)->index();
             $table->string('event', 40)->index();

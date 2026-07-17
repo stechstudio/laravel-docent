@@ -289,7 +289,7 @@ final class DocentServiceProvider extends ServiceProvider
             return 'Enabled (not migrated)';
         }
 
-        $count = DocentPage::on($connection)->published()->count();
+        $count = DocentPage::forSite($connection, $site->key)->published()->count();
 
         return 'Enabled ('.$count.' '.Str::plural('page', $count).')';
     }

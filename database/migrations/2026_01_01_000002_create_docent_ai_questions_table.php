@@ -12,6 +12,7 @@ return new class extends Migration
     {
         Schema::create('docent_ai_questions', function (Blueprint $table): void {
             $table->id();
+            $table->string('site')->default('docs')->index();
             $table->string('question', 500);
             $table->string('status', 20);
             $table->string('thumbs', 4)->nullable();

@@ -900,7 +900,7 @@ git commit -m "feat!: per-site route groups with docent.{site}.* names and SiteR
 - Consumes: `DocentManager::key()`.
 - Produces: `DocentPage::write(string $slug, string $content, array $frontMatter = [], ?int $authorId = null, string $format = 'markdown', string $site = 'docs', ?string $connection = null): self`; `DocentPage::forSite(?string $connection, string $site): Builder` (static, replaces bare `DocentPage::on($connection)` at every read site); equivalent site/connection query seams for `AiQuestion` and `InsightEvent`; `new DatabaseRepository(?string $connection = null, string $site = 'docs')`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```php
 <?php
@@ -929,9 +929,9 @@ it('upserts within a site, not across sites', function () {
 });
 ```
 
-- [ ] **Step 2: Run to verify failure** — unknown column `site` / unknown named parameter.
+- [x] **Step 2: Run to verify failure** — unknown column `site` / unknown named parameter.
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
   - Migrations: in the pages table, add `$table->string('site')->default('docs');` before `slug`, change `$table->string('slug')->unique()` (or its current form — read the file) to a plain column plus `$table->unique(['site', 'slug']);`. Add `$table->string('site')->default('docs')->index();` to `docent_ai_questions` and `docent_insight_events`.
   - `DocentPage`: `write()` gains trailing `string $site = 'docs', ?string $connection = null` parameters; build its query from a model using that connection, then `firstOrNew(['site' => $site, 'slug' => $slug])`. Add `forSite()`. `revertTo()` must pass `$this->site` and `$this->getConnectionName()` back into `write()` so a revert cannot land in `docs` or on the default connection.
   - `DatabaseRepository`: constructor gains `private readonly string $site = 'docs'`; every `DocentPage::on($this->connection)` becomes `DocentPage::forSite($this->connection, $this->site)`.
@@ -943,9 +943,9 @@ it('upserts within a site, not across sites', function () {
   - `SiteServices::buildAll()`: pass `site: $key` when constructing `DatabaseRepository`.
   - Provider `databaseSummary()`: count `DocentPage::forSite($connection, $key)` per site.
 
-- [ ] **Step 4: Add regression cases for reverting a non-`docs` page, rejecting cross-site AI feedback/insight continuation, and using a per-site non-default database connection. Run the new tests, then the full suite** — PASS. Existing DB tests keep working because every default is `'docs'` and the default site key is `docs`.
+- [x] **Step 4: Add regression cases for reverting a non-`docs` page, rejecting cross-site AI feedback/insight continuation, and using a per-site non-default database connection. Run the new tests, then the full suite** — PASS. Existing DB tests keep working because every default is `'docs'` and the default site key is `docs`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 composer lint && composer analyse && composer test

@@ -99,7 +99,7 @@ final class SiteServices
 
         if ((bool) $config->get('database.enabled', false)) {
             $connection = $config->get('database.connection');
-            $database = new DatabaseRepository(is_string($connection) ? $connection : null);
+            $database = new DatabaseRepository(is_string($connection) ? $connection : null, $key);
             $repository = new CompositeRepository($database, $filesystem);
         }
 
@@ -152,7 +152,7 @@ final class SiteServices
         $questionLogger = new AiQuestionLogger($manager);
         $conversations = new AiConversationStore($cache, $manager);
         $insightRecorder = new InsightRecorder($manager);
-        $insightSummary = new InsightSummary;
+        $insightSummary = new InsightSummary($manager);
 
         $graph = [
             SiteConfig::class => $config,

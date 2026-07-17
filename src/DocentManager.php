@@ -825,7 +825,7 @@ final class DocentManager
             $files[$reference->slug] = $reference;
         }
 
-        $pages = DocentPage::on($this->databaseConnection())->get();
+        $pages = DocentPage::forSite($this->databaseConnection(), $this->key())->get();
 
         $dbSlugs = [];
 
@@ -888,7 +888,7 @@ final class DocentManager
             return $source === null ? null : $this->filesystemDetail($slug, $source);
         }
 
-        $page = DocentPage::on($this->databaseConnection())->where('slug', $slug)->first();
+        $page = DocentPage::forSite($this->databaseConnection(), $this->key())->where('slug', $slug)->first();
 
         if ($page !== null) {
             return $this->databaseDetail($page);
@@ -932,7 +932,7 @@ final class DocentManager
      */
     public function adminGroups(): array
     {
-        $pages = DocentPage::on($this->databaseConnection())->get();
+        $pages = DocentPage::forSite($this->databaseConnection(), $this->key())->get();
 
         $directories = [];
         $dbGroups = [];
@@ -988,7 +988,14 @@ final class DocentManager
      */
     public function updateGroupMeta(string $directory, array $meta, ?int $authorId): void
     {
-        DocentPage::write('_groups/'.$directory, '', $meta, $authorId);
+        DocentPage::write(
+            '_groups/'.$directory,
+            '',
+            $meta,
+            $authorId,
+            site: $this->key(),
+            connection: $this->databaseConnection(),
+        );
     }
 
     /**
@@ -997,7 +1004,7 @@ final class DocentManager
      */
     public function removeGroupMeta(string $directory): bool
     {
-        return (bool) DocentPage::on($this->databaseConnection())
+        return (bool) DocentPage::forSite($this->databaseConnection(), $this->key())
             ->where('slug', '_groups/'.$directory)
             ->first()?->delete();
     }
@@ -1021,7 +1028,14 @@ final class DocentManager
             return null;
         }
 
-        return DocentPage::write($slug, $content, $frontMatter, $authorId);
+        return DocentPage::write(
+            $slug,
+            $content,
+            $frontMatter,
+            $authorId,
+            site: $this->key(),
+            connection: $this->databaseConnection(),
+        );
     }
 
     /**
@@ -1069,7 +1083,7 @@ final class DocentManager
     {
         $page = $this->filesystemSlugLocked($slug)
             ? null
-            : DocentPage::on($this->databaseConnection())->where('slug', $slug)->first();
+            : DocentPage::forSite($this->databaseConnection(), $this->key())->where('slug', $slug)->first();
 
         if ($page !== null) {
             $frontMatter = $page->front_matter ?? ['title' => $page->title];

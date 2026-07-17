@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
+use STS\Docent\DocentManager;
 use STS\Docent\Insights\Models\InsightEvent;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class InsightsExportController
 {
+    public function __construct(
+        private readonly DocentManager $docent,
+    ) {}
+
     public function __invoke(Request $request): StreamedResponse
     {
         $days = min(365, max(1, $request->integer('days', 30)));
@@ -27,7 +32,11 @@ final class InsightsExportController
                 'citations', 'feedback',
             ]);
 
-            InsightEvent::query()
+            $connection = $this->docent->config('database.connection');
+            InsightEvent::forSite(
+                is_string($connection) ? $connection : null,
+                $this->docent->key(),
+            )
                 ->where('created_at', '>=', now()->subDays($days))
                 ->orderBy('id')
                 ->chunkById(500, function ($events) use ($stream): void {

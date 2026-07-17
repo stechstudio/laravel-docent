@@ -23,7 +23,7 @@ trait InteractsWithPages
      */
     protected function pageQuery()
     {
-        return DocentPage::on($this->connection());
+        return DocentPage::forSite($this->connection(), $this->docent()->key());
     }
 
     /**

@@ -18,7 +18,8 @@ return new class extends Migration
     {
         Schema::create('docent_pages', function (Blueprint $table): void {
             $table->id();
-            $table->string('slug')->unique();
+            $table->string('site')->default('docs');
+            $table->string('slug');
             $table->string('title');
             $table->longText('content');
             $table->string('format')->default('markdown');
@@ -28,6 +29,7 @@ return new class extends Migration
             $table->unsignedBigInteger('updated_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
+            $table->unique(['site', 'slug']);
         });
     }
 

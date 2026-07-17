@@ -20,7 +20,8 @@ final class AiQuestionLogger
             return null;
         }
 
-        return AiQuestion::query()->create([
+        return AiQuestion::forSite($this->connection(), $this->docent->key())->create([
+            'site' => $this->docent->key(),
             'question' => $question,
             'status' => 'no-answer',
             'viewer_class' => $context->user === null ? 'guest' : 'authenticated',
@@ -38,5 +39,12 @@ final class AiQuestionLogger
             'status' => $normalized === '' ? 'no-answer' : 'answered',
             'answer_hash' => $normalized === '' ? null : hash('sha256', $normalized),
         ])->save();
+    }
+
+    private function connection(): ?string
+    {
+        $connection = $this->docent->config('database.connection');
+
+        return is_string($connection) ? $connection : null;
     }
 }

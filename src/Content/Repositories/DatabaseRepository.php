@@ -27,6 +27,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
 {
     public function __construct(
         private readonly ?string $connection = null,
+        private readonly string $site = 'docs',
     ) {}
 
     public function find(string $slug): ?DocumentSource
@@ -36,7 +37,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
 
     public function all(): iterable
     {
-        $pages = DocentPage::on($this->connection)
+        $pages = DocentPage::forSite($this->connection, $this->site)
             ->published()
             ->with('publishedRevision')
             ->get();
@@ -70,7 +71,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
 
     public function storedSlugs(): array
     {
-        return DocentPage::on($this->connection)
+        return DocentPage::forSite($this->connection, $this->site)
             ->pluck('slug')
             ->reject(fn (string $slug): bool => str_starts_with($slug, '_groups/'))
             ->values()
@@ -87,7 +88,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
         // Group metadata lives on a reserved, never-published `_groups/{dir}`
         // row's front matter, so it takes effect immediately (no publish step).
         // Read straight from the page row, not its published revision.
-        $meta = DocentPage::on($this->connection)
+        $meta = DocentPage::forSite($this->connection, $this->site)
             ->where('slug', '_groups/'.$directory)
             ->value('front_matter');
 
@@ -97,13 +98,13 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
     }
 
     /**
-     * Hashes the whole (non-trashed) pages table so any write, publish,
+     * Hashes this site's non-trashed pages so any write, publish,
      * unpublish, or delete invalidates the navigation/search/AST caches — the
      * published projection is conservatively rebuilt even for a pure draft edit.
      */
     public function directoryHash(): string
     {
-        $stats = DocentPage::on($this->connection)
+        $stats = DocentPage::forSite($this->connection, $this->site)
             ->selectRaw('COUNT(*) as page_count, MAX(updated_at) as latest, SUM(published_revision_id) as published_sum')
             ->first();
 
@@ -116,7 +117,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
 
     private function sourceForSlug(string $slug): ?DocumentSource
     {
-        $page = DocentPage::on($this->connection)
+        $page = DocentPage::forSite($this->connection, $this->site)
             ->published()
             ->with('publishedRevision')
             ->where('slug', $slug)

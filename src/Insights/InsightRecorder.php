@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Insights;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use STS\Docent\Ai\AiCorpus;
@@ -99,12 +100,12 @@ final class InsightRecorder
             return null;
         }
 
-        $search = InsightEvent::query()
+        $search = $this->events()
             ->where('event', self::SEARCH_SUBMITTED)
             ->where('search_id', $id)
             ->first();
 
-        if ($search === null || InsightEvent::query()
+        if ($search === null || $this->events()
             ->whereIn('event', [self::SEARCH_RESULT_CLICKED, self::SEARCH_NO_CLICK])
             ->where('search_id', $id)
             ->exists()) {
@@ -120,8 +121,8 @@ final class InsightRecorder
             return false;
         }
 
-        return DB::transaction(function () use ($event, $searchId, $targetSlug): bool {
-            $search = InsightEvent::query()
+        return DB::connection($this->connection())->transaction(function () use ($event, $searchId, $targetSlug): bool {
+            $search = $this->events()
                 ->where('event', self::SEARCH_SUBMITTED)
                 ->where('search_id', $searchId)
                 ->lockForUpdate()
@@ -137,7 +138,7 @@ final class InsightRecorder
                 return false;
             }
 
-            if (InsightEvent::query()
+            if ($this->events()
                 ->whereIn('event', [self::SEARCH_RESULT_CLICKED, self::SEARCH_NO_CLICK])
                 ->where('search_id', $searchId)
                 ->exists()) {
@@ -186,11 +187,11 @@ final class InsightRecorder
 
     public function assistantFeedback(AiQuestion $question, string $feedback): void
     {
-        if (! $this->enabled('assistant')) {
+        if (! $this->enabled('assistant') || $question->site !== $this->docent->key()) {
             return;
         }
 
-        $outcome = InsightEvent::query()
+        $outcome = $this->events()
             ->where('event', self::ASSISTANT_OUTCOME)
             ->where('reference_id', (string) $question->getKey())
             ->latest('id')
@@ -200,7 +201,7 @@ final class InsightRecorder
             return;
         }
 
-        $existing = InsightEvent::query()
+        $existing = $this->events()
             ->where('event', self::ASSISTANT_FEEDBACK)
             ->where('reference_id', (string) $question->getKey())
             ->first();
@@ -228,13 +229,14 @@ final class InsightRecorder
     {
         $retention = max(1, $days ?? (int) $this->docent->config('insights.retention_days', 90));
 
-        return InsightEvent::query()->where('created_at', '<', now()->subDays($retention))->delete();
+        return $this->events()->where('created_at', '<', now()->subDays($retention))->delete();
     }
 
     /** @param array<string, mixed> $attributes */
     private function create(array $attributes): InsightEvent
     {
-        return InsightEvent::query()->create([
+        return $this->events()->create([
+            'site' => $this->docent->key(),
             'event_id' => (string) Str::uuid(),
             ...$attributes,
         ]);
@@ -256,6 +258,19 @@ final class InsightRecorder
         }
 
         return mb_substr($value, 0, 500);
+    }
+
+    /** @return Builder<InsightEvent> */
+    private function events(): Builder
+    {
+        return InsightEvent::forSite($this->connection(), $this->docent->key());
+    }
+
+    private function connection(): ?string
+    {
+        $connection = $this->docent->config('database.connection');
+
+        return is_string($connection) ? $connection : null;
     }
 
     private function slug(string $value): ?string

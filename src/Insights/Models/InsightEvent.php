@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace STS\Docent\Insights\Models;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * A deliberately narrow, identity-free documentation usage signal.
  *
  * @property int $id
+ * @property string $site
  * @property string $event_id
  * @property string $category
  * @property string $event
@@ -34,6 +36,16 @@ final class InsightEvent extends Model
     protected $table = 'docent_insight_events';
 
     protected $guarded = [];
+
+    protected $attributes = [
+        'site' => 'docs',
+    ];
+
+    /** @return Builder<self> */
+    public static function forSite(?string $connection, string $site): Builder
+    {
+        return self::on($connection)->where('site', $site);
+    }
 
     protected function casts(): array
     {

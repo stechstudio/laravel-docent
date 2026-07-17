@@ -31,6 +31,7 @@ it('honors global and category collection switches', function () {
     config()->set('docent.insights.enabled', true);
     config()->set('docent.insights.categories.pages', false);
     config()->set('docent.insights.categories.search', true);
+    $this->resetDocentScope();
 
     $this->get('/docs/guides/setup')->assertOk();
     $this->getJson('/docs/_search?q=setup')->assertOk();

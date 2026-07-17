@@ -44,7 +44,15 @@ final class PageController
 
         [$content, $frontMatter, $format] = $this->payload($request, $docent);
 
-        DocentPage::write($slug, $content, $frontMatter, $this->authorId($request), $format);
+        DocentPage::write(
+            $slug,
+            $content,
+            $frontMatter,
+            $this->authorId($request),
+            $format,
+            $docent->key(),
+            $this->connection(),
+        );
 
         return $this->detailResponse($docent, $slug, $content, $frontMatter, $format, 201);
     }
@@ -64,7 +72,15 @@ final class PageController
 
         [$content, $frontMatter, $format] = $this->payload($request, $docent);
 
-        DocentPage::write($slug, $content, $frontMatter, $this->authorId($request), $format);
+        DocentPage::write(
+            $slug,
+            $content,
+            $frontMatter,
+            $this->authorId($request),
+            $format,
+            $docent->key(),
+            $this->connection(),
+        );
 
         return $this->detailResponse($docent, $slug, $content, $frontMatter, $format);
     }

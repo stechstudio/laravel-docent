@@ -6,6 +6,7 @@ namespace STS\Docent\Insights;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use STS\Docent\DocentManager;
 use STS\Docent\Insights\Models\InsightEvent;
 
 /**
@@ -14,6 +15,10 @@ use STS\Docent\Insights\Models\InsightEvent;
  */
 final class InsightSummary
 {
+    public function __construct(
+        private readonly DocentManager $docent,
+    ) {}
+
     /** @return array<string, mixed> */
     public function forDays(int $days = 30): array
     {
@@ -51,7 +56,15 @@ final class InsightSummary
     /** @return Builder<InsightEvent> */
     private function since(CarbonImmutable $since): Builder
     {
-        return InsightEvent::query()->where('created_at', '>=', $since);
+        return InsightEvent::forSite($this->connection(), $this->docent->key())
+            ->where('created_at', '>=', $since);
+    }
+
+    private function connection(): ?string
+    {
+        $connection = $this->docent->config('database.connection');
+
+        return is_string($connection) ? $connection : null;
     }
 
     /**

@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  * revision, and drafts stay invisible until published.
  *
  * @property int $id
+ * @property string $site
  * @property string $slug
  * @property string $title
  * @property string $content
@@ -33,20 +34,34 @@ final class DocentPage extends Model
 
     protected $guarded = [];
 
+    protected $attributes = [
+        'site' => 'docs',
+    ];
+
     protected $casts = [
         'front_matter' => 'array',
     ];
 
     /**
-     * Upsert a page by slug and snapshot a revision whenever the content,
+     * Upsert a page by site and slug and snapshot a revision whenever the content,
      * format, or front matter actually changed. The title comes from the front
      * matter `title`, falling back to a headline of the slug's last segment.
      *
      * @param  array<string, mixed>  $frontMatter
      */
-    public static function write(string $slug, string $content, array $frontMatter = [], ?int $authorId = null, string $format = 'markdown'): self
-    {
-        $page = self::withTrashed()->firstOrNew(['slug' => $slug]);
+    public static function write(
+        string $slug,
+        string $content,
+        array $frontMatter = [],
+        ?int $authorId = null,
+        string $format = 'markdown',
+        string $site = 'docs',
+        ?string $connection = null,
+    ): self {
+        $page = self::on($connection)->withTrashed()->firstOrNew([
+            'site' => $site,
+            'slug' => $slug,
+        ]);
 
         $changed = ! $page->exists
             || $page->trashed()
@@ -120,7 +135,21 @@ final class DocentPage extends Model
      */
     public function revertTo(DocentPageRevision $revision): self
     {
-        return self::write($this->slug, $revision->content, $revision->front_matter ?? [], $revision->created_by, $revision->format);
+        return self::write(
+            $this->slug,
+            $revision->content,
+            $revision->front_matter ?? [],
+            $revision->created_by,
+            $revision->format,
+            $this->site,
+            $this->getConnectionName(),
+        );
+    }
+
+    /** @return Builder<self> */
+    public static function forSite(?string $connection, string $site): Builder
+    {
+        return self::on($connection)->where('site', $site);
     }
 
     public function latestRevision(): ?DocentPageRevision
