@@ -22,15 +22,12 @@ use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\InstallCommand;
 use STS\Docent\Console\PruneInsightsCommand;
 use STS\Docent\Content\Models\DocentPage;
-use STS\Docent\Content\Repositories\CompositeRepository;
-use STS\Docent\Content\Repositories\DatabaseRepository;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\ContentHtmlSanitizer;
-use STS\Docent\Documents\Renderer\PhikiCodeBlockRenderer;
 use STS\Docent\Http\Controllers\Admin\AdminController;
 use STS\Docent\Http\Controllers\Admin\ExportController;
 use STS\Docent\Http\Controllers\Admin\GroupController;
@@ -54,6 +51,7 @@ use STS\Docent\Http\Controllers\SearchController;
 use STS\Docent\Http\Controllers\UploadsController;
 use STS\Docent\Http\Controllers\WidgetController;
 use STS\Docent\Http\Controllers\WidgetSuggestionsController;
+use STS\Docent\Http\Middleware\SetCurrentSite;
 use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Insights\InsightSummary;
 use STS\Docent\Navigation\NavigationBuilder;
@@ -61,7 +59,6 @@ use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
-use STS\Docent\Search\SearchQueryAnalyzer;
 use STS\Docent\Sites\CurrentSite;
 use STS\Docent\Sites\SiteConfig;
 use STS\Docent\Sites\SiteRegistry;
@@ -92,116 +89,32 @@ final class DocentServiceProvider extends ServiceProvider
         $this->app->scoped(DocumentationMode::class, static fn (): DocumentationMode => new DocumentationMode);
 
         $this->app->singleton(DocumentParser::class, MarkdownDocumentParser::class);
-
-        $this->app->singleton(CodeBlockRenderer::class, static fn (Application $app): PhikiCodeBlockRenderer => new PhikiCodeBlockRenderer(
-            $app->make(DocentCache::class),
-        ));
-
         $this->app->singleton(ContentHtmlSanitizer::class);
+        $this->app->singleton(PrismGuard::class);
 
-        // A plain bind (not a singleton) so it always reflects the current
-        // configured path when tests re-point a site and forget the repository.
-        $this->app->bind(FilesystemRepository::class, static function (Application $app): FilesystemRepository {
-            $site = self::siteConfig($app);
+        $this->app->scoped(DocentManager::class, static fn (Application $app): DocentManager => $app->make(SiteRegistry::class)->current());
+        $this->app->scoped(DocumentationRepository::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(DocumentationRepository::class));
+        $this->app->scoped(FilesystemRepository::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(FilesystemRepository::class));
+        $this->app->scoped(NavigationBuilder::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(NavigationBuilder::class));
+        $this->app->scoped(DocentCache::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(DocentCache::class));
+        $this->app->scoped(CodeBlockRenderer::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(CodeBlockRenderer::class));
+        $this->app->scoped(SearchIndexer::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(SearchIndexer::class));
+        $this->app->scoped(SearchEngine::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(SearchEngine::class));
+        $this->app->scoped(AiRetriever::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(AiRetriever::class));
+        $this->app->scoped(AiCorpusBuilder::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(AiCorpusBuilder::class));
+        $this->app->scoped(AiAnswerService::class, static function (Application $app): AiAnswerService {
+            $service = $app->make(SiteRegistry::class)->service(AiAnswerService::class);
 
-            return new FilesystemRepository(
-                $site->get('filesystem.path') ?? $app->resourcePath('docs'),
-            );
-        });
-
-        $this->app->singleton(DocumentationRepository::class, static function (Application $app): DocumentationRepository {
-            $site = self::siteConfig($app);
-            $filesystem = $app->make(FilesystemRepository::class);
-
-            if (! $site->get('database.enabled', false)) {
-                return $filesystem;
+            if (! $service instanceof AiAnswerService) {
+                throw new \LogicException('The Docent site graph did not contain an AI answer service.');
             }
 
-            // Database over filesystem: a DB page overrides a file of the same slug.
-            return new CompositeRepository(
-                new DatabaseRepository($site->get('database.connection')),
-                $filesystem,
-            );
+            return $service->ensureConfigured();
         });
-
-        $this->app->singleton(DocentCache::class, static function (Application $app): DocentCache {
-            $site = self::siteConfig($app);
-
-            return new DocentCache(
-                $app['cache']->store($site->get('cache.store')),
-                $site->get('cache.prefix', 'docent'),
-            );
-        });
-
-        $this->app->singleton(NavigationBuilder::class, static function (Application $app): NavigationBuilder {
-            $site = self::siteConfig($app);
-
-            return new NavigationBuilder(
-                $app->make(DocumentationRepository::class),
-                $app->make(IntegrationRegistry::class),
-                $app->make(DocentCache::class),
-                $site,
-                static fn (string $slug): string => $app->make(DocumentationMode::class)->widget()
-                    ? route($slug === '' ? 'docent.widget.home' : 'docent.widget.show', $slug === '' ? [] : ['slug' => $slug])
-                    : ($slug === '' ? route('docent.home') : route('docent.show', $slug)),
-            );
-        });
-
-        $this->app->scoped(DocentManager::class, static fn (Application $app): DocentManager => new DocentManager(
-            $app->make(IntegrationRegistry::class),
-            $app->make(DocumentationRepository::class),
-            $app->make(DocumentParser::class),
-            $app->make(DocentCache::class),
-            $app->make(NavigationBuilder::class),
-            $app->make(CodeBlockRenderer::class),
-            $app->make(FilesystemRepository::class),
-            $app->make(DocumentationMode::class),
-            $app->make(ContentHtmlSanitizer::class),
-            self::siteConfig($app),
-        ));
-
-        $this->app->scoped(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
-            $app->make(DocumentationRepository::class),
-            $app->make(DocentCache::class),
-            $app->make(DocentManager::class),
-        ));
-
-        $this->app->scoped(SearchEngine::class, static function (Application $app): SearchEngine {
-            $site = self::siteConfig($app);
-
-            return new SearchEngine(
-                $app->make(SearchIndexer::class),
-                $app->make(DocentManager::class),
-                new SearchQueryAnalyzer($site->get('search.stop_words')),
-            );
-        });
-
-        $this->app->singleton(PrismGuard::class);
-        $this->app->scoped(AiRetriever::class, static fn (Application $app): AiRetriever => new AiRetriever(
-            $app->make(SearchEngine::class),
-            $app->make(SearchIndexer::class),
-            $app->make(DocentManager::class),
-        ));
-        $this->app->scoped(AiCorpusBuilder::class, static fn (Application $app): AiCorpusBuilder => new AiCorpusBuilder(
-            $app->make(DocentManager::class),
-            $app->make(DocumentationRepository::class),
-            $app->make(AiRetriever::class),
-        ));
-        $this->app->scoped(AiAnswerService::class, static fn (Application $app): AiAnswerService => new AiAnswerService(
-            $app->make(DocentManager::class),
-            $app->make(PrismGuard::class),
-        ));
-        $this->app->scoped(AiQuestionLogger::class, static fn (Application $app): AiQuestionLogger => new AiQuestionLogger(
-            $app->make(DocentManager::class),
-        ));
-        $this->app->scoped(AiConversationStore::class, static fn (Application $app): AiConversationStore => new AiConversationStore(
-            $app->make(DocentCache::class),
-            $app->make(DocentManager::class),
-        ));
-        $this->app->scoped(InsightRecorder::class, static fn (Application $app): InsightRecorder => new InsightRecorder(
-            $app->make(DocentManager::class),
-        ));
-        $this->app->singleton(InsightSummary::class);
+        $this->app->scoped(AiQuestionLogger::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(AiQuestionLogger::class));
+        $this->app->scoped(AiConversationStore::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(AiConversationStore::class));
+        $this->app->scoped(InsightRecorder::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(InsightRecorder::class));
+        $this->app->scoped(InsightSummary::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(InsightSummary::class));
     }
 
     public function boot(): void
@@ -225,53 +138,56 @@ final class DocentServiceProvider extends ServiceProvider
 
     private function registerRoutes(): void
     {
-        $site = self::siteConfig($this->app);
+        foreach ($this->app->make(SiteRegistry::class)->keys() as $key) {
+            $site = $this->app->make(SiteRegistry::class)->siteConfig($key);
 
-        Route::group([
-            'prefix' => $site->get('route.prefix', 'docs'),
-            'domain' => $site->get('route.domain'),
-            'middleware' => $site->get('route.middleware', ['web']),
-        ], function () use ($site): void {
-            Route::get('/', [PageController::class, 'home'])->name('docent.home');
+            Route::group([
+                'prefix' => $site->get('route.prefix', 'docs'),
+                'domain' => $site->get('route.domain'),
+                'middleware' => [...(array) $site->get('route.middleware', ['web']), SetCurrentSite::class.':'.$key],
+                'as' => 'docent.'.$key.'.',
+            ], function () use ($site): void {
+                Route::get('/', [PageController::class, 'home'])->name('home');
 
-            Route::get('/_assets/{file}', AssetController::class)
-                ->where('file', '[A-Za-z0-9._-]+')
-                ->name('docent.asset');
+                Route::get('/_assets/{file}', AssetController::class)
+                    ->where('file', '[A-Za-z0-9._-]+')
+                    ->name('asset');
 
-            Route::get('/_uploads/{path}', UploadsController::class)
-                ->where('path', '.*')
-                ->name('docent.upload');
+                Route::get('/_uploads/{path}', UploadsController::class)
+                    ->where('path', '.*')
+                    ->name('upload');
 
-            if ($site->get('search.enabled', true)) {
-                Route::get('/_search', SearchController::class)->name('docent.search');
-            }
+                if ($site->get('search.enabled', true)) {
+                    Route::get('/_search', SearchController::class)->name('search');
+                }
 
-            if ($site->get('insights.enabled', false)) {
-                Route::post('/_insights', InsightsController::class)->name('docent.insights.store');
-            }
+                if ($site->get('insights.enabled', false)) {
+                    Route::post('/_insights', InsightsController::class)->name('insights.store');
+                }
 
-            if ($site->get('ai.enabled', false)) {
-                Route::post('/_ask', AskController::class)->name('docent.ask');
-                Route::delete('/_ask/conversation', AskConversationController::class)->name('docent.ask.conversation.destroy');
-                Route::post('/_ask/feedback', AskFeedbackController::class)->name('docent.ask.feedback');
-            }
+                if ($site->get('ai.enabled', false)) {
+                    Route::post('/_ask', AskController::class)->name('ask');
+                    Route::delete('/_ask/conversation', AskConversationController::class)->name('ask.conversation.destroy');
+                    Route::post('/_ask/feedback', AskFeedbackController::class)->name('ask.feedback');
+                }
 
-            if ($site->get('admin.enabled', false) && $site->get('database.enabled', false)) {
-                $this->registerAdminRoutes($site);
-            }
+                if ($site->get('admin.enabled', false) && $site->get('database.enabled', false)) {
+                    $this->registerAdminRoutes($site);
+                }
 
-            if ($site->get('widget.enabled', false)) {
-                Route::get('/_widget', [WidgetController::class, 'home'])->name('docent.widget.home');
-                Route::get('/_widget/_suggestions', WidgetSuggestionsController::class)->name('docent.widget.suggestions');
-                Route::get('/_widget/{slug}', [WidgetController::class, 'show'])
-                    ->where('slug', '.*')->name('docent.widget.show');
-            }
+                if ($site->get('widget.enabled', false)) {
+                    Route::get('/_widget', [WidgetController::class, 'home'])->name('widget.home');
+                    Route::get('/_widget/_suggestions', WidgetSuggestionsController::class)->name('widget.suggestions');
+                    Route::get('/_widget/{slug}', [WidgetController::class, 'show'])
+                        ->where('slug', '.*')->name('widget.show');
+                }
 
-            Route::get('/llms.txt', [LlmsController::class, 'index'])->name('docent.llms');
-            Route::get('/llms-full.txt', [LlmsController::class, 'full'])->name('docent.llms-full');
+                Route::get('/llms.txt', [LlmsController::class, 'index'])->name('llms');
+                Route::get('/llms-full.txt', [LlmsController::class, 'full'])->name('llms-full');
 
-            Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('docent.show');
-        });
+                Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('show');
+            });
+        }
     }
 
     /**
@@ -288,48 +204,48 @@ final class DocentServiceProvider extends ServiceProvider
         $path = trim((string) $site->get('admin.path', 'admin'), '/');
 
         Route::middleware('can:'.$site->get('admin.gate', 'viewDocentAdmin'))->prefix($path)->group(function () use ($site): void {
-            Route::get('/', AdminController::class)->name('docent.admin');
+            Route::get('/', AdminController::class)->name('admin');
 
-            Route::get('api/tree', TreeController::class)->name('docent.admin.tree');
-            Route::get('api/meta', MetaController::class)->name('docent.admin.meta');
-            Route::get('api/icons', IconController::class)->name('docent.admin.icons');
-            Route::post('api/preview', PreviewController::class)->name('docent.admin.preview');
-            Route::post('api/uploads', UploadController::class)->name('docent.admin.uploads');
+            Route::get('api/tree', TreeController::class)->name('admin.tree');
+            Route::get('api/meta', MetaController::class)->name('admin.meta');
+            Route::get('api/icons', IconController::class)->name('admin.icons');
+            Route::post('api/preview', PreviewController::class)->name('admin.preview');
+            Route::post('api/uploads', UploadController::class)->name('admin.uploads');
 
             if ($site->get('insights.enabled', false)) {
-                Route::get('insights', AdminInsightsController::class)->name('docent.admin.insights');
-                Route::get('insights.csv', InsightsExportController::class)->name('docent.admin.insights.export');
+                Route::get('insights', AdminInsightsController::class)->name('admin.insights');
+                Route::get('insights.csv', InsightsExportController::class)->name('admin.insights.export');
             }
 
             // Group metadata — declared before the api/pages/{slug} catch-alls so
             // the more specific paths win.
-            Route::get('api/groups', [GroupController::class, 'index'])->name('docent.admin.groups.index');
+            Route::get('api/groups', [GroupController::class, 'index'])->name('admin.groups.index');
             Route::put('api/groups/{directory}', [GroupController::class, 'update'])
-                ->where('directory', '.*')->name('docent.admin.groups.update');
+                ->where('directory', '.*')->name('admin.groups.update');
             Route::delete('api/groups/{directory}', [GroupController::class, 'destroy'])
-                ->where('directory', '.*')->name('docent.admin.groups.destroy');
+                ->where('directory', '.*')->name('admin.groups.destroy');
 
-            Route::post('api/pages', [AdminPageController::class, 'store'])->name('docent.admin.pages.store');
+            Route::post('api/pages', [AdminPageController::class, 'store'])->name('admin.pages.store');
 
             Route::get('api/pages/{slug}/revisions', [AdminPageController::class, 'revisions'])
-                ->where('slug', '.*')->name('docent.admin.pages.revisions');
+                ->where('slug', '.*')->name('admin.pages.revisions');
             Route::get('api/pages/{slug}/markdown', ExportController::class)
-                ->where('slug', '.*')->name('docent.admin.export');
+                ->where('slug', '.*')->name('admin.export');
             Route::post('api/pages/{slug}/publish', [PageStateController::class, 'publish'])
-                ->where('slug', '.*')->name('docent.admin.pages.publish');
+                ->where('slug', '.*')->name('admin.pages.publish');
             Route::post('api/pages/{slug}/unpublish', [PageStateController::class, 'unpublish'])
-                ->where('slug', '.*')->name('docent.admin.pages.unpublish');
+                ->where('slug', '.*')->name('admin.pages.unpublish');
             Route::post('api/pages/{slug}/revert/{revision}', [PageStateController::class, 'revert'])
-                ->where('slug', '.*')->where('revision', '[0-9]+')->name('docent.admin.pages.revert');
+                ->where('slug', '.*')->where('revision', '[0-9]+')->name('admin.pages.revert');
             Route::post('api/pages/{slug}/override', [PageStateController::class, 'override'])
-                ->where('slug', '.*')->name('docent.admin.pages.override');
+                ->where('slug', '.*')->name('admin.pages.override');
 
             Route::get('api/pages/{slug}', [AdminPageController::class, 'show'])
-                ->where('slug', '.*')->name('docent.admin.pages.show');
+                ->where('slug', '.*')->name('admin.pages.show');
             Route::put('api/pages/{slug}', [AdminPageController::class, 'update'])
-                ->where('slug', '.*')->name('docent.admin.pages.update');
+                ->where('slug', '.*')->name('admin.pages.update');
             Route::delete('api/pages/{slug}', [AdminPageController::class, 'destroy'])
-                ->where('slug', '.*')->name('docent.admin.pages.destroy');
+                ->where('slug', '.*')->name('admin.pages.destroy');
         });
     }
 
@@ -339,14 +255,25 @@ final class DocentServiceProvider extends ServiceProvider
             return;
         }
 
-        $site = self::siteConfig($this->app);
+        AboutCommand::add('Docent', function (): array {
+            $sites = $this->app->make(SiteRegistry::class);
+            $details = ['Version' => DocentManager::VERSION];
 
-        AboutCommand::add('Docent', fn (): array => [
-            'Version' => DocentManager::VERSION,
-            'Pages' => (string) count(iterator_to_array($this->app->make(DocumentationRepository::class)->all())),
-            'Route Prefix' => '/'.$site->get('route.prefix', 'docs'),
-            'Database' => $this->databaseSummary($site),
-        ]);
+            foreach ($sites->keys() as $key) {
+                $site = $sites->siteConfig($key);
+                $repository = $sites->serviceFor($key, DocumentationRepository::class);
+
+                if (! $repository instanceof DocumentationRepository) {
+                    continue;
+                }
+
+                $details[$key.' Pages'] = (string) count(iterator_to_array($repository->all()));
+                $details[$key.' Route Prefix'] = '/'.(string) $site->get('route.prefix', 'docs');
+                $details[$key.' Database'] = $this->databaseSummary($site);
+            }
+
+            return $details;
+        });
     }
 
     private function databaseSummary(SiteConfig $site): string
@@ -365,10 +292,5 @@ final class DocentServiceProvider extends ServiceProvider
         $count = DocentPage::on($connection)->published()->count();
 
         return 'Enabled ('.$count.' '.Str::plural('page', $count).')';
-    }
-
-    private static function siteConfig(Application $app): SiteConfig
-    {
-        return new SiteConfig('docs', (array) $app['config']->get('docent', []));
     }
 }

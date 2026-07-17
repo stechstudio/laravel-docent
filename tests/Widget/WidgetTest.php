@@ -159,9 +159,9 @@ it('serves the standalone widget runtime and registers routes before catch-all',
         ->assertOk()
         ->assertHeader('Content-Type', 'text/javascript; charset=utf-8');
 
-    expect(Route::getRoutes()->getByName('docent.widget.home')?->uri())->toBe('docs/_widget')
-        ->and(Route::getRoutes()->getByName('docent.widget.suggestions')?->uri())->toBe('docs/_widget/_suggestions')
-        ->and(Route::getRoutes()->getByName('docent.widget.show')?->uri())->toBe('docs/_widget/{slug}');
+    expect(Route::getRoutes()->getByName('docent.docs.widget.home')?->uri())->toBe('docs/_widget')
+        ->and(Route::getRoutes()->getByName('docent.docs.widget.suggestions')?->uri())->toBe('docs/_widget/_suggestions')
+        ->and(Route::getRoutes()->getByName('docent.docs.widget.show')?->uri())->toBe('docs/_widget/{slug}');
 });
 
 it('returns deduplicated contextual suggestions that the viewer may open', function () {

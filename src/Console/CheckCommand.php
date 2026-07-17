@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Route;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Parser\DocumentParser;
-use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\DocsChecker;
 use STS\Docent\Validation\Issue;
@@ -30,13 +29,12 @@ final class CheckCommand extends Command
     public function handle(
         DocumentationRepository $repository,
         DocumentParser $parser,
-        IntegrationRegistry $registry,
     ): int {
         $docent = $this->laravel->make(DocentManager::class);
         $context = new CheckContext(
             repository: $repository,
             parser: $parser,
-            registry: $registry,
+            registry: $docent->registry(),
             docsPath: (string) ($docent->config('filesystem.path') ?? resource_path('docs')),
             publicPath: public_path(),
             routePrefix: (string) $docent->config('route.prefix', 'docs'),

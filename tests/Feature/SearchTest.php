@@ -167,7 +167,7 @@ it('does not register the search route when search is disabled', function () {
     (new DocentServiceProvider($this->app))->boot();
     $this->app['router']->getRoutes()->refreshNameLookups();
 
-    expect(Route::getRoutes()->getByName('docent.search'))->toBeNull();
+    expect(Route::getRoutes()->getByName('docent.docs.search'))->toBeNull();
 
     // The wildcard page route now swallows the path and 404s.
     $this->get('/docs/_search?q=billing')->assertNotFound();

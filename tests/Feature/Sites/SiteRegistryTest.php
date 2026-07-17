@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use STS\Docent\DocentManager;
+use STS\Docent\Facades\Docent;
 use STS\Docent\Http\Middleware\SetCurrentSite;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Search\SearchEngine;
@@ -112,6 +113,20 @@ it('registers globally at the root and per site through site', function () {
 
     expect($registry->registryFor('public')->resolveValue('plan', $context))->toBe('Global')
         ->and($registry->registryFor('admin')->resolveValue('plan', $context))->toBe('Admin');
+});
+
+it('uses the site registry as the facade root and delegates container aliases', function () {
+    twoSiteConfig();
+    Docent::value('facade-plan', fn () => 'Global');
+    $this->app->make(CurrentSite::class)->set('admin');
+
+    $registry = $this->app->make(SiteRegistry::class);
+    $context = new DocumentationContext;
+
+    expect(Docent::site()->key())->toBe('public')
+        ->and(Docent::site('admin')->registry()->resolveValue('facade-plan', $context))->toBe('Global')
+        ->and($this->app->make(DocentManager::class))->toBe($registry->site('admin'))
+        ->and($this->app->make(SearchEngine::class))->toBe($registry->serviceFor('admin', SearchEngine::class));
 });
 
 it('selects the middleware site for the rest of the request', function () {

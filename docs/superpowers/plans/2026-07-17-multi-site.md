@@ -849,11 +849,11 @@ git commit -m "feat: SiteRegistry builds one service graph per configured site"
 - Consumes: `SiteRegistry`, `SetCurrentSite`.
 - Produces: route names `docent.{key}.{suffix}` for every route; `Docent` facade accessor = `SiteRegistry::class`; container bindings for `DocentManager`, `DocumentationRepository`, `FilesystemRepository`, `NavigationBuilder`, `DocentCache`, `CodeBlockRenderer`, `SearchIndexer`, `SearchEngine`, `AiRetriever`, `AiCorpusBuilder`, `AiAnswerService`, `AiQuestionLogger`, `AiConversationStore`, `InsightRecorder`, and `InsightSummary` all resolve the **current site's** instance via `SiteRegistry::service()`.
 
-- [ ] **Step 1: Flip `DocentManager::routeName()`** to `return 'docent.'.$this->key().'.'.$suffix;`.
+- [x] **Step 1: Flip `DocentManager::routeName()`** to `return 'docent.'.$this->key().'.'.$suffix;`.
 
-- [ ] **Step 2: Rewrite the provider's `register()`** so every per-site class binding delegates: `$this->app->scoped(DocentManager::class, static fn (Application $app) => $app->make(SiteRegistry::class)->current());` and for each other per-site class `$this->app->scoped(SearchEngine::class, static fn (Application $app) => $app->make(SiteRegistry::class)->service(SearchEngine::class));` (same one-liner per class in the Interfaces list). Delete the now-dead direct construction closures — `SiteServices::buildAll()` is the single wiring site. Keep only genuinely shared bindings (`IntegrationRegistry`, `DocumentationMode`, `DocumentParser`, `ContentHtmlSanitizer`, `PrismGuard`) as they are.
+- [x] **Step 2: Rewrite the provider's `register()`** so every per-site class binding delegates: `$this->app->scoped(DocentManager::class, static fn (Application $app) => $app->make(SiteRegistry::class)->current());` and for each other per-site class `$this->app->scoped(SearchEngine::class, static fn (Application $app) => $app->make(SiteRegistry::class)->service(SearchEngine::class));` (same one-liner per class in the Interfaces list). Delete the now-dead direct construction closures — `SiteServices::buildAll()` is the single wiring site. Keep only genuinely shared bindings (`IntegrationRegistry`, `DocumentationMode`, `DocumentParser`, `ContentHtmlSanitizer`, `PrismGuard`) as they are.
 
-- [ ] **Step 3: Rewrite `registerRoutes()`** as a loop. For each `$key` in `config('docent.sites')`:
+- [x] **Step 3: Rewrite `registerRoutes()`** as a loop. For each `$key` in `config('docent.sites')`:
 
 ```php
 foreach (array_keys((array) config('docent.sites', [])) as $key) {
@@ -875,11 +875,11 @@ foreach (array_keys((array) config('docent.sites', [])) as $key) {
 
 The `'as' => 'docent.{$key}.'` group prefix plus shortened inner `->name('show')` etc. produces exactly `docent.{key}.show`. Port `registerAdminRoutes()` the same way (it becomes a closure receiving `$site`). Update `registerAboutCommand()` to emit one `Pages`/`Route Prefix`/`Database` line per site key.
 
-- [ ] **Step 4: Repoint the facade.** `src/Facades/Docent.php` accessor returns `SiteRegistry::class`; update the docblock: add `@method static DocentManager site(?string $key = null)` and `@mixin \STS\Docent\DocentManager`, keep the registration method annotations (they now hit the global registry).
+- [x] **Step 4: Repoint the facade.** `src/Facades/Docent.php` accessor returns `SiteRegistry::class`; update the docblock: add `@method static DocentManager site(?string $key = null)` and `@mixin \STS\Docent\DocentManager`, keep the registration method annotations (they now hit the global registry).
 
-- [ ] **Step 5: Fix test fallout.** Expected: the single `route('docent.…')` test reference becomes `route('docent.docs.…')`; any test resolving `DocentManager::class` still works via delegation; `TestCase` needs no change beyond Task 4. Run the full suite and fix name-string assertions only — a behavioral failure here means the flip broke something real; stop and fix the source, not the test.
+- [x] **Step 5: Fix test fallout.** Expected: the single `route('docent.…')` test reference becomes `route('docent.docs.…')`; any test resolving `DocentManager::class` still works via delegation; `TestCase` needs no change beyond Task 4. Run the full suite and fix name-string assertions only — a behavioral failure here means the flip broke something real; stop and fix the source, not the test.
 
-- [ ] **Step 6: Full suite, commit**
+- [x] **Step 6: Full suite, commit**
 
 ```bash
 composer lint && composer analyse && composer test

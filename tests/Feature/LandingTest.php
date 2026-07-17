@@ -10,7 +10,7 @@ it('renders a landing page without sidebar or toc, with hero and resolved ctas',
         ->assertSee('Welcome Center')
         ->assertSee('Everything you need to succeed.')
         ->assertSee('Start here')
-        ->assertSee(route('docent.show', 'guides/setup'))
+        ->assertSee(route('docent.docs.show', 'guides/setup'))
         ->assertSee('docent-cta-secondary', false)
         ->assertDontSee('docent-sidebar', false)
         ->assertDontSee('docent-toc', false);

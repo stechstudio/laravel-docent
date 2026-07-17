@@ -49,6 +49,13 @@ final class AiAnswerService
         yield from $request->asStream();
     }
 
+    public function ensureConfigured(): self
+    {
+        $this->credentials();
+
+        return $this;
+    }
+
     /** @return array{string, string} */
     private function credentials(): array
     {

@@ -341,9 +341,9 @@ it('does not register ask routes when disabled', function () {
     (new DocentServiceProvider($this->app))->boot();
     $this->app['router']->getRoutes()->refreshNameLookups();
 
-    expect(Route::getRoutes()->getByName('docent.ask'))->toBeNull()
-        ->and(Route::getRoutes()->getByName('docent.ask.conversation.destroy'))->toBeNull()
-        ->and(Route::getRoutes()->getByName('docent.ask.feedback'))->toBeNull();
+    expect(Route::getRoutes()->getByName('docent.docs.ask'))->toBeNull()
+        ->and(Route::getRoutes()->getByName('docent.docs.ask.conversation.destroy'))->toBeNull()
+        ->and(Route::getRoutes()->getByName('docent.docs.ask.feedback'))->toBeNull();
 });
 
 it('throws a clear exception when AI resolves without Prism installed', function () {
@@ -450,7 +450,7 @@ it('returns a distinct expiry response only for a valid signed conversation', fu
     fakeDocentAnswer('Temporary answer.');
     [, $first] = askDocs($this, 'Start expiring');
     $conversation = streamedEvent($first, 'conversation');
-    $key = 'docent:1:ai-conversation:'.hash('sha256', $conversation['conversation_id']);
+    $key = 'docent:docs:1:ai-conversation:'.hash('sha256', $conversation['conversation_id']);
     $store = $this->app['cache']->store();
     $value = unserialize($store->get($key), ['allowed_classes' => false]);
     $value['expires_at'] = time() - 1;

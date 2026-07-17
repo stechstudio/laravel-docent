@@ -47,7 +47,7 @@ it('allowlists every AST class for cache round-trips', function () {
 it('treats cached payloads referencing foreign classes as misses', function () {
     // A stdClass is not allowlisted; the poisoned entry must be recomputed,
     // not surfaced as __PHP_Incomplete_Class.
-    Cache::forever('docent:1:probe', serialize((object) ['x' => 1]));
+    Cache::forever('docent:docs:1:probe', serialize((object) ['x' => 1]));
 
     expect(app(DocentCache::class)->remember('probe', fn (): string => 'recomputed'))->toBe('recomputed');
 });

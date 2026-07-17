@@ -666,7 +666,7 @@ final class DocentManager
 
     public function routeName(string $suffix): string
     {
-        return 'docent.'.$suffix;
+        return 'docent.'.$this->key().'.'.$suffix;
     }
 
     /** @param array<string|int, mixed> $parameters */
