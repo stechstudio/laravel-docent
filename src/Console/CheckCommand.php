@@ -7,9 +7,10 @@ namespace STS\Docent\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use LogicException;
 use STS\Docent\Content\Repositories\DocumentationRepository;
-use STS\Docent\DocentManager;
 use STS\Docent\Documents\Parser\DocumentParser;
+use STS\Docent\Sites\SiteRegistry;
 use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\DocsChecker;
 use STS\Docent\Validation\Issue;
@@ -22,34 +23,58 @@ use STS\Docent\Validation\Severity;
  */
 final class CheckCommand extends Command
 {
-    protected $signature = 'docent:check {--strict : Treat warnings as failures}';
+    protected $signature = 'docent:check
+        {--strict : Treat warnings as failures}
+        {--site= : Check only the selected Docent site}';
 
     protected $description = 'Statically validate the documentation tree';
 
     public function handle(
-        DocumentationRepository $repository,
         DocumentParser $parser,
+        SiteRegistry $sites,
     ): int {
-        $docent = $this->laravel->make(DocentManager::class);
-        $context = new CheckContext(
-            repository: $repository,
-            parser: $parser,
-            registry: $docent->registry(),
-            docsPath: (string) ($docent->config('filesystem.path') ?? resource_path('docs')),
-            publicPath: public_path(),
-            routePrefix: (string) $docent->config('route.prefix', 'docs'),
-            routeExists: static fn (string $name): bool => Route::has($name),
-            abilityExists: static fn (string $ability): bool => Gate::has($ability),
-            docent: $docent,
-        );
+        /** @var array<string, mixed> $config */
+        $config = (array) $this->laravel['config']->get('docent', []);
+        $issues = DocsChecker::siteDefinitions($config);
+        $keys = $this->selectedSites($config);
 
-        $issues = DocsChecker::withDefaults()->run($context);
+        if ($keys === null) {
+            return self::FAILURE;
+        }
+
+        $pages = 0;
+
+        if ($this->count($issues, Severity::Error) === 0) {
+            foreach ($keys as $key) {
+                $docent = $sites->site($key);
+                $repository = $sites->serviceFor($key, DocumentationRepository::class);
+
+                if (! $repository instanceof DocumentationRepository) {
+                    throw new LogicException("The Docent site [{$key}] did not provide a documentation repository.");
+                }
+
+                $context = new CheckContext(
+                    repository: $repository,
+                    parser: $parser,
+                    registry: $docent->registry(),
+                    docsPath: (string) ($docent->config('filesystem.path') ?? resource_path('docs')),
+                    publicPath: public_path(),
+                    routePrefix: (string) $docent->config('route.prefix', 'docs'),
+                    routeExists: static fn (string $name): bool => Route::has($name),
+                    abilityExists: static fn (string $ability): bool => Gate::has($ability),
+                    docent: $docent,
+                );
+
+                $issues = [...$issues, ...DocsChecker::withDefaults()->run($context)];
+                $pages += count($context->pages());
+            }
+        }
 
         $errors = $this->count($issues, Severity::Error);
         $warnings = $this->count($issues, Severity::Warning);
 
         if ($issues === []) {
-            $this->components->info('Docent looks great — no problems found in '.count($context->pages()).' pages.');
+            $this->components->info('Docent looks great — no problems found in '.$pages.' '.$this->pluralize('page', $pages).'.');
 
             return self::SUCCESS;
         }
@@ -60,6 +85,39 @@ final class CheckCommand extends Command
         $strict = (bool) $this->option('strict');
 
         return $errors > 0 || ($strict && $warnings > 0) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @return null|list<string>
+     */
+    private function selectedSites(array $config): ?array
+    {
+        $configured = $config['sites'] ?? [];
+        $configured = is_array($configured) ? $configured : [];
+        $keys = [];
+
+        foreach (array_keys($configured) as $key) {
+            $key = (string) $key;
+
+            if (preg_match('/^[A-Za-z0-9_-]+$/', $key) === 1) {
+                $keys[] = $key;
+            }
+        }
+
+        $selected = $this->option('site');
+
+        if ($selected === null) {
+            return $keys;
+        }
+
+        if (! in_array($selected, $keys, true)) {
+            $this->components->error('Unknown Docent site ['.$selected.'].');
+
+            return null;
+        }
+
+        return [$selected];
     }
 
     /**

@@ -1087,7 +1087,7 @@ it('defaults to the default site', function () {
 **Interfaces:**
 - Produces: `docent:clear {--site=}` / `docent:check {--site=}` / `docent:insights:prune {--site=}` — no option means **all** sites; with `--site=x` only that site; unknown key → error exit. Each iteration resolves the target explicitly through `SiteRegistry::site($key)` / `serviceFor($key, ...)`; it must not mutate `CurrentSite` and then reuse a scoped alias already cached for another key. `docent:install` scaffolds the default site. `SiteDefinitionCheck` emits: errors for invalid keys, an invalid explicit default, or a non-`docs` site lacking `filesystem.path`; warning when two sites on overlapping domains have equal or prefix-overlapping effective route paths.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```php
 <?php
@@ -1132,9 +1132,9 @@ it('flags a non-docs site without a filesystem path', function () {
 
 Add `DocentManager::cacheVersion(): int` (delegates to `DocentCache::version()`) if no equivalent probe exists — check `ClearCommand`'s current test for the established pattern and reuse it instead if there is one.
 
-- [ ] **Step 2: Verify failure. Step 3: Implement** the `--site` option + explicit keyed service loop in the three commands. Run `SiteDefinitionCheck` once per command invocation (it validates the whole config); run corpus/page checks once per selected site so global configuration messages are not duplicated. Route overlap means path-prefix overlap, not just exact equality; a domainless route group overlaps every host, while two distinct concrete domains do not.
+- [x] **Step 2: Verify failure. Step 3: Implement** the `--site` option + explicit keyed service loop in the three commands. Run `SiteDefinitionCheck` once per command invocation (it validates the whole config); run corpus/page checks once per selected site so global configuration messages are not duplicated. Route overlap means path-prefix overlap, not just exact equality; a domainless route group overlaps every host, while two distinct concrete domains do not.
 
-- [ ] **Step 4: Run tests, full suite** — PASS. **Step 5: Commit** — `git commit -m "feat: site-aware console commands and docent:check site rules"`
+- [x] **Step 4: Run tests, full suite** — PASS (540 tests, 2,082 assertions; PHPStan clean). **Step 5: Commit** — `git commit -m "feat: site-aware console commands and docent:check site rules"`
 
 ---
 

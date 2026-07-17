@@ -18,6 +18,7 @@ use STS\Docent\Validation\Checks\NavigationLinkCheck;
 use STS\Docent\Validation\Checks\NavigationSectionCheck;
 use STS\Docent\Validation\Checks\RedirectCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
+use STS\Docent\Validation\Checks\SiteDefinitionCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
 use STS\Docent\Validation\Checks\UnknownComponentCheck;
@@ -93,6 +94,17 @@ final class DocsChecker
             new ContentComponentCheck,
             new UnknownIconCheck,
         ]);
+    }
+
+    /**
+     * Validate the global site map once before any site-specific content checks.
+     *
+     * @param  array<string, mixed>  $config
+     * @return list<Issue>
+     */
+    public static function siteDefinitions(array $config): array
+    {
+        return iterator_to_array((new SiteDefinitionCheck($config))->issues(), false);
     }
 
     /**

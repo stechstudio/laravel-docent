@@ -6,7 +6,7 @@ namespace STS\Docent\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use STS\Docent\DocentManager;
+use STS\Docent\Sites\SiteRegistry;
 
 /**
  * Publishes the config and scaffolds starter documentation. Idempotent — never
@@ -18,9 +18,9 @@ final class InstallCommand extends Command
 
     protected $description = 'Install Docent: publish config and scaffold starter docs';
 
-    public function handle(): int
+    public function handle(SiteRegistry $sites): int
     {
-        $docent = $this->laravel->make(DocentManager::class);
+        $docent = $sites->site($sites->defaultKey());
         $this->call('vendor:publish', ['--tag' => 'docent-config']);
 
         $docs = $docent->config('filesystem.path') ?? resource_path('docs');
