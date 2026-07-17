@@ -340,7 +340,11 @@ final class NavigationBuilder
         $tree = ['items' => [], 'children' => []];
 
         foreach ($this->repository->all() as $page) {
-            if ($page->hidden) {
+            // Landing and custom-layout pages stay out of the sidebar: they
+            // are jump-off points reached through the logo or links, not
+            // stops along a section. Search and direct URLs are unaffected;
+            // list such a page by giving it the default docs layout.
+            if ($page->hidden || $page->layout !== 'docs') {
                 continue;
             }
 

@@ -120,6 +120,30 @@ it('lets a custom layout override the topbar regions', function () {
     }
 });
 
+it('keeps non-docs layouts out of the sidebar navigation', function () {
+    file_put_contents(dirname(__DIR__).'/fixtures/docs/promo.md', <<<'MD'
+    ---
+    title: Promo Landing
+    layout: landing
+    ---
+
+    A landing page that never set `hidden`.
+    MD);
+
+    try {
+        // Not a sidebar stop, but fully reachable at its URL.
+        $this->get('/docs/guides/setup')
+            ->assertOk()
+            ->assertDontSee('Promo Landing');
+
+        $this->get('/docs/promo')
+            ->assertOk()
+            ->assertSee('Promo Landing');
+    } finally {
+        unlink(dirname(__DIR__).'/fixtures/docs/promo.md');
+    }
+});
+
 it('exposes hero front matter accessors', function () {
     $page = app(DocentManager::class)->page('hub');
 

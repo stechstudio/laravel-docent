@@ -28,5 +28,6 @@ final class PageReference
         public readonly array $searchKeywords = [],
         public readonly ?string $redirect = null,
         public readonly bool $redirectStub = false,
+        public readonly string $layout = 'docs',
     ) {}
 }

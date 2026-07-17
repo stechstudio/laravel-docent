@@ -63,6 +63,7 @@ final class DatabaseRepository implements DocumentationRepository, StoredPageRep
                 searchKeywords: $frontMatter->searchKeywords(),
                 redirect: $frontMatter->redirect(),
                 redirectStub: $redirectStub,
+                layout: $frontMatter->layout(),
             );
         }
     }

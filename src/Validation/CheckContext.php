@@ -187,6 +187,7 @@ final class CheckContext
             searchKeywords: $frontMatter->searchKeywords(),
             redirect: $frontMatter->redirect(),
             redirectStub: $redirectStub,
+            layout: $frontMatter->layout(),
         );
     }
 

@@ -168,6 +168,7 @@ final class FilesystemRepository implements DocumentationRepository, LockAwareRe
             searchKeywords: $frontMatter->searchKeywords(),
             redirect: $frontMatter->redirect(),
             redirectStub: $redirectStub,
+            layout: $frontMatter->layout(),
         );
     }
 
