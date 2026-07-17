@@ -51,18 +51,30 @@
 /* Shared visual layer (prose, callouts, cards, code, hero, scrollbars). */
 @import './shared/prose.css';
 
+/* Topbar search yields to a hero search box until it scrolls away. The
+   deferred state collapses the button entirely — width, padding, border,
+   and the flex-gap slot — so the neighboring icons sit together;
+   revealing animates the width back, pushing them over. Unlayered on
+   purpose: it must override the button's utility classes (sm:w-64, px-3),
+   and the utilities layer outranks every named layer. */
+[data-docent-topbar-search] {
+    overflow: hidden;
+    white-space: nowrap;
+    transition: opacity 0.15s ease, width 0.2s ease, padding 0.2s ease, border-width 0.2s ease, margin-left 0.2s ease;
+}
+
+[data-docent-topbar-search][data-docent-search-deferred] {
+    width: 0;
+    padding-inline: 0;
+    border-width: 0;
+    /* A zero-width flex item still owns a gap on each side; pull one
+       back so the cluster reads as a single 0.5rem (gap-2) gap. */
+    margin-left: -0.5rem;
+    opacity: 0;
+    pointer-events: none;
+}
+
 @layer components {
-    /* Topbar search yields to a hero search box until it scrolls away. */
-    [data-docent-topbar-search] {
-        transition: opacity 0.15s ease;
-    }
-
-    [data-docent-topbar-search][data-docent-search-deferred] {
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-    }
-
     .docent-nav-sections > li + li {
         margin-top: 0.125rem;
     }
