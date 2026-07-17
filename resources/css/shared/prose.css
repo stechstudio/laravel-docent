@@ -236,7 +236,9 @@
     content: '';
     position: absolute;
     left: 1rem;
-    top: 1.05rem;
+    /* Center on the first text line: padding-top plus half the difference
+       between the 1.75 prose line box and the icon's own height. */
+    top: calc(1rem + (1.75em - 1.15rem) / 2);
     width: 1.15rem;
     height: 1.15rem;
     background-color: var(--callout);
@@ -253,6 +255,17 @@
 }
 
 .docent-callout > *:last-child {
+    margin-bottom: 0;
+}
+
+/* The title and content wrappers are the direct children, so the rules
+   above never reach the first/last paragraph inside the content — without
+   this, an untitled callout's opening line sags below the icon. */
+.docent-callout-content > *:first-child {
+    margin-top: 0;
+}
+
+.docent-callout-content > *:last-child {
     margin-bottom: 0;
 }
 
@@ -311,11 +324,29 @@
     .docent-cards[data-columns='3'] {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
+
+    /* Permission-gated cards make the rendered count unpredictable, so a
+       lone card on the final row stretches to fill it instead of leaving
+       a hole. Each rule matches the active column count at this width. */
+    .docent-cards[data-columns='2'] > .docent-card:nth-child(odd):last-child,
+    .docent-cards[data-columns='3'] > .docent-card:nth-child(3n + 1):last-child {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+    .docent-cards[data-columns='4'] > .docent-card:nth-child(odd):last-child {
+        grid-column: 1 / -1;
+    }
 }
 
 @media (min-width: 1024px) {
     .docent-cards[data-columns='4'] {
         grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .docent-cards[data-columns='4'] > .docent-card:nth-child(4n + 1):last-child {
+        grid-column: 1 / -1;
     }
 }
 
@@ -329,10 +360,32 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
+/* Cards sit on the page surface in light mode; dark mode lifts them one
+   step so they don't dissolve into the background. */
+.dark .docent-card {
+    background-color: var(--docent-panel);
+}
+
 a.docent-card:hover {
     border-color: var(--docent-accent);
     box-shadow: var(--docent-shadow);
     transform: translateY(-1px);
+}
+
+/* Linked cards carry a quiet arrow so they read as clickable at rest. */
+a.docent-card .docent-card-title::after {
+    content: '→' / '';
+    display: inline-block;
+    margin-left: 0.4rem;
+    color: var(--docent-faint);
+    opacity: 0.6;
+    transition: color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+a.docent-card:hover .docent-card-title::after {
+    color: var(--docent-accent);
+    opacity: 1;
+    transform: translateX(0.15rem);
 }
 
 /* Cards render inside prose; keep the link chrome off the whole panel. */
@@ -731,15 +784,61 @@ a.docent-card:hover {
 | ---------------------------------------------------------------------------
 | Landing hero
 | ---------------------------------------------------------------------------
+| The glow derives from the accent token so it rebrands with the host config
+| and works on both light and dark surfaces.
 */
+.docent-hero {
+    position: relative;
+}
+
+/* The negative top reaches back through the main container's padding so
+   the glow starts at the topbar instead of floating below it. */
+.docent-hero::before {
+    content: '';
+    position: absolute;
+    inset: -6rem 0 0;
+    pointer-events: none;
+    background: radial-gradient(
+        42rem 22rem at 50% 0%,
+        color-mix(in srgb, var(--docent-accent) 9%, transparent),
+        transparent 70%
+    );
+}
+
+.dark .docent-hero::before {
+    background: radial-gradient(
+        42rem 22rem at 50% 0%,
+        color-mix(in srgb, var(--docent-accent) 14%, transparent),
+        transparent 70%
+    );
+}
+
+.docent-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--docent-accent) 30%, transparent);
+    border-radius: 9999px;
+    background-color: color-mix(in srgb, var(--docent-accent) 8%, transparent);
+    color: color-mix(in srgb, var(--docent-accent) 80%, black);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.dark .docent-hero-badge {
+    color: color-mix(in srgb, var(--docent-accent) 65%, white);
+}
+
 .docent-cta-primary,
 .docent-cta-secondary {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.65rem 1.3rem;
-    border-radius: 0.65rem;
-    font-size: 0.95rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.7rem;
+    font-size: 1rem;
     font-weight: 600;
     text-decoration: none;
     transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
@@ -749,6 +848,7 @@ a.docent-card:hover {
     background-color: var(--docent-accent);
     color: #fff;
     border: 1px solid var(--docent-accent);
+    box-shadow: 0 1px 2px rgb(2 6 23 / 0.08), 0 4px 14px color-mix(in srgb, var(--docent-accent) 30%, transparent);
 }
 
 .docent-cta-primary:hover {
@@ -758,7 +858,7 @@ a.docent-card:hover {
 .docent-cta-secondary {
     color: var(--docent-strong);
     border: 1px solid var(--docent-border-strong);
-    background-color: transparent;
+    background-color: var(--docent-bg);
 }
 
 .docent-cta-secondary:hover {
@@ -770,6 +870,29 @@ a.docent-card:hover {
    title above it), and content is comfortably centered. */
 .docent-landing-body > *:first-child {
     margin-top: 0;
+}
+
+/* A landing body's opening paragraph reads as a lead: centered under the
+   hero at a comfortable measure instead of stretching the full container. */
+.docent-landing-body > p:first-child {
+    max-width: 42rem;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    color: var(--docent-muted);
+}
+
+/* A trailing paragraph after other landing content is a footer note. */
+.docent-landing-body > p:last-child:not(:first-child) {
+    max-width: 40rem;
+    margin: 3.5rem auto 0;
+    padding-top: 2rem;
+    border-top: 1px solid var(--docent-border);
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--docent-muted);
 }
 
 /*

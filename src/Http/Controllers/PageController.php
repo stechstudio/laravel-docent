@@ -95,6 +95,7 @@ final class PageController
                 'title' => $page->title(),
                 'description' => $page->description(),
                 'html' => $page->render($context),
+                'heroBadge' => $page->heroBadge(),
                 'heroCta' => $page->heroCta(),
                 'sections' => $this->docent->navigationSections($context, $slug),
                 'topbarLinks' => $this->docent->topbarLinks($context, $slug),

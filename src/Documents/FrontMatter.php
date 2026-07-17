@@ -110,6 +110,16 @@ final class FrontMatter
     }
 
     /**
+     * Optional eyebrow badge text shown above a landing page's hero title.
+     */
+    public function heroBadge(): ?string
+    {
+        $badge = $this->get('hero.badge');
+
+        return is_scalar($badge) && (string) $badge !== '' ? (string) $badge : null;
+    }
+
+    /**
      * Hero call-to-action buttons for a landing page. Each button is a label,
      * an href (an internal slug or external URL, resolved by the caller), and a
      * style (`primary` accent button, or `secondary` bordered).

@@ -75,6 +75,11 @@ final class Page
         return $this->layout() === 'landing';
     }
 
+    public function heroBadge(): ?string
+    {
+        return $this->frontMatter()->heroBadge();
+    }
+
     /**
      * Hero CTA buttons with their hrefs resolved through the same internal-link
      * path as in-body markdown links.

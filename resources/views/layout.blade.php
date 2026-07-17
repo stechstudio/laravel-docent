@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ ($title ?? null) ? $title.' — '.$siteName : $siteName }}</title>
+    <title>{{ ($title ?? null) && ! str_contains($siteName, $title) ? $title.' — '.$siteName : $siteName }}</title>
     @isset($description)
         @if($description)<meta name="description" content="{{ $description }}">@endif
     @endisset

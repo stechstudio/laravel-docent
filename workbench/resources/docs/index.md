@@ -4,6 +4,7 @@ description: The developer-friendly accounting platform for modern SaaS teams.
 order: 0
 layout: landing
 hero:
+  badge: Documentation
   cta:
     - label: Get started
       href: getting-started/installation

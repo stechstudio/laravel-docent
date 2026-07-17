@@ -52,6 +52,15 @@
 @import './shared/prose.css';
 
 @layer components {
+    .docent-nav-sections > li + li {
+        margin-top: 0.125rem;
+    }
+
+    .docent-nav-sections > li + .docent-nav-group,
+    .docent-nav-sections > .docent-nav-group + li {
+        margin-top: 1.75rem;
+    }
+
     @media (min-width: 1280px) {
         .docent-assistant-is-open {
             padding-right: 26.25rem;
