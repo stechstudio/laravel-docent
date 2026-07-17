@@ -158,7 +158,7 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
     },
 
     move(delta) {
-        const count = this.results.length + (this.canAsk() ? 1 : 0);
+        const count = this.results.length + (this.searched && this.canAsk() ? 1 : 0);
         if (count === 0) return;
         this.selected = (this.selected + delta + count) % count;
         this.$nextTick(() => {
@@ -174,7 +174,7 @@ Alpine.data('docentSearch', (searchUrl, assistantEnabled = false) => ({
     },
 
     enter() {
-        if (this.canAsk() && this.selected === this.results.length) {
+        if (this.searched && this.canAsk() && this.selected === this.results.length) {
             this.handoff();
             return;
         }
@@ -297,7 +297,7 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
     },
 
     move(delta) {
-        const count = this.results.length + (this.canAsk() ? 1 : 0);
+        const count = this.results.length + (this.searched && this.canAsk() ? 1 : 0);
         if (count === 0) return;
         this.selected = (this.selected + delta + count) % count;
     },
@@ -313,7 +313,7 @@ Alpine.data('docentWidgetSearch', (searchUrl, assistantEnabled = false) => ({
     },
 
     enter() {
-        if (this.canAsk() && this.selected === this.results.length) {
+        if (this.searched && this.canAsk() && this.selected === this.results.length) {
             this.handoff();
             return;
         }

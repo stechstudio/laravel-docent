@@ -18,7 +18,12 @@
                  @keydown.meta.enter.prevent="handoff()" @keydown.ctrl.enter.prevent="handoff()" @keydown.tab="trap($event)">
 
                 <div class="flex items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    {{-- The icon slot doubles as the loading indicator: same
+                         18px box, so swapping never shifts layout. The spinner
+                         waits 150ms before appearing (docent-search-spinner)
+                         so fast responses never flicker it. --}}
+                    <svg x-show="!loading" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-slate-400" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <svg x-show="loading" x-cloak viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="docent-search-spinner shrink-0 text-[var(--docent-accent)]" aria-hidden="true"><circle cx="12" cy="12" r="9" class="opacity-25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
                     <input x-ref="input" x-model="query" @input="onInput()" type="text" name="docent-search" autocomplete="off" spellcheck="false"
                            placeholder="Search documentation…" aria-label="Search documentation"
                            class="w-full bg-transparent py-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white">
@@ -34,8 +39,13 @@
 
                 <div x-ref="list" class="docent-scroll max-h-[60vh] overflow-y-auto">
                     <div class="p-2">
-                    {{-- Loading --}}
-                    <div x-show="loading" class="px-3 py-8 text-center text-sm text-slate-400">Searching…</div>
+                    {{-- The panel reflows exactly once per search outcome:
+                         the hint (or previous outcome) holds its ground while
+                         a search runs — the input row's spinner carries the
+                         thinking signal — and results, the no-results notice,
+                         and the Ask row land together in one atomic swap.
+                         Screen readers still hear the transient state. --}}
+                    <div role="status" class="sr-only" x-text="loading ? 'Searching…' : ''"></div>
 
                     {{-- Results --}}
                     <template x-for="(r, i) in results" :key="r.slug + '-' + i">
@@ -52,22 +62,29 @@
                     </template>
 
                     @if($aiEnabled)
-                        <button x-show="canAsk()" type="button" @click="handoff()" @mouseenter="selected = results.length"
+                        {{-- The Assistant handoff reads as its own affordance,
+                             not another result: sparkle chip, quiet tinted
+                             card, accent wash when selected. --}}
+                        <button x-show="searched && canAsk()" type="button" @click="handoff()" @mouseenter="selected = results.length"
                                 :data-selected="selected === results.length"
-                                class="mt-1 block w-full border-t border-slate-100 px-3 py-3 text-left transition dark:border-slate-800"
-                                :class="selected === results.length ? 'bg-[color-mix(in_srgb,var(--docent-accent)_10%,transparent)]' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'">
-                            <span class="block text-sm font-semibold text-slate-900 dark:text-white">Ask Assistant about “<span x-text="query"></span>”</span>
-                            <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Get an answer from these docs.</span>
+                                class="mt-1.5 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition"
+                                :class="selected === results.length ? 'bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)]' : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/70'">
+                            <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)] text-[var(--docent-accent)] [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('sparkles') !!}</span>
+                            <span class="min-w-0">
+                                <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">Ask Assistant about “<span x-text="query"></span>”</span>
+                                <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Get an answer from these docs.</span>
+                            </span>
                         </button>
                     @endif
 
-                    {{-- Empty --}}
-                    <div x-show="searched && !loading && results.length === 0" class="px-3 py-8 text-center text-sm text-slate-400">
+                    {{-- Empty (persists through refinement loads so the
+                         panel never collapses between outcomes) --}}
+                    <div x-show="searched && results.length === 0" class="px-3 py-8 text-center text-sm text-slate-400">
                         No results for “<span x-text="query"></span>”
                     </div>
 
-                    {{-- Initial hint --}}
-                    <div x-show="!searched && !loading" class="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                    {{-- Initial hint (persists through the first search) --}}
+                    <div x-show="!searched" class="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
                         Type to search the documentation.
                     </div>
                     </div>
