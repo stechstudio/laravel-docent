@@ -52,6 +52,17 @@
 @import './shared/prose.css';
 
 @layer components {
+    /* Topbar search yields to a hero search box until it scrolls away. */
+    [data-docent-topbar-search] {
+        transition: opacity 0.15s ease;
+    }
+
+    [data-docent-topbar-search][data-docent-search-deferred] {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
     .docent-nav-sections > li + li {
         margin-top: 0.125rem;
     }

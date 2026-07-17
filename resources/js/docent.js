@@ -643,6 +643,30 @@ function enhance() {
     injectAnchors();
     scrollSpy();
     normalizeKbd();
+    deferTopbarSearch();
+}
+
+/* ---------------------------------------------------------------------------
+ * When a hero search box owns the top of the page, the topbar search stays
+ * hidden until the hero box scrolls under the sticky topbar — one search
+ * affordance at a time.
+ * ------------------------------------------------------------------------- */
+function deferTopbarSearch() {
+    const topbar = document.querySelector('[data-docent-topbar-search][data-docent-search-deferred]');
+    if (!topbar) return;
+
+    const hero = document.querySelector('.docent-search-box-lg');
+
+    if (!hero || !('IntersectionObserver' in window)) {
+        topbar.removeAttribute('data-docent-search-deferred');
+        return;
+    }
+
+    // The negative top margin treats the hero box as "gone" once it slides
+    // beneath the 4rem sticky topbar rather than at the viewport edge.
+    new IntersectionObserver(([entry]) => {
+        topbar.toggleAttribute('data-docent-search-deferred', entry.isIntersecting);
+    }, { rootMargin: '-64px 0px 0px 0px' }).observe(hero);
 }
 
 function revealCurrentAnchor() {

@@ -84,6 +84,42 @@ it('fails loudly for an unknown layout instead of falling back', function () {
     }
 });
 
+it('defers the topbar search to a hero search box', function () {
+    $this->get('/docs/hub')
+        ->assertOk()
+        ->assertSee('data-docent-search-deferred', false);
+
+    $this->get('/docs/guides/setup')
+        ->assertOk()
+        ->assertSee('data-docent-topbar-search', false)
+        ->assertDontSee('data-docent-search-deferred', false);
+});
+
+it('lets a custom layout override the topbar regions', function () {
+    view()->addNamespace('doctest', dirname(__DIR__).'/fixtures/views');
+    config()->set('docent.layouts.custom-chrome', 'doctest::custom-topbar');
+
+    file_put_contents(dirname(__DIR__).'/fixtures/docs/custom-chrome.md', <<<'MD'
+    ---
+    title: Custom Chrome Page
+    layout: custom-chrome
+    hidden: true
+    ---
+
+    Body.
+    MD);
+
+    try {
+        $this->get('/docs/custom-chrome')
+            ->assertOk()
+            ->assertSee('CustomNav')
+            ->assertSee('aria-label="Toggle dark mode"', false)
+            ->assertDontSee('data-docent-topbar-search', false);
+    } finally {
+        unlink(dirname(__DIR__).'/fixtures/docs/custom-chrome.md');
+    }
+});
+
 it('exposes hero front matter accessors', function () {
     $page = app(DocentManager::class)->page('hub');
 
