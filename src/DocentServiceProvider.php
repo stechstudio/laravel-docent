@@ -6,6 +6,7 @@ namespace STS\Docent;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\AboutCommand;
+use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -119,6 +120,7 @@ final class DocentServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->selectMatchedSite();
         $this->registerRoutes();
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'docent');
@@ -146,6 +148,7 @@ final class DocentServiceProvider extends ServiceProvider
                 'domain' => $site->get('route.domain'),
                 'middleware' => [...(array) $site->get('route.middleware', ['web']), SetCurrentSite::class.':'.$key],
                 'as' => 'docent.'.$key.'.',
+                'metadata' => ['docent' => ['site' => $key]],
             ], function () use ($site): void {
                 Route::get('/', [PageController::class, 'home'])->name('home');
 
@@ -188,6 +191,18 @@ final class DocentServiceProvider extends ServiceProvider
                 Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('show');
             });
         }
+    }
+
+    /** Select the route's site before Laravel constructs its controller. */
+    private function selectMatchedSite(): void
+    {
+        $this->app['events']->listen(RouteMatched::class, function (RouteMatched $event): void {
+            $key = $event->route->getMetadata('docent.site');
+
+            if (is_string($key)) {
+                $this->app->make(CurrentSite::class)->set($key);
+            }
+        });
     }
 
     /**

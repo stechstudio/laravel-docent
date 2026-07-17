@@ -1141,14 +1141,14 @@ Add `DocentManager::cacheVersion(): int` (delegates to `DocentCache::version()`)
 ### Task 11: Two-site isolation feature suite (spec §8 matrix)
 
 **Files:**
-- Create: `tests/MultiSiteTestCase.php`, `tests/MultiSite/TwoSiteIsolationTest.php`, second fixture corpus `tests/fixtures/admin-docs/index.md` + `tests/fixtures/admin-docs/internal/runbook.md`
-- Modify: `tests/Pest.php` (map `MultiSiteTestCase` to `tests/MultiSite`)
+- Create: `tests/MultiSiteTestCase.php`, `tests/MultiSiteDomainTestCase.php`, `tests/MultiSite/TwoSiteIsolationTest.php`, `tests/MultiSiteDomains/DomainIsolationTest.php`, second fixture corpus `tests/fixtures/admin-docs/index.md` + `tests/fixtures/admin-docs/internal/runbook.md`
+- Modify: `tests/Pest.php`, `phpunit.xml` (map both pre-boot configurations and include them in the default suite), `src/DocentServiceProvider.php` (select route metadata before controller construction)
 
 **Interfaces:** Consumes everything above; produces no new API — this is the spec's acceptance suite.
 
-- [ ] **Step 1: Create the fixture corpus** (`admin-docs/index.md` front matter `title: Admin Home`; `internal/runbook.md` front matter `title: Runbook`).
+- [x] **Step 1: Create the fixture corpus** (`admin-docs/index.md` front matter `title: Admin Home`; `internal/runbook.md` front matter `title: Runbook`).
 
-- [ ] **Step 2: Configure both sites in `MultiSiteTestCase::defineEnvironment()` before provider boot**: `public` at prefix `help` using the existing `fixtures/docs` corpus with `middleware: ['web']`, and `admin` at prefix `admin/docs` using `fixtures/admin-docs` with `middleware: ['web', 'auth']`. Add a second test configuration with distinct domains so route generation and host matching are covered. Runtime `beforeEach()` may set values consumed during requests, but must not add routes.
+- [x] **Step 2: Configure both sites in `MultiSiteTestCase::defineEnvironment()` before provider boot**: `public` at prefix `help` using the existing `fixtures/docs` corpus with `middleware: ['web']`, and `admin` at prefix `admin/docs` using `fixtures/admin-docs` with `middleware: ['web', 'auth']`. Add a second test configuration with distinct domains so route generation and host matching are covered. Runtime `beforeEach()` may set values consumed during requests, but must not add routes.
 
 ```php
 it('serves each site its own corpus at its own prefix', function () {
@@ -1175,9 +1175,9 @@ it('brands each site from its own theme override', function () { /* set sites.ad
 
 Write each `/* … */` out fully — they are one- or two-assertion bodies following the exact patterns used elsewhere in `tests/Feature` (grep `_search` and `llms` tests for the request/assertion idioms; reuse `adminUser()` from `TestCase`).
 
-- [ ] **Step 3: Run** — all pass with no production changes; any failure is a real integration bug from Tasks 5–10: debug the source.
+- [x] **Step 3: Run** — PASS (547 tests, 2,111 assertions; PHPStan clean). The suite exposed and fixed a real integration bug: route middleware ran after Laravel had already constructed controllers with the default site's scoped dependencies, so Docent now selects the site's route metadata on `RouteMatched` before controller construction.
 
-- [ ] **Step 4: Commit** — `git commit -m "test: two-site isolation acceptance suite"`
+- [x] **Step 4: Commit** — `git commit -m "fix: isolate site dependencies during route dispatch"`
 
 ---
 

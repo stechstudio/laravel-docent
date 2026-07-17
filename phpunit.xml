@@ -20,6 +20,10 @@
         <testsuite name="AI">
             <directory>tests/Ai</directory>
         </testsuite>
+        <testsuite name="MultiSite">
+            <directory>tests/MultiSite</directory>
+            <directory>tests/MultiSiteDomains</directory>
+        </testsuite>
     </testsuites>
     <php>
         <env name="APP_KEY" value="base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/ZoKZvp6fiiM10="/>
