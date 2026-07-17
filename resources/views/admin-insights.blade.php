@@ -12,14 +12,14 @@
 <body class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     <header class="sticky top-0 z-20 border-b border-[var(--docent-border)] bg-[var(--docent-bg)]/95 backdrop-blur">
         <div class="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-            <a href="{{ route('docent.admin') }}" class="dax-btn dax-btn-ghost dax-btn-icon" aria-label="Back to authoring">
+            <a href="{{ $docent->route('admin') }}" class="dax-btn dax-btn-ghost dax-btn-icon" aria-label="Back to authoring">
                 <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </a>
             <div>
                 <p class="text-sm font-semibold text-[var(--docent-strong)]">Documentation insights</p>
                 <p class="hidden text-xs text-[var(--docent-faint)] sm:block">Signals for improving human-facing help</p>
             </div>
-            <a href="{{ route('docent.admin.insights.export', ['days' => $days]) }}" class="dax-btn ml-auto gap-1.5 text-[13px]">
+            <a href="{{ $docent->route('admin.insights.export', ['days' => $days]) }}" class="dax-btn ml-auto gap-1.5 text-[13px]">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
                 Export CSV
             </a>
@@ -34,7 +34,7 @@
             </div>
             <nav aria-label="Insight date range" class="dax-tabs self-start" role="tablist">
                 @foreach([7, 30, 90] as $range)
-                    <a href="{{ route('docent.admin.insights', ['days' => $range]) }}" class="dax-tab{{ $days === $range ? ' is-active' : '' }}" aria-current="{{ $days === $range ? 'page' : 'false' }}">{{ $range }} days</a>
+                    <a href="{{ $docent->route('admin.insights', ['days' => $range]) }}" class="dax-tab{{ $days === $range ? ' is-active' : '' }}" aria-current="{{ $days === $range ? 'page' : 'false' }}">{{ $range }} days</a>
                 @endforeach
             </nav>
         </section>
@@ -89,7 +89,7 @@
 
         <aside class="rounded-xl border border-[var(--docent-border)] bg-[var(--docent-panel)]/45 p-5 text-sm text-[var(--docent-muted)]">
             <p class="font-semibold text-[var(--docent-strong)]">Privacy and retention</p>
-            <p class="mt-1 leading-6">Query text is redacted and capped at 500 characters before storage. Schedule <code class="rounded bg-[var(--docent-panel)] px-1.5 py-0.5 font-mono text-xs text-[var(--docent-fg)]">docent:insights:prune</code> to enforce the configured {{ config('docent.insights.retention_days', 90) }}-day retention window.</p>
+            <p class="mt-1 leading-6">Query text is redacted and capped at 500 characters before storage. Schedule <code class="rounded bg-[var(--docent-panel)] px-1.5 py-0.5 font-mono text-xs text-[var(--docent-fg)]">docent:insights:prune</code> to enforce the configured {{ $docent->config('insights.retention_days', 90) }}-day retention window.</p>
         </aside>
     </main>
 </body>

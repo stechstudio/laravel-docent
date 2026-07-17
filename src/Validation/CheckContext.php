@@ -9,6 +9,7 @@ use STS\Docent\Content\DocumentSource;
 use STS\Docent\Content\PageReference;
 use STS\Docent\Content\Repositories\CompositeRepository;
 use STS\Docent\Content\Repositories\DocumentationRepository;
+use STS\Docent\DocentManager;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Parser\DocumentParser;
@@ -57,6 +58,7 @@ final class CheckContext
         private readonly Closure $abilityExists,
         private readonly ?string $overrideSlug = null,
         private readonly ?Document $overrideDocument = null,
+        public readonly ?DocentManager $docent = null,
     ) {}
 
     public function registry(): IntegrationRegistry

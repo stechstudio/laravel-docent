@@ -1,6 +1,6 @@
-@php($aiEnabled = (bool) config('docent.ai.enabled', false))
+@php($aiEnabled = (bool) $docent->config('ai.enabled', false))
 <template x-teleport="body">
-    <div x-data="docentSearch('{{ route('docent.search') }}', @js($aiEnabled))"
+    <div x-data="docentSearch('{{ $docent->route('search') }}', @js($aiEnabled))"
          @docent:search-open.window="show()"
          @docent:assistant-open.window="open && hide(false)"
          @keydown.escape.window="open && hide()"

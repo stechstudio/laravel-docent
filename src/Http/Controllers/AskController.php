@@ -55,7 +55,7 @@ final class AskController
         }
 
         $question = $this->normalize((string) $validated['question']);
-        $widget = $request->string('mode')->toString() === 'widget' && config('docent.widget.enabled', false);
+        $widget = $request->string('mode')->toString() === 'widget' && $this->docent->config('widget.enabled', false);
         $mode = $widget ? 'widget' : 'reader';
 
         if ($widget) {
@@ -191,7 +191,7 @@ final class AskController
                 $committed = false;
 
                 if (! $failed && $answer !== '') {
-                    $this->cache->put($cacheKey, ['answer' => $answer], max(1, (int) config('docent.ai.answer_ttl', 300)));
+                    $this->cache->put($cacheKey, ['answer' => $answer], max(1, (int) $this->docent->config('ai.answer_ttl', 300)));
                     $this->emit('answer_rendered', ['html' => $this->renderer->render($answer, $corpus->citations)]);
                     $committed = $this->commit($conversation, $question, $answer);
                 }
@@ -212,9 +212,9 @@ final class AskController
         $this->conversations->save($conversation->withTurn(
             $question,
             $answer,
-            max(1, (int) config('docent.ai.conversation.ttl', 7200)),
-            max(1, (int) config('docent.ai.conversation.max_turns', 10)),
-            max(1, (int) config('docent.ai.conversation.history_budget', 12000)),
+            max(1, (int) $this->docent->config('ai.conversation.ttl', 7200)),
+            max(1, (int) $this->docent->config('ai.conversation.max_turns', 10)),
+            max(1, (int) $this->docent->config('ai.conversation.history_budget', 12000)),
         ));
 
         return true;
@@ -225,7 +225,7 @@ final class AskController
         $this->emit('conversation', [
             'conversation_id' => $resolution->conversation->id,
             'conversation_token' => $resolution->token,
-            'expires_at' => time() + max(1, (int) config('docent.ai.conversation.ttl', 7200)),
+            'expires_at' => time() + max(1, (int) $this->docent->config('ai.conversation.ttl', 7200)),
             'turn_index' => $conversation->turnCount + 1,
             'reset_reason' => $resolution->resetReason,
         ]);
@@ -266,7 +266,7 @@ final class AskController
     /** @return array{int, int} */
     private function throttle(): array
     {
-        $parts = array_map('trim', explode(',', (string) config('docent.ai.throttle', '10,1')));
+        $parts = array_map('trim', explode(',', (string) $this->docent->config('ai.throttle', '10,1')));
 
         return [max(1, (int) $parts[0]), max(1, (int) ($parts[1] ?? 1))];
     }
@@ -285,7 +285,7 @@ final class AskController
             'feedback_token' => $log?->feedbackToken(),
         ];
 
-        if (config('docent.ai.retrieval.debug', false)) {
+        if ($this->docent->config('ai.retrieval.debug', false)) {
             $payload['retrieval'] = $corpus->diagnostics;
         }
 

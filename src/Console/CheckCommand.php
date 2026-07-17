@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use STS\Docent\Content\Repositories\DocumentationRepository;
+use STS\Docent\DocentManager;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Validation\CheckContext;
@@ -31,15 +32,17 @@ final class CheckCommand extends Command
         DocumentParser $parser,
         IntegrationRegistry $registry,
     ): int {
+        $docent = $this->laravel->make(DocentManager::class);
         $context = new CheckContext(
             repository: $repository,
             parser: $parser,
             registry: $registry,
-            docsPath: (string) (config('docent.filesystem.path') ?? resource_path('docs')),
+            docsPath: (string) ($docent->config('filesystem.path') ?? resource_path('docs')),
             publicPath: public_path(),
-            routePrefix: (string) config('docent.route.prefix', 'docs'),
+            routePrefix: (string) $docent->config('route.prefix', 'docs'),
             routeExists: static fn (string $name): bool => Route::has($name),
             abilityExists: static fn (string $ability): bool => Gate::has($ability),
+            docent: $docent,
         );
 
         $issues = DocsChecker::withDefaults()->run($context);

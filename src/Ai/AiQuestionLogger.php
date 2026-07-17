@@ -5,13 +5,18 @@ declare(strict_types=1);
 namespace STS\Docent\Ai;
 
 use STS\Docent\Ai\Models\AiQuestion;
+use STS\Docent\DocentManager;
 use STS\Docent\Runtime\DocumentationContext;
 
 final class AiQuestionLogger
 {
+    public function __construct(
+        private readonly DocentManager $docent,
+    ) {}
+
     public function start(string $question, DocumentationContext $context): ?AiQuestion
     {
-        if (! config('docent.ai.log_questions', true)) {
+        if (! $this->docent->config('ai.log_questions', true)) {
             return null;
         }
 

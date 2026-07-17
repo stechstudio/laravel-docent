@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use STS\Docent\Ai\AiAnswerService;
+use STS\Docent\Ai\AiConversationStore;
 use STS\Docent\Ai\AiCorpusBuilder;
 use STS\Docent\Ai\AiQuestionLogger;
 use STS\Docent\Ai\AiRetriever;
@@ -61,6 +62,7 @@ use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
 use STS\Docent\Search\SearchQueryAnalyzer;
+use STS\Docent\Sites\SiteConfig;
 use STS\Docent\Support\DocentCache;
 
 final class DocentServiceProvider extends ServiceProvider
@@ -107,14 +109,23 @@ final class DocentServiceProvider extends ServiceProvider
             $app['config']->get('docent.cache.prefix', 'docent'),
         ));
 
-        $this->app->singleton(NavigationBuilder::class, static fn (Application $app): NavigationBuilder => new NavigationBuilder(
-            $app->make(DocumentationRepository::class),
-            $app->make(IntegrationRegistry::class),
-            $app->make(DocentCache::class),
-            static fn (string $slug): string => $app->make(DocumentationMode::class)->widget()
-                ? route($slug === '' ? 'docent.widget.home' : 'docent.widget.show', $slug === '' ? [] : ['slug' => $slug])
-                : ($slug === '' ? route('docent.home') : route('docent.show', $slug)),
-        ));
+        $this->app->singleton(NavigationBuilder::class, static function (Application $app): NavigationBuilder {
+            $config = (array) $app['config']->get('docent', []);
+
+            // Task 4 moves site-only keys under sites.docs. Preserve the
+            // current single-site config shape until that migration lands.
+            $config['sites']['docs']['navigation'] ??= $config['navigation'] ?? [];
+
+            return new NavigationBuilder(
+                $app->make(DocumentationRepository::class),
+                $app->make(IntegrationRegistry::class),
+                $app->make(DocentCache::class),
+                new SiteConfig('docs', $config),
+                static fn (string $slug): string => $app->make(DocumentationMode::class)->widget()
+                    ? route($slug === '' ? 'docent.widget.home' : 'docent.widget.show', $slug === '' ? [] : ['slug' => $slug])
+                    : ($slug === '' ? route('docent.home') : route('docent.show', $slug)),
+            );
+        });
 
         $this->app->scoped(DocentManager::class, static fn (Application $app): DocentManager => new DocentManager(
             $app->make(IntegrationRegistry::class),
@@ -152,10 +163,19 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(AiRetriever::class),
         ));
         $this->app->scoped(AiAnswerService::class, static fn (Application $app): AiAnswerService => new AiAnswerService(
+            $app->make(DocentManager::class),
             $app->make(PrismGuard::class),
         ));
-        $this->app->singleton(AiQuestionLogger::class);
-        $this->app->singleton(InsightRecorder::class);
+        $this->app->scoped(AiQuestionLogger::class, static fn (Application $app): AiQuestionLogger => new AiQuestionLogger(
+            $app->make(DocentManager::class),
+        ));
+        $this->app->scoped(AiConversationStore::class, static fn (Application $app): AiConversationStore => new AiConversationStore(
+            $app->make(DocentCache::class),
+            $app->make(DocentManager::class),
+        ));
+        $this->app->scoped(InsightRecorder::class, static fn (Application $app): InsightRecorder => new InsightRecorder(
+            $app->make(DocentManager::class),
+        ));
         $this->app->singleton(InsightSummary::class);
     }
 

@@ -27,7 +27,7 @@ final class AskConversationController
             'conversation_id' => ['required', 'uuid'],
             'conversation_token' => ['required', 'string', 'size:64'],
         ]);
-        $widget = $request->string('mode')->toString() === 'widget' && config('docent.widget.enabled', false);
+        $widget = $request->string('mode')->toString() === 'widget' && $this->docent->config('widget.enabled', false);
 
         if ($widget) {
             $this->docent->enableWidgetMode();

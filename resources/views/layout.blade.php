@@ -26,13 +26,13 @@
     <style>{!! $docent->themeStyles() !!}</style>
 </head>
 <body data-docent-slug="{{ $currentSlug ?? '' }}" class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
-    @php($aiEnabled = (bool) config('docent.ai.enabled', false))
+    @php($aiEnabled = (bool) $docent->config('ai.enabled', false))
     <a href="#docent-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-[var(--docent-accent)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">
         Skip to content
     </a>
 
     @if($aiEnabled)
-    <div x-data="docentAssistant(@js(route('docent.ask')), @js(route('docent.ask.feedback')), @js($assistantStateNamespace), 'reader')"
+    <div x-data="docentAssistant(@js($docent->route('ask')), @js($docent->route('ask.feedback')), @js($assistantStateNamespace), 'reader')"
          data-docent-assistant-enabled data-docent-assistant-state="{{ $assistantStateNamespace }}"
          @docent:assistant-open.window="openAssistant($event.detail)"
          @docent:surface-closed.window="syncBodyLock()"

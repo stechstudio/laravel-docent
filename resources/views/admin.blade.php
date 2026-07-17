@@ -26,7 +26,7 @@
 </head>
 <body class="h-screen overflow-hidden bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     <div id="docent-admin" x-cloak x-data="docentAdmin({
-            base: @js(rtrim(route('docent.admin'), '/')),
+            base: @js(rtrim($docent->route('admin'), '/')),
             docsHome: @js($docent->url('')),
             csrf: @js(csrf_token()),
         })" class="flex h-screen flex-col">
@@ -54,8 +54,8 @@
             </div>
 
             <div class="ml-auto flex items-center gap-1">
-                @if(config('docent.insights.enabled', false))
-                    <a href="{{ route('docent.admin.insights') }}" class="dax-btn dax-btn-ghost gap-1.5 text-[13px]">
+                @if($docent->config('insights.enabled', false))
+                    <a href="{{ $docent->route('admin.insights') }}" class="dax-btn dax-btn-ghost gap-1.5 text-[13px]">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V3"/></svg>
                         Insights
                     </a>

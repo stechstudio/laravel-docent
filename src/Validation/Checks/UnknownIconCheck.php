@@ -21,7 +21,7 @@ final class UnknownIconCheck implements Check
     public function run(CheckContext $context): iterable
     {
         foreach (['links', 'topbar'] as $list) {
-            $links = config('docent.navigation.'.$list, []);
+            $links = $context->docent?->config('navigation.'.$list, []) ?? [];
 
             if (! is_array($links)) {
                 continue;

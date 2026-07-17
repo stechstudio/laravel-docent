@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Http\Controllers;
 
 use Illuminate\Support\Facades\Storage;
+use STS\Docent\DocentManager;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -30,6 +31,10 @@ final class UploadsController
 
     private const SVG_CSP = "sandbox; default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
+    public function __construct(
+        private readonly DocentManager $docent,
+    ) {}
+
     public function __invoke(string $path): Response
     {
         abort_if(str_contains($path, '..'), 404);
@@ -40,11 +45,11 @@ final class UploadsController
 
         abort_if($mimeType === null, 404);
 
-        $disk = Storage::disk((string) config('docent.admin.disk', 'public'));
+        $disk = Storage::disk((string) $this->docent->config('admin.disk', 'public'));
 
         abort_unless($disk->exists($path), 404);
 
-        $cacheVisibility = config('docent.admin.uploads.public_cache', false) ? 'public' : 'private';
+        $cacheVisibility = $this->docent->config('admin.uploads.public_cache', false) ? 'public' : 'private';
         $headers = [
             'Cache-Control' => $cacheVisibility.', max-age=31536000, immutable',
             'Content-Type' => $mimeType,

@@ -26,9 +26,9 @@ final class AiCorpusBuilder
             $this->repository->directoryHash(),
             $this->docent->viewerFingerprint($context),
             $widget ? 'widget' : 'reader',
-            (string) max(1, (int) config('docent.ai.corpus_budget', 150000)),
-            (string) max(1, (int) config('docent.ai.retrieval.max_pages', 8)),
-            (string) max(1, (int) config('docent.ai.retrieval.candidate_limit', 24)),
+            (string) max(1, (int) $this->docent->config('ai.corpus_budget', 150000)),
+            (string) max(1, (int) $this->docent->config('ai.retrieval.max_pages', 8)),
+            (string) max(1, (int) $this->docent->config('ai.retrieval.candidate_limit', 24)),
         ]));
     }
 
@@ -40,7 +40,7 @@ final class AiCorpusBuilder
         string $currentSlug = '',
         bool $widget = false,
     ): AiCorpus {
-        $budget = max(1, (int) config('docent.ai.corpus_budget', 150000));
+        $budget = max(1, (int) $this->docent->config('ai.corpus_budget', 150000));
         $limit = $budget * 4;
         $retrieval = $this->retriever->retrieve($question, $context, $history, $currentSlug);
         $included = [];

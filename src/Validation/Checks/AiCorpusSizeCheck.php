@@ -13,11 +13,11 @@ final class AiCorpusSizeCheck implements Check
 {
     public function run(CheckContext $context): iterable
     {
-        if (! config('docent.ai.enabled', false)) {
+        if (! ($context->docent?->config('ai.enabled', false) ?? false)) {
             return;
         }
 
-        $budget = max(1, (int) config('docent.ai.corpus_budget', 150000));
+        $budget = max(1, (int) $context->docent->config('ai.corpus_budget', 150000));
 
         if ($budget < 256) {
             yield Issue::warning(

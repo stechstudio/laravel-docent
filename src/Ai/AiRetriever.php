@@ -30,8 +30,8 @@ final class AiRetriever
         array $history = [],
         string $currentSlug = '',
     ): AiRetrieval {
-        $candidateLimit = max(1, (int) config('docent.ai.retrieval.candidate_limit', 24));
-        $pageLimit = max(1, (int) config('docent.ai.retrieval.max_pages', 8));
+        $candidateLimit = max(1, (int) $this->docent->config('ai.retrieval.candidate_limit', 24));
+        $pageLimit = max(1, (int) $this->docent->config('ai.retrieval.max_pages', 8));
         $direct = $this->search->ranked($question, $context, $candidateLimit);
         $ranked = [];
 

@@ -385,11 +385,11 @@ Every internal read of `config('docent.*')` and every `route('docent.*')` call m
   - `public function routeName(string $suffix): string` — Task 3 body: `return 'docent.'.$suffix;`
   - `public function route(string $suffix, array $parameters = []): string` — body: `return route($this->routeName($suffix), $parameters);`
 
-- [ ] **Step 1: Add the three methods to `DocentManager`** (near `siteName()`), with the Task 3 bodies above and a docblock noting they become site-aware in the flip task.
+- [x] **Step 1: Add the three methods to `DocentManager`** (near `siteName()`), with the Task 3 bodies above and a docblock noting they become site-aware in the flip task.
 
-- [ ] **Step 2: Sweep `DocentManager` itself.** Replace all its own reads (inventory: lines 268, 279, 282, 328, 340, 417, 427–431, 444, 451, 618, 624–625, 641, 648, 656, 727, 745, 1100, 1102, 1332, 1394, 1399 as of the spec commit): `config('docent.X', $d)` → `$this->config('X', $d)`; `route('docent.Y', $p)` → `$this->route('Y', $p)`. Example: `layoutView()` becomes `$configured = $this->config('layouts.'.$layout);`, `markdownUrl()` becomes `return $this->route('show', ['slug' => ...]);`.
+- [x] **Step 2: Sweep `DocentManager` itself.** Replace all its own reads (inventory: lines 268, 279, 282, 328, 340, 417, 427–431, 444, 451, 618, 624–625, 641, 648, 656, 727, 745, 1100, 1102, 1332, 1394, 1399 as of the spec commit): `config('docent.X', $d)` → `$this->config('X', $d)`; `route('docent.Y', $p)` → `$this->route('Y', $p)`. Example: `layoutView()` becomes `$configured = $this->config('layouts.'.$layout);`, `markdownUrl()` becomes `return $this->route('show', ['slug' => ...]);`.
 
-- [ ] **Step 3: Sweep classes that already hold the manager.** In each, replace `config('docent.X', $d)` → `$this->docent->config('X', $d)` (or the injected variable name) and `route('docent.Y', $p)` → `$this->docent->route('Y', $p)`:
+- [x] **Step 3: Sweep classes that already hold the manager.** In each, replace `config('docent.X', $d)` → `$this->docent->config('X', $d)` (or the injected variable name) and `route('docent.Y', $p)` → `$this->docent->route('Y', $p)`:
   - `src/Http/Controllers/PageController.php` (3 reads)
   - `src/Http/Controllers/WidgetController.php` (4 reads)
   - `src/Http/Controllers/SearchController.php` (2 reads, 1 route)
@@ -398,8 +398,8 @@ Every internal read of `config('docent.*')` and every `route('docent.*')` call m
   - `src/Ai/AiRetriever.php` (2 reads)
   - `src/Ai/AiCorpusBuilder.php` (5 reads)
 
-- [ ] **Step 4: Give the remaining service classes a manager (or explicit values).**
-  - `src/Navigation/NavigationBuilder.php`: inject `SiteConfig` (not `DocentManager`, which would create a constructor cycle) and replace its three `navigation.*` reads with `$siteConfig->get(...)`. Update its provider binding with `new SiteConfig('docs', ...)` until Task 5 owns construction.
+- [x] **Step 4: Give the remaining service classes a manager (or explicit values).**
+  - `src/Navigation/NavigationBuilder.php`: inject `SiteConfig` (not `DocentManager`, which would create a constructor cycle) and replace its three `navigation.*` reads with `$siteConfig->get(...)`. Update its provider binding with `new SiteConfig('docs', ...)` until Task 5 owns construction. Before Task 4 moves the config shape, the binding must mirror the legacy top-level `navigation` block into `sites.docs.navigation` so this task remains behavior-preserving.
   - `src/Ai/AiAnswerService.php`: constructor gains `DocentManager $docent`; its 3 reads become `$docent->config('ai.provider')` etc. Update the provider's `AiAnswerService` binding to pass `$app->make(DocentManager::class)`.
   - `src/Ai/AiQuestionLogger.php`, `src/Ai/AiConversationStore.php`, `src/Insights/InsightRecorder.php`: same treatment — constructor `DocentManager $docent` (promoted readonly), reads through it, provider bindings updated to `static fn (Application $app) => new X($app->make(DocentManager::class), ...)`. These become per-site services in Task 5, so the dependency is the point, not churn.
   - `src/Http/Controllers/UploadsController.php` and `src/Http/Controllers/Admin/UploadController.php`: inject `DocentManager $docent` (method or constructor, matching each file's current style); swap the 3 reads and 1 `route('docent.upload')` call.
@@ -407,17 +407,17 @@ Every internal read of `config('docent.*')` and every `route('docent.*')` call m
   - `src/Console/InstallCommand.php`, `src/Console/CheckCommand.php`: resolve the manager (`$docent = $this->laravel->make(DocentManager::class);`) and swap reads.
   - `src/Validation/Checks/NavigationLinkCheck.php`, `UnknownIconCheck.php`, `AiCorpusSizeCheck.php`: `CheckContext` already carries repository/parser/registry — add `public readonly ?DocentManager $docent` to `src/Validation/CheckContext.php` (default null), populate it at both construction sites (`DocentManager::draftIssues()` passes `$this`, `CheckCommand` passes the resolved manager), and swap the checks' reads to `$context->docent->config(...)`.
 
-- [ ] **Step 5: Sweep the Blade views.** Every docs-served view already receives `$docent` (the manager). Replace:
+- [x] **Step 5: Sweep the Blade views.** Every docs-served view already receives `$docent` (the manager). Replace:
   - `resources/views/layout.blade.php`: `config('docent.ai.enabled', false)` → `$docent->config('ai.enabled', false)`; `route('docent.ask')` / `route('docent.ask.feedback')` → `$docent->route('ask')` / `$docent->route('ask.feedback')`.
   - `resources/views/partials/search.blade.php`, `resources/views/widget/layout.blade.php`, `resources/views/components/search-box.blade.php`: same pattern (`ai.enabled`, `route('docent.search'|'docent.widget.suggestions'|'docent.ask'|'docent.ask.feedback')`).
   - `resources/views/admin.blade.php`, `resources/views/admin-insights.blade.php`: `route('docent.admin*')` → `$docent->route('admin*')`; `config('docent.insights.*')` → `$docent->config('insights.*')`. If a view lacks `$docent`, add it to that controller's view payload.
   - `resources/views/components/widget.blade.php`: keeps reading via the facade for now — change `@if(config('docent.widget.enabled', false))` to `@if(\STS\Docent\Facades\Docent::config('widget.enabled', false))`. (Task 9 reworks this component properly.)
   - Leave `src/DocentServiceProvider.php` reads alone — the provider is rewritten wholesale in Task 6.
 
-- [ ] **Step 6: Full suite green, then commit**
+- [x] **Step 6: Full suite green, then commit**
 
 Run: `composer lint && composer analyse && composer test`
-Expected: PASS — zero behavior change. If anything fails, the sweep introduced a typo; fix it, don't paper over it.
+Expected: PASS — zero behavior change. If anything fails, the sweep introduced a typo; fix it, don't paper over it. As of this task, focused analysis of every changed file passes; the repository-wide analysis still reports only the two pre-existing `NavigationBuilder` findings (`nullsafe.neverNull` and `nullCoalesce.offset`).
 
 ```bash
 git add -A src resources

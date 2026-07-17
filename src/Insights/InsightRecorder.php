@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use STS\Docent\Ai\AiCorpus;
 use STS\Docent\Ai\Models\AiQuestion;
+use STS\Docent\DocentManager;
 use STS\Docent\Insights\Models\InsightEvent;
 use STS\Docent\Search\SearchResult;
 
@@ -26,10 +27,14 @@ final class InsightRecorder
 
     public const ASSISTANT_FEEDBACK = 'assistant_feedback';
 
+    public function __construct(
+        private readonly DocentManager $docent,
+    ) {}
+
     public function enabled(string $category): bool
     {
-        return (bool) config('docent.insights.enabled', false)
-            && (bool) config("docent.insights.categories.{$category}", true);
+        return (bool) $this->docent->config('insights.enabled', false)
+            && (bool) $this->docent->config("insights.categories.{$category}", true);
     }
 
     public function pageViewed(string $slug, string $surface): void
@@ -221,7 +226,7 @@ final class InsightRecorder
 
     public function prune(?int $days = null): int
     {
-        $retention = max(1, $days ?? (int) config('docent.insights.retention_days', 90));
+        $retention = max(1, $days ?? (int) $this->docent->config('insights.retention_days', 90));
 
         return InsightEvent::query()->where('created_at', '<', now()->subDays($retention))->delete();
     }
@@ -237,13 +242,13 @@ final class InsightRecorder
 
     private function query(string $value): ?string
     {
-        if (! config('docent.insights.store_query_text', true)) {
+        if (! $this->docent->config('insights.store_query_text', true)) {
             return null;
         }
 
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
 
-        if (config('docent.insights.redact_query_text', true)) {
+        if ($this->docent->config('insights.redact_query_text', true)) {
             $value = preg_replace('/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu', '[email]', $value) ?? $value;
             $value = preg_replace('/https?:\/\/\S+/iu', '[url]', $value) ?? $value;
             $value = preg_replace('/\b(?:sk-[A-Za-z0-9_-]{12,}|[A-Za-z0-9_-]{32,})\b/u', '[secret]', $value) ?? $value;

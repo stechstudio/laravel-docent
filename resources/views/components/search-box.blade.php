@@ -2,10 +2,10 @@
     A search box that opens the search-and-ask dialog. `size="lg"` is the
     hero-scale variant; the default suits inline placement on any page.
 --}}
-@props(['size' => 'md', 'placeholder' => null])
+@props(['docent', 'size' => 'md', 'placeholder' => null])
 
 @php
-    $placeholder ??= config('docent.ai.enabled', false)
+    $placeholder ??= $docent->config('ai.enabled', false)
         ? 'Search the docs or ask a question…'
         : 'Search the docs…';
 @endphp

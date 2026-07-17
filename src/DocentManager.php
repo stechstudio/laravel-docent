@@ -18,12 +18,12 @@ use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\Content\Models\DocentPageRevision;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\HtmlPolicy;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
-use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Renderer\AgentMarkdownRenderer;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\ContentHtmlSanitizer;
@@ -265,7 +265,7 @@ final class DocentManager
      */
     public function layoutView(string $layout): string
     {
-        $configured = config('docent.layouts.'.$layout);
+        $configured = $this->config('layouts.'.$layout);
 
         return is_string($configured) && $configured !== '' ? $configured : 'docent::layouts.'.$layout;
     }
@@ -276,10 +276,10 @@ final class DocentManager
             registry: $this->registry,
             context: $context,
             options: [
-                'allow_html' => (bool) config('docent.content.allow_html', true),
+                'allow_html' => (bool) $this->config('content.allow_html', true),
                 'debug' => (bool) config('app.debug', false),
                 'base_dir' => $baseDir,
-                'route_prefix' => (string) config('docent.route.prefix', 'docs'),
+                'route_prefix' => (string) $this->config('route.prefix', 'docs'),
             ],
             includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
             urlResolver: fn (string $slug): string => $this->url($slug),
@@ -325,7 +325,7 @@ final class DocentManager
                 registry: $this->registry,
                 context: $context,
                 baseDir: $page->baseDir(),
-                routePrefix: (string) config('docent.route.prefix', 'docs'),
+                routePrefix: (string) $this->config('route.prefix', 'docs'),
                 includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
                 markdownUrlResolver: fn (string $slug): string => $this->markdownUrl($slug),
                 sectionCardsResolver: fn (string $section): array => $this->sectionCards($section, $context),
@@ -337,12 +337,12 @@ final class DocentManager
 
     public function markdownUrl(string $slug): string
     {
-        return route('docent.show', ['slug' => ($slug === '' ? 'index' : $slug).'.md']);
+        return $this->route('show', ['slug' => ($slug === '' ? 'index' : $slug).'.md']);
     }
 
     public function llmsUrl(bool $full = false): string
     {
-        return route($full ? 'docent.llms-full' : 'docent.llms');
+        return $this->route($full ? 'llms-full' : 'llms');
     }
 
     public function discoveryLinkHeader(): string
@@ -414,7 +414,7 @@ final class DocentManager
 
     public function siteDescription(): string
     {
-        $description = config('docent.description');
+        $description = $this->config('description');
 
         return is_string($description) && trim($description) !== ''
             ? trim($description)
@@ -424,11 +424,11 @@ final class DocentManager
     /** @return array<string, mixed> */
     public function widgetConfig(): array
     {
-        $mode = config('docent.widget.mode') === 'push' ? 'push' : 'overlay';
-        $position = config('docent.widget.position') === 'left' ? 'left' : 'right';
-        $launcher = config('docent.widget.launcher') === 'none' ? 'none' : 'button';
-        $offset = max(0, (int) config('docent.widget.offset', 24));
-        $icon = (string) config('docent.widget.icon', 'book-open');
+        $mode = $this->config('widget.mode') === 'push' ? 'push' : 'overlay';
+        $position = $this->config('widget.position') === 'left' ? 'left' : 'right';
+        $launcher = $this->config('widget.launcher') === 'none' ? 'none' : 'button';
+        $offset = max(0, (int) $this->config('widget.offset', 24));
+        $icon = (string) $this->config('widget.icon', 'book-open');
 
         if (Icon::has($icon)) {
             $iconMarkup = Icon::svg($icon);
@@ -441,14 +441,14 @@ final class DocentManager
         return [
             'docsUrl' => $this->fullUrl(''),
             'widgetUrl' => $this->widgetUrl(),
-            'suggestionsUrl' => route('docent.widget.suggestions'),
+            'suggestionsUrl' => $this->route('widget.suggestions'),
             'page' => Route::currentRouteName(),
             'assetUrl' => $this->asset('docent-widget.js'),
             'mode' => $mode,
             'position' => $position,
             'offset' => $offset,
             'launcher' => $launcher,
-            'preload' => (bool) config('docent.widget.preload', false),
+            'preload' => (bool) $this->config('widget.preload', false),
             'icon' => $iconMarkup,
             'accent' => $this->accent(),
         ];
@@ -615,14 +615,14 @@ final class DocentManager
 
     public function fullUrl(string $slug): string
     {
-        return $slug === '' ? route('docent.home') : route('docent.show', $slug);
+        return $slug === '' ? $this->route('home') : $this->route('show', [$slug]);
     }
 
     public function widgetUrl(string $slug = ''): string
     {
         return $slug === ''
-            ? route('docent.widget.home')
-            : route('docent.widget.show', ['slug' => $slug]);
+            ? $this->route('widget.home')
+            : $this->route('widget.show', ['slug' => $slug]);
     }
 
     public function enableWidgetMode(): void
@@ -638,14 +638,34 @@ final class DocentManager
      */
     public function resolveUrl(string $destination, string $baseDir = ''): string
     {
-        $target = InternalLink::resolve($destination, $baseDir, (string) config('docent.route.prefix', 'docs'));
+        $target = InternalLink::resolve($destination, $baseDir, (string) $this->config('route.prefix', 'docs'));
 
         return $target === null ? $destination : $this->url($target['slug']).$target['suffix'];
     }
 
     public function siteName(): string
     {
-        return (string) config('docent.name');
+        return (string) $this->config('name');
+    }
+
+    /**
+     * Configuration and route-name seams. These become site-aware when the
+     * multi-site registry takes ownership of manager construction.
+     */
+    public function config(string $path, mixed $default = null): mixed
+    {
+        return config('docent.'.$path, $default);
+    }
+
+    public function routeName(string $suffix): string
+    {
+        return 'docent.'.$suffix;
+    }
+
+    /** @param array<string|int, mixed> $parameters */
+    public function route(string $suffix, array $parameters = []): string
+    {
+        return route($this->routeName($suffix), $parameters);
     }
 
     /**
@@ -653,7 +673,7 @@ final class DocentManager
      */
     public function accent(): string
     {
-        return (string) config('docent.theme.accent', '#0284c7');
+        return (string) $this->config('theme.accent', '#0284c7');
     }
 
     /**
@@ -724,7 +744,7 @@ final class DocentManager
 
     private function themeString(string $key): ?string
     {
-        $value = config('docent.theme.'.$key);
+        $value = $this->config('theme.'.$key);
 
         return $value === null ? null : (string) $value;
     }
@@ -742,7 +762,7 @@ final class DocentManager
             return asset('vendor/docent/'.$file).'?v='.$this->assetVersion($published);
         }
 
-        return route('docent.asset', ['file' => $file]).'?v='.$this->assetVersion($this->assetPath($file));
+        return $this->route('asset', ['file' => $file]).'?v='.$this->assetVersion($this->assetPath($file));
     }
 
     public function assetPath(string $file): string
@@ -1097,13 +1117,14 @@ final class DocentManager
             repository: $this->repository,
             parser: $this->parser,
             registry: $this->registry,
-            docsPath: (string) (config('docent.filesystem.path') ?? resource_path('docs')),
+            docsPath: (string) ($this->config('filesystem.path') ?? resource_path('docs')),
             publicPath: public_path(),
-            routePrefix: (string) config('docent.route.prefix', 'docs'),
+            routePrefix: (string) $this->config('route.prefix', 'docs'),
             routeExists: static fn (string $name): bool => Route::has($name),
             abilityExists: static fn (string $ability): bool => Gate::has($ability),
             overrideSlug: $slug,
             overrideDocument: $document,
+            docent: $this,
         );
 
         return array_map(
@@ -1329,7 +1350,7 @@ final class DocentManager
 
     private function databaseConnection(): ?string
     {
-        $connection = config('docent.database.connection');
+        $connection = $this->config('database.connection');
 
         return $connection === null ? null : (string) $connection;
     }
@@ -1391,12 +1412,12 @@ final class DocentManager
     {
         return $source->origin === DocumentSource::ORIGIN_DATABASE
             ? $this->databaseHtmlPolicy()
-            : ((bool) config('docent.content.allow_html', true) ? HtmlPolicy::Trusted : HtmlPolicy::Denied);
+            : ((bool) $this->config('content.allow_html', true) ? HtmlPolicy::Trusted : HtmlPolicy::Denied);
     }
 
     private function databaseHtmlPolicy(): HtmlPolicy
     {
-        return (bool) config('docent.content.database.sanitize_html', true)
+        return (bool) $this->config('content.database.sanitize_html', true)
             ? HtmlPolicy::Sanitized
             : HtmlPolicy::Trusted;
     }

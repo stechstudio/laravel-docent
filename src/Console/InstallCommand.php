@@ -6,6 +6,7 @@ namespace STS\Docent\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use STS\Docent\DocentManager;
 
 /**
  * Publishes the config and scaffolds starter documentation. Idempotent — never
@@ -19,9 +20,10 @@ final class InstallCommand extends Command
 
     public function handle(): int
     {
+        $docent = $this->laravel->make(DocentManager::class);
         $this->call('vendor:publish', ['--tag' => 'docent-config']);
 
-        $docs = config('docent.filesystem.path') ?? resource_path('docs');
+        $docs = $docent->config('filesystem.path') ?? resource_path('docs');
 
         $this->scaffold($docs.'/index.md', $this->indexStub());
         $this->scaffold($docs.'/getting-started/introduction.md', $this->introductionStub());
@@ -37,7 +39,7 @@ final class InstallCommand extends Command
         $this->components->bulletList([
             'Write your docs in '.$docs,
             'Register app integrations (values, links, components) in a service provider via the Docent facade',
-            'Visit /'.config('docent.route.prefix', 'docs').' to browse',
+            'Visit /'.$docent->config('route.prefix', 'docs').' to browse',
             ...$withDatabase ? [
                 'Run `php artisan migrate` to create the docent_pages tables',
                 'Set `docent.database.enabled` to true to compose the database store over your files',

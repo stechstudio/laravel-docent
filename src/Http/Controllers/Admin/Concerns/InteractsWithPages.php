@@ -87,9 +87,14 @@ trait InteractsWithPages
 
     private function connection(): ?string
     {
-        $connection = config('docent.database.connection');
+        $connection = $this->docent()->config('database.connection');
 
         return $connection === null ? null : (string) $connection;
+    }
+
+    private function docent(): DocentManager
+    {
+        return app(DocentManager::class);
     }
 
     /**

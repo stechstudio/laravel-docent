@@ -8,6 +8,7 @@ use Generator;
 use LogicException;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
+use STS\Docent\DocentManager;
 
 final class AiAnswerService
 {
@@ -15,12 +16,14 @@ final class AiAnswerService
 
     private string $model;
 
-    public function __construct(PrismGuard $guard)
-    {
+    public function __construct(
+        private readonly DocentManager $docent,
+        PrismGuard $guard,
+    ) {
         $guard->ensureInstalled();
 
-        $this->provider = trim((string) config('docent.ai.provider'));
-        $this->model = trim((string) config('docent.ai.model'));
+        $this->provider = trim((string) $this->docent->config('ai.provider'));
+        $this->model = trim((string) $this->docent->config('ai.model'));
 
         if ($this->provider === '' || $this->model === '') {
             throw new LogicException('Docent AI requires both docent.ai.provider and docent.ai.model.');
@@ -44,7 +47,7 @@ final class AiAnswerService
             ->using($this->provider, $this->model)
             ->withSystemPrompt(AiPrompt::system($corpus))
             ->withMessages($messages)
-            ->withMaxTokens(max(1, (int) config('docent.ai.max_tokens', 1200)));
+            ->withMaxTokens(max(1, (int) $this->docent->config('ai.max_tokens', 1200)));
 
         yield from $request->asStream();
     }

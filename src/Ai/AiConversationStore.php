@@ -172,7 +172,7 @@ final class AiConversationStore
 
     private function ttl(): int
     {
-        return max(1, (int) config('docent.ai.conversation.ttl', 7200));
+        return max(1, (int) $this->manager->config('ai.conversation.ttl', 7200));
     }
 
     private function key(string $id): string

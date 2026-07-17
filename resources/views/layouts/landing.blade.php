@@ -4,6 +4,7 @@
     <x-docent::hero
         :title="$title"
         :description="$description"
+        :docent="$docent"
         :badge="$heroBadge ?? null"
         :cta="$heroCta ?? []"
         :search="($heroSearch ?? false) && $searchEnabled" />

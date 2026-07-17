@@ -6,12 +6,14 @@ namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use STS\Docent\DocentManager;
 use STS\Docent\Insights\InsightSummary;
 
 final class InsightsController
 {
     public function __construct(
         private readonly InsightSummary $summary,
+        private readonly DocentManager $docent,
     ) {}
 
     public function __invoke(Request $request): View
@@ -21,6 +23,7 @@ final class InsightsController
         return view('docent::admin-insights', [
             'summary' => $this->summary->forDays($days),
             'days' => $days,
+            'docent' => $this->docent,
         ]);
     }
 }

@@ -24,7 +24,7 @@ final class NavigationLinkCheck implements Check
     /** @return iterable<Issue> */
     private function checkList(string $list, CheckContext $context): iterable
     {
-        $links = config('docent.navigation.'.$list, []);
+        $links = $context->docent?->config('navigation.'.$list, []) ?? [];
 
         if (! is_array($links)) {
             yield Issue::error('invalid-navigation-link', 'navigation.'.$list, 'Navigation links must be an array.', 1);

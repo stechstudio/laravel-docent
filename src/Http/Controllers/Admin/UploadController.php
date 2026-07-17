@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use STS\Docent\DocentManager;
 
 /**
  * Stores an uploaded image on the configured admin disk under `docent/`, with a
@@ -22,6 +23,10 @@ use Illuminate\Validation\ValidationException;
  */
 final class UploadController
 {
+    public function __construct(
+        private readonly DocentManager $docent,
+    ) {}
+
     public function __invoke(Request $request): JsonResponse
     {
         $request->validate([
@@ -29,7 +34,7 @@ final class UploadController
         ]);
 
         $file = $request->file('file');
-        $disk = (string) config('docent.admin.disk', 'public');
+        $disk = (string) $this->docent->config('admin.disk', 'public');
 
         if ($file->guessExtension() === 'svg') {
             $path = 'docent/'.$file->hashName();
@@ -39,7 +44,7 @@ final class UploadController
         }
 
         return response()->json([
-            'url' => route('docent.upload', ['path' => $path]),
+            'url' => $this->docent->route('upload', ['path' => $path]),
             'path' => $path,
         ], 201);
     }

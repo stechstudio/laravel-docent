@@ -27,7 +27,7 @@ final class WidgetController
         return response()->view('docent::widget.home', [
             'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
-            'searchEnabled' => (bool) config('docent.search.enabled', true),
+            'searchEnabled' => (bool) $this->docent->config('search.enabled', true),
             'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
             'navigation' => $this->docent->navigation($context),
             'navigationLinks' => $this->docent->navigationLinks($context),
@@ -71,7 +71,7 @@ final class WidgetController
         return response()->view('docent::widget.page', [
             'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
-            'searchEnabled' => (bool) config('docent.search.enabled', true),
+            'searchEnabled' => (bool) $this->docent->config('search.enabled', true),
             'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
             'page' => $page,
             'title' => $page->title(),
@@ -84,7 +84,7 @@ final class WidgetController
 
     private function denied(): RedirectResponse
     {
-        $response = config('docent.authorization.denied_response', 404);
+        $response = $this->docent->config('authorization.denied_response', 404);
 
         return match (true) {
             $response === 403 => abort(403),
@@ -95,7 +95,7 @@ final class WidgetController
 
     private function assistantStateNamespace(Request $request, DocumentationContext $context): ?string
     {
-        return config('docent.ai.enabled', false)
+        return $this->docent->config('ai.enabled', false)
             ? $this->docent->assistantStateNamespace($request, $context, true)
             : null;
     }

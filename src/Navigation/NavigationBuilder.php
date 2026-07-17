@@ -11,6 +11,7 @@ use STS\Docent\Content\PageReference;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Sites\SiteConfig;
 use STS\Docent\Support\DocentCache;
 use STS\Docent\Support\Icon;
 
@@ -29,6 +30,7 @@ final class NavigationBuilder
         private readonly DocumentationRepository $repository,
         private readonly IntegrationRegistry $registry,
         private readonly DocentCache $cache,
+        private readonly SiteConfig $siteConfig,
         private readonly Closure $urlResolver,
     ) {}
 
@@ -68,7 +70,7 @@ final class NavigationBuilder
 
         if ($defaultNavigation !== []) {
             $sections[] = $this->section(
-                (string) config('docent.navigation.default_section', 'Documentation'),
+                (string) $this->siteConfig->get('navigation.default_section', 'Documentation'),
                 null,
                 $defaultNavigation,
             );
@@ -125,7 +127,7 @@ final class NavigationBuilder
      */
     public function links(DocumentationContext $context, string $currentSlug = ''): array
     {
-        return $this->resolveLinks(config('docent.navigation.links', []), $context, $currentSlug);
+        return $this->resolveLinks($this->siteConfig->get('navigation.links', []), $context, $currentSlug);
     }
 
     /**
@@ -137,7 +139,7 @@ final class NavigationBuilder
      */
     public function topbarLinks(DocumentationContext $context, string $currentSlug = ''): array
     {
-        return $this->resolveLinks(config('docent.navigation.topbar', []), $context, $currentSlug);
+        return $this->resolveLinks($this->siteConfig->get('navigation.topbar', []), $context, $currentSlug);
     }
 
     /**

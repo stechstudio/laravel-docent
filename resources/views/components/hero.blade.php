@@ -3,7 +3,7 @@
     description, and an optional prominent search box and/or CTA buttons.
     Custom layouts can use this directly instead of rebuilding the markup.
 --}}
-@props(['title', 'description' => null, 'badge' => null, 'cta' => [], 'search' => false])
+@props(['title', 'docent', 'description' => null, 'badge' => null, 'cta' => [], 'search' => false])
 
 <div class="docent-hero">
     <div class="relative mx-auto max-w-3xl px-2 pb-4 pt-10 text-center sm:pt-20">
@@ -19,7 +19,7 @@
 
         @if($search)
             <div class="mx-auto mt-9 max-w-xl">
-                <x-docent::search-box size="lg" />
+                <x-docent::search-box size="lg" :docent="$docent" />
             </div>
         @endif
 

@@ -25,7 +25,7 @@ final class SearchController
 
     public function __invoke(Request $request): JsonResponse
     {
-        $widget = $request->string('mode')->toString() === 'widget' && config('docent.widget.enabled', false);
+        $widget = $request->string('mode')->toString() === 'widget' && $this->docent->config('widget.enabled', false);
 
         if ($widget) {
             $this->docent->enableWidgetMode();
@@ -48,7 +48,7 @@ final class SearchController
 
         if ($searchId !== null) {
             $payload['insight_id'] = $searchId;
-            $payload['insights_url'] = route('docent.insights.store');
+            $payload['insights_url'] = $this->docent->route('insights.store');
         }
 
         return response()->json($payload);

@@ -10,10 +10,10 @@
     <script defer src="{{ $docent->asset('docent.js') }}"></script>
     <style>{!! $docent->themeStyles() !!}</style>
 </head>
-@php($aiEnabled = (bool) config('docent.ai.enabled', false))
-<body data-widget-base="{{ $docent->widgetUrl() }}" data-widget-suggestions-url="{{ route('docent.widget.suggestions') }}" data-widget-slug="{{ $currentSlug }}" class="docent-widget-frame min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
+@php($aiEnabled = (bool) $docent->config('ai.enabled', false))
+<body data-widget-base="{{ $docent->widgetUrl() }}" data-widget-suggestions-url="{{ $docent->route('widget.suggestions') }}" data-widget-slug="{{ $currentSlug }}" class="docent-widget-frame min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     <div @if($aiEnabled)
-         x-data="docentAssistant(@js(route('docent.ask')), @js(route('docent.ask.feedback')), @js($assistantStateNamespace), 'widget')"
+         x-data="docentAssistant(@js($docent->route('ask')), @js($docent->route('ask.feedback')), @js($assistantStateNamespace), 'widget')"
          data-docent-assistant-enabled data-docent-assistant-state="{{ $assistantStateNamespace }}"
          @docent:assistant-open.window="openAssistant($event.detail)"
          @keydown.escape.window="assistantOpen && backFromAssistant()"
@@ -25,7 +25,7 @@
         <header class="docent-widget-header sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-3 py-3 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/95">
             <div class="flex items-center gap-2">
                 @if($searchEnabled)
-                    <div @if($aiEnabled) x-show="!assistantOpen" @endif x-data="docentWidgetSearch('{{ route('docent.search', ['mode' => 'widget']) }}', @js($aiEnabled))"
+                    <div @if($aiEnabled) x-show="!assistantOpen" @endif x-data="docentWidgetSearch('{{ $docent->route('search', ['mode' => 'widget']) }}', @js($aiEnabled))"
                          @docent:widget-search.window="setQuery($event.detail.query)" class="relative min-w-0 flex-1">
                         <svg x-show="!loading" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <svg x-show="loading" x-cloak class="docent-search-spinner pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--docent-accent)]" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" class="opacity-25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
