@@ -4,9 +4,9 @@
 
 **Goal:** Multiple independent documentation sites in one Docent install, each keyed in config (`sites.docs`, `sites.admin`, …) with its own routes, content, branding, gates, admin panel, and integration closures.
 
-**Architecture:** Laravel manager pattern. A `SiteRegistry` (new facade root) lazily builds one per-site service graph (`DocentManager`, repositories, cache, navigation, search, AI, insights) from a `SiteConfig` cascade (site entry → top-level shared default → shipped default). Route groups are registered per site with `docent.{key}.*` names; a middleware binds the current site per request; console falls back to `docent.default`. Shared DB tables gain a `site` column.
+**Architecture:** Laravel manager pattern. A singleton `SiteRegistry` (new facade root) owns durable global/per-site integration registrations. A scoped `SiteServices` builds and memoizes one internally consistent service graph per site for the current application scope, while a scoped `CurrentSite` holds only the request/console selection. Each graph is built from a `SiteConfig` cascade (site entry → top-level shared default → shipped default). Route groups are registered per site with `docent.{key}.*` names; middleware selects the current site per request; console falls back to `docent.default`. Shared DB tables gain a `site` column.
 
-**Tech Stack:** PHP 8.2+, Laravel 11/12 package (Orchestra Testbench workbench), Pest for tests, Pint for style, PHPStan for analysis.
+**Tech Stack:** PHP 8.3+, Laravel 12/13 package (Orchestra Testbench 10/11 workbench), Pest for tests, Pint for style, PHPStan for analysis.
 
 **Spec:** `docs/superpowers/specs/2026-07-17-multi-site-design.md` — read it before starting.
 
@@ -17,6 +17,8 @@
 - Route names are **always** site-keyed: `docent.{key}.*` (including the shipped `docs` site). No bare `docent.*` names survive Task 6.
 - Site-only config sections that never cascade from top level: `name`, `description`, `route`, `filesystem`, `admin`, `navigation`, `layouts`.
 - The `docs` site keeps `filesystem.path: null → resource_path('docs')`; any **other** site key without an explicit `filesystem.path` throws at build time and is a `docent:check` error.
+- Site keys must match `[A-Za-z0-9_-]+`; they are embedded in route names, middleware parameters, and cache prefixes. An explicitly configured `docent.default` that does not name a site is an error, never a silent fallback.
+- Singleton objects must never capture scoped or per-site services. In particular, `CodeBlockRenderer` and `InsightSummary` belong to the per-site graph because they use site cache/data.
 - Commit after every task. Commit messages: conventional prefix, imperative, **no co-author or "Generated with" lines**.
 - New classes live in `src/Sites/` (namespace `STS\Docent\Sites`).
 
@@ -31,7 +33,7 @@
 **Interfaces:**
 - Produces: `new SiteConfig(string $key, array $config)` where `$config` is the full `docent` config array; `->key` (public readonly string); `->get(string $path, mixed $default = null): mixed`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```php
 <?php
@@ -86,12 +88,12 @@ it('exposes its key', function () {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `vendor/bin/pest tests/Unit/Sites/SiteConfigTest.php`
 Expected: FAIL — `Class "STS\Docent\Sites\SiteConfig" not found`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```php
 <?php
@@ -147,7 +149,7 @@ final class SiteConfig
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `vendor/bin/pest tests/Unit/Sites/SiteConfigTest.php`
 Expected: PASS (6 tests)
@@ -249,6 +251,16 @@ it('describes merged metadata with local winning by name', function () {
     expect($values['plan']['label'])->toBe('Site label')
         ->and($values['seats']['label'])->toBe('Seats');
 });
+
+it('does not inherit a parent label when a local registration omits one', function () {
+    $global = new IntegrationRegistry;
+    $global->value('plan', fn () => '', 'Global label');
+
+    $site = new IntegrationRegistry(parent: $global);
+    $site->value('plan', fn () => '');
+
+    expect($site->valueLabel('plan'))->toBe('plan');
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -324,7 +336,7 @@ public function resolveValue(string $name, DocumentationContext $context, array 
 }
 ```
 
-Apply the same two-line change to `hasCondition`/`resolveCondition`, `hasLink`/`resolveLink`, `hasComponent`/`resolveComponent`, `hasAudience`/`resolveAudience`, and `valueLabel` (`return $this->values[$name]->label ?? $this->parent?->valueLabel($name) ?? $name;`). `suggestionsFor` merges parent results first:
+Apply the same two-line change to `hasCondition`/`resolveCondition`, `hasLink`/`resolveLink`, `hasComponent`/`resolveComponent`, and `hasAudience`/`resolveAudience`. For `valueLabel`, a local registration wins as a unit: return its label or `$name`; consult the parent only when no local value is registered. `suggestionsFor` merges parent results first:
 
 ```php
 public function suggestionsFor(string $page): array
@@ -387,6 +399,7 @@ Every internal read of `config('docent.*')` and every `route('docent.*')` call m
   - `src/Ai/AiCorpusBuilder.php` (5 reads)
 
 - [ ] **Step 4: Give the remaining service classes a manager (or explicit values).**
+  - `src/Navigation/NavigationBuilder.php`: inject `SiteConfig` (not `DocentManager`, which would create a constructor cycle) and replace its three `navigation.*` reads with `$siteConfig->get(...)`. Update its provider binding with `new SiteConfig('docs', ...)` until Task 5 owns construction.
   - `src/Ai/AiAnswerService.php`: constructor gains `DocentManager $docent`; its 3 reads become `$docent->config('ai.provider')` etc. Update the provider's `AiAnswerService` binding to pass `$app->make(DocentManager::class)`.
   - `src/Ai/AiQuestionLogger.php`, `src/Ai/AiConversationStore.php`, `src/Insights/InsightRecorder.php`: same treatment — constructor `DocentManager $docent` (promoted readonly), reads through it, provider bindings updated to `static fn (Application $app) => new X($app->make(DocentManager::class), ...)`. These become per-site services in Task 5, so the dependency is the point, not churn.
   - `src/Http/Controllers/UploadsController.php` and `src/Http/Controllers/Admin/UploadController.php`: inject `DocentManager $docent` (method or constructor, matching each file's current style); swap the 3 reads and 1 `route('docent.upload')` call.
@@ -398,7 +411,7 @@ Every internal read of `config('docent.*')` and every `route('docent.*')` call m
   - `resources/views/layout.blade.php`: `config('docent.ai.enabled', false)` → `$docent->config('ai.enabled', false)`; `route('docent.ask')` / `route('docent.ask.feedback')` → `$docent->route('ask')` / `$docent->route('ask.feedback')`.
   - `resources/views/partials/search.blade.php`, `resources/views/widget/layout.blade.php`, `resources/views/components/search-box.blade.php`: same pattern (`ai.enabled`, `route('docent.search'|'docent.widget.suggestions'|'docent.ask'|'docent.ask.feedback')`).
   - `resources/views/admin.blade.php`, `resources/views/admin-insights.blade.php`: `route('docent.admin*')` → `$docent->route('admin*')`; `config('docent.insights.*')` → `$docent->config('insights.*')`. If a view lacks `$docent`, add it to that controller's view payload.
-  - `resources/views/components/widget.blade.php`: keeps reading via the facade for now — change `@if(config('docent.widget.enabled', false))` to `@if(\STS\Docent\Facades\Docent::config('widget.enabled', false))`. (Task 8 reworks this component properly.)
+  - `resources/views/components/widget.blade.php`: keeps reading via the facade for now — change `@if(config('docent.widget.enabled', false))` to `@if(\STS\Docent\Facades\Docent::config('widget.enabled', false))`. (Task 9 reworks this component properly.)
   - Leave `src/DocentServiceProvider.php` reads alone — the provider is rewritten wholesale in Task 6.
 
 - [ ] **Step 6: Full suite green, then commit**
@@ -499,25 +512,26 @@ git commit -m "feat: restructure config into shared defaults plus keyed sites"
 
 ---
 
-### Task 5: SiteRegistry and the per-site service graph
+### Task 5: Durable SiteRegistry, scoped current site, and per-site service graphs
 
-The registry that builds and holds every site's services — not yet wired into the container (that's Task 6), so it's fully unit/feature-testable in isolation.
+The singleton registry owns durable registration overlays, while scoped services build and hold each site's request-safe graph. They are not yet wired into the existing container aliases (that's Task 6), so they are fully feature-testable in isolation.
 
 **Files:**
-- Create: `src/Sites/SiteRegistry.php`, `src/Http/Middleware/SetCurrentSite.php`
+- Create: `src/Sites/SiteRegistry.php`, `src/Sites/SiteServices.php`, `src/Sites/CurrentSite.php`, `src/Http/Middleware/SetCurrentSite.php`
 - Test: `tests/Feature/Sites/SiteRegistryTest.php`
 
 **Interfaces:**
 - Consumes: `SiteConfig`, `SiteRef`, parent-fallback `IntegrationRegistry`, `DocentManager::key()`.
-- Produces (all on `SiteRegistry`):
+- Produces on singleton `SiteRegistry`:
   - `keys(): list<string>`, `has(string $key): bool`, `defaultKey(): string` (config `docent.default`, falling back to the first `sites` key)
   - `site(?string $key = null): DocentManager` — null means default; unknown key throws `InvalidArgumentException`
-  - `setCurrent(string $key): void`, `currentKey(): string` (set key ?? default), `current(): DocentManager`
   - `siteConfig(string $key): SiteConfig`, `registryFor(string $key): IntegrationRegistry` (overlay, parent = global)
-  - `service(string $class): object` — the current site's instance of a per-site service class
+  - `service(string $class): object` and `serviceFor(string $key, string $class): object` — delegate to scoped `SiteServices`
   - Global registration proxies returning `$this`: `condition()`, `value()`, `link()`, `component()`, `audience()`, `suggest()` — each delegates to the **global** `IntegrationRegistry`
   - `__call($method, $arguments)` — proxies anything else to `current()`
-- Produces: `SetCurrentSite` middleware — `handle(Request $request, Closure $next, string $key)` calls `$sites->setCurrent($key)`.
+- Produces on scoped `CurrentSite`: `set(string $key)`, `key(): string` (selected key or validated default).
+- Produces on scoped `SiteServices`: `current()`, `site(?string $key = null)`, `service(string $class)`, and `serviceFor(string $key, string $class)`. It memoizes the **entire** graph for a key in one assignment before returning any member.
+- Produces: `SetCurrentSite` middleware — `handle(Request $request, Closure $next, string $key)` calls `$currentSite->set($key)`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -527,7 +541,9 @@ The registry that builds and holds every site's services — not yet wired into 
 use STS\Docent\DocentManager;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
+use STS\Docent\Sites\CurrentSite;
 use STS\Docent\Sites\SiteRegistry;
+use STS\Docent\Sites\SiteServices;
 
 function twoSiteConfig(): void
 {
@@ -567,24 +583,42 @@ it('throws on an unknown site key', function () {
 
 it('resolves current from the set key and falls back to default', function () {
     twoSiteConfig();
-    $registry = $this->app->make(SiteRegistry::class);
+    $current = $this->app->make(CurrentSite::class);
+    $services = $this->app->make(SiteServices::class);
 
-    expect($registry->currentKey())->toBe('public');
+    expect($current->key())->toBe('public')
+        ->and($services->current()->key())->toBe('public');
 
-    $registry->setCurrent('admin');
+    $current->set('admin');
 
-    expect($registry->current()->key())->toBe('admin');
+    expect($services->current()->key())->toBe('admin');
 });
 
 it('gives each site its own service graph', function () {
     twoSiteConfig();
+    $services = $this->app->make(SiteServices::class);
+    $publicSearch = $services->serviceFor('public', SearchEngine::class);
+
+    expect($services->serviceFor('admin', SearchEngine::class))->not->toBe($publicSearch);
+});
+
+it('returns services from one internally consistent graph', function () {
+    twoSiteConfig();
     $registry = $this->app->make(SiteRegistry::class);
 
-    $registry->setCurrent('public');
-    $publicSearch = $registry->service(SearchEngine::class);
-    $registry->setCurrent('admin');
+    expect($registry->serviceFor('public', DocentManager::class))->toBe($registry->site('public'));
+    // Also assert through reflection or a narrow test seam that SearchEngine's
+    // manager/cache dependencies are the same objects returned for this graph.
+});
 
-    expect($registry->service(SearchEngine::class))->not->toBe($publicSearch);
+it('keeps site registrations after scoped instances are forgotten', function () {
+    twoSiteConfig();
+    $registry = $this->app->make(SiteRegistry::class);
+    $registry->site('admin')->value('plan', fn () => 'Admin');
+
+    $this->app->forgetScopedInstances();
+
+    expect($registry->registryFor('admin')->hasValue('plan'))->toBeTrue();
 });
 
 it('registers globally at the root and per-site through site()', function () {
@@ -636,13 +670,8 @@ use STS\Docent\Runtime\IntegrationRegistry;
  */
 final class SiteRegistry
 {
-    /** @var array<string, array<class-string, object>> */
-    private array $services = [];
-
     /** @var array<string, IntegrationRegistry> */
     private array $registries = [];
-
-    private ?string $currentKey = null;
 
     public function __construct(
         private readonly Application $app,
@@ -662,41 +691,36 @@ final class SiteRegistry
 
     public function defaultKey(): string
     {
-        $default = (string) $this->app['config']->get('docent.default', '');
+        $configured = $this->app['config']->get('docent.default');
+        if (is_string($configured) && $configured !== '') {
+            if (! $this->has($configured)) {
+                throw new InvalidArgumentException("Unknown default Docent site [{$configured}].");
+            }
 
-        return $this->has($default) ? $default : ($this->keys()[0] ?? 'docs');
-    }
-
-    public function setCurrent(string $key): void
-    {
-        if (! $this->has($key)) {
-            throw new InvalidArgumentException("Unknown Docent site [{$key}].");
+            return $configured;
         }
 
-        $this->currentKey = $key;
-    }
-
-    public function currentKey(): string
-    {
-        return $this->currentKey ?? $this->defaultKey();
+        return $this->keys()[0] ?? throw new InvalidArgumentException('No Docent sites are configured.');
     }
 
     public function current(): DocentManager
     {
-        return $this->site($this->currentKey());
+        return $this->app->make(SiteServices::class)->current();
     }
 
     public function site(?string $key = null): DocentManager
     {
-        $key ??= $this->defaultKey();
-
-        /** @var DocentManager */
-        return $this->serviceFor($key, DocentManager::class);
+        return $this->app->make(SiteServices::class)->site($key);
     }
 
     public function service(string $class): object
     {
-        return $this->serviceFor($this->currentKey(), $class);
+        return $this->app->make(SiteServices::class)->service($class);
+    }
+
+    public function serviceFor(string $key, string $class): object
+    {
+        return $this->app->make(SiteServices::class)->serviceFor($key, $class);
     }
 
     public function siteConfig(string $key): SiteConfig
@@ -726,17 +750,27 @@ final class SiteRegistry
         return $this->current()->{$method}(...$arguments);
     }
 
-    private function serviceFor(string $key, string $class): object
-    {
-        if (! $this->has($key)) {
-            throw new InvalidArgumentException("Unknown Docent site [{$key}].");
-        }
+}
+```
 
-        return $this->services[$key][$class] ??= $this->buildAll($key)[$class];
+`SiteServices` owns `$services` and the `buildAll()` implementation. Its lookup must cache the full graph atomically:
+
+```php
+public function serviceFor(string $key, string $class): object
+{
+    if (! $this->sites->has($key)) {
+        throw new InvalidArgumentException("Unknown Docent site [{$key}].");
     }
 
-    /** @return array<class-string, object> */
-    private function buildAll(string $key): array
+    if (! isset($this->services[$key])) {
+        $this->services[$key] = $this->buildAll($key);
+    }
+
+    return $this->services[$key][$class]
+        ?? throw new InvalidArgumentException("Service [{$class}] is not part of the Docent site graph.");
+}
+
+private function buildAll(string $key): array
     {
         // Ports DocentServiceProvider::register()'s current wiring, per site:
         // SiteConfig → FilesystemRepository (path rule below) → DatabaseRepository/
@@ -746,8 +780,9 @@ final class SiteRegistry
         // SiteConfig) → SearchIndexer/SearchEngine → AiRetriever/AiCorpusBuilder/
         // AiAnswerService/AiQuestionLogger/AiConversationStore → InsightRecorder.
         // Shared, site-agnostic services still come from the container:
-        // DocumentParser, CodeBlockRenderer, ContentHtmlSanitizer, PrismGuard,
-        // DocumentationMode.
+        // DocumentParser, ContentHtmlSanitizer, PrismGuard, DocumentationMode.
+        // Construct CodeBlockRenderer with this graph's DocentCache and construct
+        // InsightSummary with the site's key/connection; neither is a singleton.
     }
 }
 ```
@@ -775,22 +810,22 @@ namespace STS\Docent\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use STS\Docent\Sites\SiteRegistry;
+use STS\Docent\Sites\CurrentSite;
 
 final class SetCurrentSite
 {
-    public function __construct(private readonly SiteRegistry $sites) {}
+    public function __construct(private readonly CurrentSite $currentSite) {}
 
     public function handle(Request $request, Closure $next, string $key): mixed
     {
-        $this->sites->setCurrent($key);
+        $this->currentSite->set($key);
 
         return $next($request);
     }
 }
 ```
 
-Register `SiteRegistry` in the provider as **scoped** (per request/octane-safe current key): `$this->app->scoped(SiteRegistry::class, static fn (Application $app): SiteRegistry => new SiteRegistry($app, $app->make(IntegrationRegistry::class)));`
+Register `SiteRegistry` as a **singleton**, and `CurrentSite` plus `SiteServices` as **scoped**. This keeps boot-time site registrations durable while ensuring request selection and mutable service state are Octane-safe. Validate site keys before using them in route names or middleware parameters.
 
 - [ ] **Step 4: Run the new tests** — `vendor/bin/pest tests/Feature/Sites/SiteRegistryTest.php` — PASS. Full suite still green (nothing else consumes the registry yet).
 
@@ -811,11 +846,11 @@ git commit -m "feat: SiteRegistry builds one service graph per configured site"
 
 **Interfaces:**
 - Consumes: `SiteRegistry`, `SetCurrentSite`.
-- Produces: route names `docent.{key}.{suffix}` for every route; `Docent` facade accessor = `SiteRegistry::class`; container bindings for `DocentManager`, `DocumentationRepository`, `FilesystemRepository`, `NavigationBuilder`, `DocentCache`, `SearchIndexer`, `SearchEngine`, `AiRetriever`, `AiCorpusBuilder`, `AiAnswerService`, `AiQuestionLogger`, `AiConversationStore`, `InsightRecorder` all resolve the **current site's** instance via `SiteRegistry::service()`.
+- Produces: route names `docent.{key}.{suffix}` for every route; `Docent` facade accessor = `SiteRegistry::class`; container bindings for `DocentManager`, `DocumentationRepository`, `FilesystemRepository`, `NavigationBuilder`, `DocentCache`, `CodeBlockRenderer`, `SearchIndexer`, `SearchEngine`, `AiRetriever`, `AiCorpusBuilder`, `AiAnswerService`, `AiQuestionLogger`, `AiConversationStore`, `InsightRecorder`, and `InsightSummary` all resolve the **current site's** instance via `SiteRegistry::service()`.
 
 - [ ] **Step 1: Flip `DocentManager::routeName()`** to `return 'docent.'.$this->key().'.'.$suffix;`.
 
-- [ ] **Step 2: Rewrite the provider's `register()`** so every per-site class binding delegates: `$this->app->scoped(DocentManager::class, static fn (Application $app) => $app->make(SiteRegistry::class)->current());` and for each other per-site class `$this->app->scoped(SearchEngine::class, static fn (Application $app) => $app->make(SiteRegistry::class)->service(SearchEngine::class));` (same one-liner per class in the Interfaces list). Delete the now-dead direct construction closures — `SiteRegistry::buildAll()` is the single wiring site. Keep the shared bindings (`IntegrationRegistry`, `DocumentationMode`, `DocumentParser`, `CodeBlockRenderer`, `ContentHtmlSanitizer`, `PrismGuard`, `InsightSummary`) exactly as they are.
+- [ ] **Step 2: Rewrite the provider's `register()`** so every per-site class binding delegates: `$this->app->scoped(DocentManager::class, static fn (Application $app) => $app->make(SiteRegistry::class)->current());` and for each other per-site class `$this->app->scoped(SearchEngine::class, static fn (Application $app) => $app->make(SiteRegistry::class)->service(SearchEngine::class));` (same one-liner per class in the Interfaces list). Delete the now-dead direct construction closures — `SiteServices::buildAll()` is the single wiring site. Keep only genuinely shared bindings (`IntegrationRegistry`, `DocumentationMode`, `DocumentParser`, `ContentHtmlSanitizer`, `PrismGuard`) as they are.
 
 - [ ] **Step 3: Rewrite `registerRoutes()`** as a loop. For each `$key` in `config('docent.sites')`:
 
@@ -851,7 +886,9 @@ git add -A src tests
 git commit -m "feat!: per-site route groups with docent.{site}.* names and SiteRegistry facade root"
 ```
 
----### Task 7: Database site scoping
+---
+
+### Task 7: Database site scoping
 
 **Files:**
 - Modify: `database/migrations/2026_01_01_000000_create_docent_pages_table.php`, `..._000002_create_docent_ai_questions_table.php`, `..._000003_create_docent_insight_events_table.php` (edit the create migrations in place — 0.1.0, no alter migrations)
@@ -860,7 +897,7 @@ git commit -m "feat!: per-site route groups with docent.{site}.* names and SiteR
 
 **Interfaces:**
 - Consumes: `DocentManager::key()`.
-- Produces: `DocentPage::write(string $slug, string $content, array $frontMatter = [], ?int $authorId = null, string $format = 'markdown', string $site = 'docs'): self`; `DocentPage::forSite(?string $connection, string $site): Builder` (static, replaces bare `DocentPage::on($connection)` at every read site); `new DatabaseRepository(?string $connection = null, string $site = 'docs')`.
+- Produces: `DocentPage::write(string $slug, string $content, array $frontMatter = [], ?int $authorId = null, string $format = 'markdown', string $site = 'docs', ?string $connection = null): self`; `DocentPage::forSite(?string $connection, string $site): Builder` (static, replaces bare `DocentPage::on($connection)` at every read site); equivalent site/connection query seams for `AiQuestion` and `InsightEvent`; `new DatabaseRepository(?string $connection = null, string $site = 'docs')`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -895,15 +932,17 @@ it('upserts within a site, not across sites', function () {
 
 - [ ] **Step 3: Implement.**
   - Migrations: in the pages table, add `$table->string('site')->default('docs');` before `slug`, change `$table->string('slug')->unique()` (or its current form — read the file) to a plain column plus `$table->unique(['site', 'slug']);`. Add `$table->string('site')->default('docs')->index();` to `docent_ai_questions` and `docent_insight_events`.
-  - `DocentPage`: `write()` gains the trailing `string $site = 'docs'` parameter; `firstOrNew(['slug' => $slug])` becomes `firstOrNew(['site' => $site, 'slug' => $slug])`. Add `public static function forSite(?string $connection, string $site): Builder { return self::on($connection)->where('site', $site); }`.
+  - `DocentPage`: `write()` gains trailing `string $site = 'docs', ?string $connection = null` parameters; build its query from a model using that connection, then `firstOrNew(['site' => $site, 'slug' => $slug])`. Add `forSite()`. `revertTo()` must pass `$this->site` and `$this->getConnectionName()` back into `write()` so a revert cannot land in `docs` or on the default connection.
   - `DatabaseRepository`: constructor gains `private readonly string $site = 'docs'`; every `DocentPage::on($this->connection)` becomes `DocentPage::forSite($this->connection, $this->site)`.
-  - `DocentManager`: every `DocentPage::on($this->databaseConnection())` (adminTree, adminDetail, adminGroups, removeGroupMeta, exportMarkdown) becomes `DocentPage::forSite($this->databaseConnection(), $this->key())`; every `DocentPage::write(...)` call gains `site: $this->key()`.
-  - `InteractsWithPages` and admin controllers: same substitution for any direct `DocentPage::on(...)` / `write(...)` usage (grep `DocentPage::` across `src/Http`).
-  - `InsightRecorder` / `AiQuestionLogger`: include `'site' => $this->docent->key()` in every insert payload. `InsightSummary` and the admin insights/export controllers: add `->where('site', $docent->key())` to their queries.
-  - `SiteRegistry::buildAll()`: pass `site: $key` when constructing `DatabaseRepository`.
+  - `DocentManager`: every `DocentPage::on($this->databaseConnection())` (adminTree, adminDetail, adminGroups, removeGroupMeta, exportMarkdown) becomes `DocentPage::forSite($this->databaseConnection(), $this->key())`; every `DocentPage::write(...)` call gains both `site: $this->key()` and `connection: $this->databaseConnection()`.
+  - `InteractsWithPages` and admin controllers: same substitution for every direct `DocentPage::on(...)` / `write(...)` usage (grep `DocentPage::` across `src/Http`).
+  - `InsightRecorder` / `AiQuestionLogger`: use the current site's connection and include `'site' => $this->docent->key()` in every insert payload. Add the same site+connection predicate to **every** read/update/delete query in `InsightRecorder`, including continuations, interactions, feedback, and pruning.
+  - `AskFeedbackController`: inject the manager and retrieve `AiQuestion` through its site+connection query seam before updating feedback. A valid token for another site's question must still produce 404.
+  - `InsightSummary` and the admin insights/export controllers: query through the site+connection seam. `InsightSummary` is constructed per site in `SiteServices`, not retained as a singleton.
+  - `SiteServices::buildAll()`: pass `site: $key` when constructing `DatabaseRepository`.
   - Provider `databaseSummary()`: count `DocentPage::forSite($connection, $key)` per site.
 
-- [ ] **Step 4: Run the new test, then the full suite** — PASS. Existing DB tests keep working because every default is `'docs'` and the default site key is `docs`.
+- [ ] **Step 4: Add regression cases for reverting a non-`docs` page, rejecting cross-site AI feedback/insight continuation, and using a per-site non-default database connection. Run the new tests, then the full suite** — PASS. Existing DB tests keep working because every default is `'docs'` and the default site key is `docs`.
 
 - [ ] **Step 5: Commit**
 
@@ -976,7 +1015,7 @@ it('prefers a site-scoped closure over the global one end to end', function () {
 ### Task 9: Widget site targeting
 
 **Files:**
-- Modify: `resources/views/components/widget.blade.php`, `src/DocentManager.php` (`widgetConfig()` already site-aware via `config()`/`route()` — verify only)
+- Modify: `resources/views/components/widget.blade.php`, `src/DocentManager.php` (`widgetConfig()` already site-aware via `config()`/`route()` — verify only), `tests/WidgetTestCase.php`
 - Test: `tests/Widget/WidgetSiteTest.php`
 
 **Interfaces:**
@@ -988,15 +1027,21 @@ it('prefers a site-scoped closure over the global one end to end', function () {
 <?php
 
 use STS\Docent\Facades\Docent;
+```
 
-beforeEach(function () {
-    config()->set('docent.widget.enabled', true);
-    config()->set('docent.sites.admin', [
-        'name' => 'Admin Docs',
-        'route' => ['prefix' => 'admin/docs', 'middleware' => ['web']],
-        'filesystem' => ['path' => dirname(__DIR__, 1).'/fixtures/docs'],
-    ]);
-});
+Configure the admin site in `WidgetTestCase::defineEnvironment()` so it exists **before** the package provider registers routes:
+
+```php
+$app['config']->set('docent.sites.admin', [
+    'name' => 'Admin Docs',
+    'route' => ['prefix' => 'admin/docs', 'middleware' => ['web']],
+    'filesystem' => ['path' => __DIR__.'/fixtures/docs'],
+]);
+```
+
+Then test the component:
+
+```php
 
 it('targets the requested site', function () {
     $html = $this->blade('<x-docent::widget site="admin" />');
@@ -1039,7 +1084,7 @@ it('defaults to the default site', function () {
 - Test: `tests/Feature/Sites/ConsoleSiteScopingTest.php`
 
 **Interfaces:**
-- Produces: `docent:clear {--site=}` / `docent:check {--site=}` / `docent:insights:prune {--site=}` — no option means **all** sites (loop `SiteRegistry::keys()`, calling `setCurrent($key)` per iteration); with `--site=x` only that site; unknown key → error exit. `docent:install` scaffolds the default site. `SiteDefinitionCheck` emits: error when a non-`docs` site lacks `filesystem.path`; warning when two sites resolve to the same `route.prefix`+`route.domain` pair.
+- Produces: `docent:clear {--site=}` / `docent:check {--site=}` / `docent:insights:prune {--site=}` — no option means **all** sites; with `--site=x` only that site; unknown key → error exit. Each iteration resolves the target explicitly through `SiteRegistry::site($key)` / `serviceFor($key, ...)`; it must not mutate `CurrentSite` and then reuse a scoped alias already cached for another key. `docent:install` scaffolds the default site. `SiteDefinitionCheck` emits: errors for invalid keys, an invalid explicit default, or a non-`docs` site lacking `filesystem.path`; warning when two sites on overlapping domains have equal or prefix-overlapping effective route paths.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1086,7 +1131,7 @@ it('flags a non-docs site without a filesystem path', function () {
 
 Add `DocentManager::cacheVersion(): int` (delegates to `DocentCache::version()`) if no equivalent probe exists — check `ClearCommand`'s current test for the established pattern and reuse it instead if there is one.
 
-- [ ] **Step 2: Verify failure. Step 3: Implement** the `--site` option + keys loop in the three commands, the `SiteDefinitionCheck` (reads `config('docent.sites')` directly — it validates config, not a built site), and register it in the checker composition next to the existing config-level checks.
+- [ ] **Step 2: Verify failure. Step 3: Implement** the `--site` option + explicit keyed service loop in the three commands. Run `SiteDefinitionCheck` once per command invocation (it validates the whole config); run corpus/page checks once per selected site so global configuration messages are not duplicated. Route overlap means path-prefix overlap, not just exact equality; a domainless route group overlaps every host, while two distinct concrete domains do not.
 
 - [ ] **Step 4: Run tests, full suite** — PASS. **Step 5: Commit** — `git commit -m "feat: site-aware console commands and docent:check site rules"`
 
@@ -1095,13 +1140,14 @@ Add `DocentManager::cacheVersion(): int` (delegates to `DocentCache::version()`)
 ### Task 11: Two-site isolation feature suite (spec §8 matrix)
 
 **Files:**
-- Create: `tests/Feature/Sites/TwoSiteIsolationTest.php`, second fixture corpus `tests/fixtures/admin-docs/index.md` + `tests/fixtures/admin-docs/internal/runbook.md`
+- Create: `tests/MultiSiteTestCase.php`, `tests/MultiSite/TwoSiteIsolationTest.php`, second fixture corpus `tests/fixtures/admin-docs/index.md` + `tests/fixtures/admin-docs/internal/runbook.md`
+- Modify: `tests/Pest.php` (map `MultiSiteTestCase` to `tests/MultiSite`)
 
 **Interfaces:** Consumes everything above; produces no new API — this is the spec's acceptance suite.
 
 - [ ] **Step 1: Create the fixture corpus** (`admin-docs/index.md` front matter `title: Admin Home`; `internal/runbook.md` front matter `title: Runbook`).
 
-- [ ] **Step 2: Write the tests** (all in one file, shared `beforeEach` configuring `public` at prefix `help` using the existing `fixtures/docs` corpus with `middleware: ['web']`, and `admin` at prefix `admin/docs` using `fixtures/admin-docs` with `middleware: ['web', 'auth']` and `admin.gate` left at default):
+- [ ] **Step 2: Configure both sites in `MultiSiteTestCase::defineEnvironment()` before provider boot**: `public` at prefix `help` using the existing `fixtures/docs` corpus with `middleware: ['web']`, and `admin` at prefix `admin/docs` using `fixtures/admin-docs` with `middleware: ['web', 'auth']`. Add a second test configuration with distinct domains so route generation and host matching are covered. Runtime `beforeEach()` may set values consumed during requests, but must not add routes.
 
 ```php
 it('serves each site its own corpus at its own prefix', function () {
@@ -1116,6 +1162,8 @@ it('registers keyed route names for both sites', function () {
     expect(route('docent.public.home', absolute: false))->toBe('/help')
         ->and(route('docent.admin.show', ['slug' => 'internal/runbook'], false))->toBe('/admin/docs/internal/runbook');
 });
+
+it('honors each site domain without cross-matching hosts', function () { /* configure before boot; request each host and assert the other host cannot reach it */ });
 
 it('gates each admin panel with its own site gate', function () { /* enable database+admin on both; define two gates; assert cross-denial */ });
 
