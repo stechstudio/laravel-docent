@@ -98,6 +98,8 @@ function commands() {
             run: (e, r) => insertContainer(e, r, { type: 'docsFrame', attrs: { caption: null }, content: [{ type: 'paragraph' }] }) },
         { title: 'Video', description: 'Embed a provider or self-hosted video', icon: 'image', group: 'Docent', keywords: 'youtube vimeo loom mp4 media',
             run: (e, r) => insertBlock(e, r, { type: 'docsVideo', attrs: { url: '', caption: null } }) },
+        { title: 'Section cards', description: 'Auto-generated cards from the navigation tree', icon: 'cards', group: 'Docent', keywords: 'directory group index categories landing',
+            run: (e, r) => insertBlock(e, r, { type: 'docsSectionCards', attrs: { section: '', columns: 3 } }) },
         { title: 'Code group', description: 'Tabbed code examples', icon: 'code', group: 'Docent', keywords: 'tabs snippets languages terminal',
             run: (e, r) => insertContainer(e, r, { type: 'docsCodeGroup', content: [
                 { type: 'codeBlock', attrs: { language: 'php', filename: null, title: null } },

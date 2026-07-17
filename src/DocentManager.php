@@ -23,10 +23,12 @@ use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\HtmlPolicy;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Renderer\AgentMarkdownRenderer;
 use STS\Docent\Documents\Renderer\CodeBlockRenderer;
 use STS\Docent\Documents\Renderer\ContentHtmlSanitizer;
 use STS\Docent\Documents\Renderer\HtmlRenderer;
+use STS\Docent\Documents\Renderer\SectionCardsHtml;
 use STS\Docent\Documents\Renderer\TableOfContents;
 use STS\Docent\Documents\Renderer\TocEntry;
 use STS\Docent\Documents\Serializer\AstToTiptap;
@@ -36,6 +38,7 @@ use STS\Docent\Navigation\NavigationGroup;
 use STS\Docent\Navigation\NavigationItem;
 use STS\Docent\Navigation\NavigationLink;
 use STS\Docent\Navigation\NavigationSection;
+use STS\Docent\Navigation\SectionCard;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\DocumentationMode;
@@ -252,6 +255,21 @@ final class DocentManager
         );
     }
 
+    /**
+     * Resolve the Blade view for a front-matter `layout` value. Anything but
+     * the default `docs` layout resolves through the host's `docent.layouts`
+     * config map first, then the `docent::layouts.*` namespace — where hosts
+     * may add brand-new views (`resources/views/vendor/docent/layouts/`)
+     * without forking any package file. An unknown layout fails loudly when
+     * the view is rendered rather than silently falling back.
+     */
+    public function layoutView(string $layout): string
+    {
+        $configured = config('docent.layouts.'.$layout);
+
+        return is_string($configured) && $configured !== '' ? $configured : 'docent::layouts.'.$layout;
+    }
+
     public function renderDocument(Document $document, DocumentationContext $context, string $baseDir = ''): string
     {
         $renderer = new HtmlRenderer(
@@ -265,11 +283,28 @@ final class DocentManager
             ],
             includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
             urlResolver: fn (string $slug): string => $this->url($slug),
+            sectionCardsRenderer: fn (SectionCards $node): string => $this->sectionCardsHtml($node->section, $node->columns, $context),
             codeBlockRenderer: $this->codeBlockRenderer,
             htmlSanitizer: $this->htmlSanitizer,
         );
 
         return $renderer->render($document);
+    }
+
+    /**
+     * Card summaries for a directory's children (every top-level directory
+     * when `$section` is empty), filtered to what the viewer may see.
+     *
+     * @return list<SectionCard>
+     */
+    public function sectionCards(string $section, DocumentationContext $context): array
+    {
+        return $this->navigation->cards($section, $context);
+    }
+
+    public function sectionCardsHtml(string $section, int $columns, DocumentationContext $context): string
+    {
+        return SectionCardsHtml::render($this->sectionCards($section, $context), $columns);
     }
 
     /**
@@ -293,6 +328,7 @@ final class DocentManager
                 routePrefix: (string) config('docent.route.prefix', 'docs'),
                 includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
                 markdownUrlResolver: fn (string $slug): string => $this->markdownUrl($slug),
+                sectionCardsResolver: fn (string $section): array => $this->sectionCards($section, $context),
             );
 
             return $renderer->render($page->document(), $page->title(), $page->description());

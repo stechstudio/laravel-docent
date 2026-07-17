@@ -99,8 +99,9 @@ final class FrontMatter
     }
 
     /**
-     * The page layout: `docs` (default, full navigation chrome) or `landing`
-     * (hero + centered body, no sidebar/TOC/prev-next).
+     * The page layout: `docs` (default, full navigation chrome) or a named
+     * hero-style layout — `landing` ships with the package, and hosts may
+     * register their own. Non-docs layouts drop the sidebar/TOC/prev-next.
      */
     public function layout(): string
     {
@@ -117,6 +118,15 @@ final class FrontMatter
         $badge = $this->get('hero.badge');
 
         return is_scalar($badge) && (string) $badge !== '' ? (string) $badge : null;
+    }
+
+    /**
+     * Whether the landing hero shows a prominent search box that opens the
+     * search-and-ask dialog.
+     */
+    public function heroSearch(): bool
+    {
+        return (bool) $this->get('hero.search', false);
     }
 
     /**

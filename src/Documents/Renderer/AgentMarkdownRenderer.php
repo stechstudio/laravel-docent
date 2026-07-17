@@ -31,6 +31,7 @@ use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strong;
 use STS\Docent\Documents\Ast\Tab;
@@ -41,6 +42,7 @@ use STS\Docent\Documents\Document;
 use STS\Docent\Documents\FrontMatter;
 use STS\Docent\Documents\Serializer\MarkdownExporter;
 use STS\Docent\Runtime\DocumentationContext;
+use STS\Docent\Navigation\SectionCard;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\InternalLink;
 
@@ -61,6 +63,7 @@ final class AgentMarkdownRenderer
     /**
      * @param  ?Closure(string): ?Document  $includeResolver
      * @param  ?Closure(string): string  $markdownUrlResolver
+     * @param  ?Closure(string): list<SectionCard>  $sectionCardsResolver
      */
     public function __construct(
         private readonly IntegrationRegistry $registry,
@@ -69,6 +72,7 @@ final class AgentMarkdownRenderer
         private readonly string $routePrefix = 'docs',
         private readonly ?Closure $includeResolver = null,
         private readonly ?Closure $markdownUrlResolver = null,
+        private readonly ?Closure $sectionCardsResolver = null,
     ) {}
 
     public function render(Document $document, string $title, ?string $description = null): string
@@ -144,6 +148,10 @@ final class AgentMarkdownRenderer
 
         if ($node instanceof CardGroup) {
             return [$this->cards($node->children)];
+        }
+
+        if ($node instanceof SectionCards) {
+            return $this->sectionCards($node);
         }
 
         if ($node instanceof Card) {
@@ -264,6 +272,43 @@ final class AgentMarkdownRenderer
         }
 
         return $list;
+    }
+
+    /**
+     * A generated card grid becomes a plain list of links: agents want the
+     * destinations, not the grid. Markdown URLs keep agents on the markdown
+     * surface.
+     *
+     * @return list<Node>
+     */
+    private function sectionCards(SectionCards $node): array
+    {
+        $cards = $this->sectionCardsResolver !== null ? ($this->sectionCardsResolver)($node->section) : [];
+
+        if ($cards === []) {
+            return [];
+        }
+
+        $list = new BulletList($node->line);
+
+        foreach ($cards as $card) {
+            $url = $this->markdownUrlResolver !== null ? ($this->markdownUrlResolver)($card->slug) : $card->url;
+            $link = new Link($url, line: $node->line);
+            $link->appendChild(new Text($card->title, $node->line));
+
+            $title = new Paragraph($node->line);
+            $title->appendChild($link);
+
+            if ($card->description !== null && $card->description !== '') {
+                $title->appendChild(new Text(' — '.$card->description, $node->line));
+            }
+
+            $item = new ListItem(line: $node->line);
+            $item->setChildren([$title]);
+            $list->appendChild($item);
+        }
+
+        return [$list];
     }
 
     private function steps(Steps $node): OrderedList

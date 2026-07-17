@@ -59,6 +59,7 @@ use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node as AstNode;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Ast\SoftBreak;
 use STS\Docent\Documents\Ast\Step;
 use STS\Docent\Documents\Ast\Steps;
@@ -204,6 +205,11 @@ final class AstConverter
             'unless' => new ConditionBlock($attributes['condition'] ?? $shorthand ?? '', true, $arguments, $line),
             'audience' => new AudienceBlock($attributes['name'] ?? $shorthand ?? '', $line),
             'cards' => new CardGroup($this->cardColumns($attributes['columns'] ?? null), $line),
+            'section-cards' => new SectionCards(
+                trim($attributes['section'] ?? $shorthand ?? ''),
+                $this->cardColumns($attributes['columns'] ?? null, 3),
+                $line,
+            ),
             'card' => new Card(
                 $attributes['title'] ?? $shorthand,
                 $attributes['icon'] ?? null,
@@ -358,11 +364,12 @@ final class AstConverter
     }
 
     /**
-     * Grid width for a `::::cards` group: a positive integer, defaulting to 2.
+     * Grid width for a card grid: a positive integer. `::::cards` defaults
+     * to 2, `::section-cards` to 3.
      */
-    private function cardColumns(?string $value): int
+    private function cardColumns(?string $value, int $default = 2): int
     {
-        return $value !== null && ctype_digit($value) && (int) $value > 0 ? (int) $value : 2;
+        return $value !== null && ctype_digit($value) && (int) $value > 0 ? (int) $value : $default;
     }
 
     /**

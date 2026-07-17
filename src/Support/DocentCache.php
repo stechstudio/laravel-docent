@@ -72,6 +72,7 @@ final class DocentCache
         Documents\Ast\Node::class,
         Documents\Ast\OrderedList::class,
         Documents\Ast\Paragraph::class,
+        Documents\Ast\SectionCards::class,
         Documents\Ast\SoftBreak::class,
         Documents\Ast\Step::class,
         Documents\Ast\Steps::class,

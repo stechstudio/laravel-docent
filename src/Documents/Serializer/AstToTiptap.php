@@ -32,6 +32,7 @@ use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Ast\SoftBreak;
 use STS\Docent\Documents\Ast\Step;
 use STS\Docent\Documents\Ast\Steps;
@@ -123,6 +124,7 @@ final class AstToTiptap
             $node instanceof Tab => ['type' => 'docsTab', 'attrs' => ['label' => $node->label], 'content' => $this->blocks($node->children)],
             $node instanceof Frame => ['type' => 'docsFrame', 'attrs' => ['caption' => $node->caption], 'content' => $this->blocks($node->children)],
             $node instanceof Video => ['type' => 'docsVideo', 'attrs' => ['url' => $node->url, 'caption' => $node->caption]],
+            $node instanceof SectionCards => ['type' => 'docsSectionCards', 'attrs' => ['section' => $node->section, 'columns' => $node->columns]],
             $node instanceof CodeGroup => ['type' => 'docsCodeGroup', 'content' => $this->blocks($node->children)],
             $node instanceof IncludeNode => ['type' => 'docsInclude', 'attrs' => ['name' => $node->name]],
             $node instanceof ComponentNode => ['type' => 'docsComponent', 'attrs' => ['name' => $node->name, 'attributes' => (object) $node->attributes]],

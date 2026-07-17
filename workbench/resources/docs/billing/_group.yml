@@ -2,3 +2,4 @@ label: Billing
 order: 2
 icon: credit-card
 section: true
+description: Plans, payment methods, and invoices — managed from inside your app.

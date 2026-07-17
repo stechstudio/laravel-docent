@@ -36,6 +36,7 @@ use STS\Docent\Documents\Ast\Node as AstNode;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
 use STS\Docent\Documents\Ast\Step;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Ast\Steps;
 use STS\Docent\Documents\Ast\Strikethrough;
 use STS\Docent\Documents\Ast\Strong;
@@ -134,6 +135,7 @@ final class TiptapDocumentParser implements DocumentParser
             'docsTab' => $this->withBlocks(new Tab($this->stringAttr($node, 'label')), $node),
             'docsFrame' => $this->withBlocks(new Frame($this->nullableStringAttr($node, 'caption')), $node),
             'docsVideo' => new Video($this->stringAttr($node, 'url'), $this->nullableStringAttr($node, 'caption')),
+            'docsSectionCards' => new SectionCards($this->stringAttr($node, 'section'), $this->intAttr($node, 'columns', 3)),
             'docsCodeGroup' => $this->withBlocks(new CodeGroup, $node),
             'docsInclude' => new IncludeNode($this->stringAttr($node, 'name')),
             'docsComponent' => new ComponentNode($this->stringAttr($node, 'name'), $this->attributesAttr($node)),

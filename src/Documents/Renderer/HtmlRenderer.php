@@ -35,6 +35,7 @@ use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Ast\SoftBreak;
 use STS\Docent\Documents\Ast\Step;
 use STS\Docent\Documents\Ast\Steps;
@@ -89,6 +90,7 @@ final class HtmlRenderer
         private readonly array $options = [],
         private readonly ?Closure $includeResolver = null,
         private readonly ?Closure $urlResolver = null,
+        private readonly ?Closure $sectionCardsRenderer = null,
         ?CodeBlockRenderer $codeBlockRenderer = null,
         ?ContentHtmlSanitizer $htmlSanitizer = null,
     ) {
@@ -162,6 +164,7 @@ final class HtmlRenderer
             $node instanceof Frame => $this->renderFrame($node),
             $node instanceof Video => $this->renderVideo($node),
             $node instanceof CodeGroup => $this->renderCodeGroup($node),
+            $node instanceof SectionCards => $this->sectionCardsRenderer !== null ? ($this->sectionCardsRenderer)($node) : '',
             $node instanceof AuthorizationBlock => $this->authorizationVisible($node, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof ConditionBlock => $this->conditionVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',
             $node instanceof AudienceBlock => $this->audienceVisible($node, $this->registry, $this->context) ? $this->renderChildren($node) : '',

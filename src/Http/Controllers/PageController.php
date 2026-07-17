@@ -84,49 +84,54 @@ final class PageController
 
         $this->insights->pageViewed($slug, 'reader');
 
-        if ($page->isLanding()) {
-            return response()->view('docent::landing', [
-                'docent' => $this->docent,
-                'siteName' => $this->docent->siteName(),
-                'homeUrl' => $this->docent->url(''),
-                'searchEnabled' => (bool) config('docent.search.enabled', true),
-                'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
-                'page' => $page,
-                'title' => $page->title(),
-                'description' => $page->description(),
-                'html' => $page->render($context),
+        if (($layout = $page->layout()) !== 'docs') {
+            return response()->view($this->docent->layoutView($layout), [
+                ...$this->payload($request, $page, $slug, $context),
+                'layout' => $layout,
+                'landing' => true,
                 'heroBadge' => $page->heroBadge(),
                 'heroCta' => $page->heroCta(),
-                'sections' => $this->docent->navigationSections($context, $slug),
-                'topbarLinks' => $this->docent->topbarLinks($context, $slug),
-                'currentSlug' => $slug,
-                'landing' => true,
+                'heroSearch' => $page->heroSearch(),
             ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
         }
 
         [$prev, $next] = $this->docent->prevNext($slug, $context);
-        $sections = $this->docent->navigationSections($context, $slug);
 
         return response()->view('docent::page', [
+            ...$this->payload($request, $page, $slug, $context),
+            'breadcrumb' => $this->docent->breadcrumb($slug, $context),
+            'navigation' => $this->docent->sectionNavigation($slug, $context),
+            'navigationLinks' => $this->docent->navigationLinks($context, $slug),
+            'toc' => $page->toc($context),
+            'prev' => $prev,
+            'next' => $next,
+        ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
+    }
+
+    /**
+     * The view data every layout receives — the documented contract for
+     * custom host layouts. The docs layout and front-matter layouts each add
+     * their own keys on top, but this base is stable for all of them.
+     *
+     * @return array<string, mixed>
+     */
+    private function payload(Request $request, Page $page, string $slug, DocumentationContext $context): array
+    {
+        return [
             'docent' => $this->docent,
             'siteName' => $this->docent->siteName(),
             'homeUrl' => $this->docent->url(''),
             'searchEnabled' => (bool) config('docent.search.enabled', true),
             'assistantStateNamespace' => $this->assistantStateNamespace($request, $context),
             'page' => $page,
+            'context' => $context,
             'title' => $page->title(),
             'description' => $page->description(),
-            'breadcrumb' => $this->docent->breadcrumb($slug, $context),
             'html' => $page->render($context),
-            'navigation' => $this->docent->sectionNavigation($slug, $context),
-            'navigationLinks' => $this->docent->navigationLinks($context, $slug),
+            'sections' => $this->docent->navigationSections($context, $slug),
             'topbarLinks' => $this->docent->topbarLinks($context, $slug),
-            'sections' => $sections,
-            'toc' => $page->toc($context),
             'currentSlug' => $slug,
-            'prev' => $prev,
-            'next' => $next,
-        ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
+        ];
     }
 
     private function denied(): RedirectResponse

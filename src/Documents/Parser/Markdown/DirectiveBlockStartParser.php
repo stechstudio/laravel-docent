@@ -23,7 +23,7 @@ final class DirectiveBlockStartParser implements BlockStartParserInterface
     public const NAMES = [
         'can', 'cannot', 'when', 'unless', 'audience', 'include',
         'note', 'tip', 'info', 'warning', 'danger',
-        'cards', 'card',
+        'cards', 'card', 'section-cards',
         'steps', 'step', 'accordion', 'tabs', 'tab', 'frame',
         'video', 'code-group',
     ];

@@ -210,6 +210,101 @@ final class NavigationBuilder
     }
 
     /**
+     * Card summaries for the `::section-cards` directive and the
+     * `x-docent::section-cards` component: every top-level directory when
+     * `$section` is empty, or the children (pages and sub-directories) of
+     * one directory. Cards honor the same per-viewer filtering as the
+     * sidebar, so the grid adapts to who is looking at it.
+     *
+     * @return list<SectionCard>
+     */
+    public function cards(string $section, DocumentationContext $context): array
+    {
+        $section = trim($section, '/');
+        $level = $this->level($section);
+
+        if ($level === null) {
+            return [];
+        }
+
+        $cards = [];
+
+        // A named directory's own pages become cards; its index page
+        // describes the directory itself rather than appearing as a card.
+        // Loose root pages (the homepage among them) never become cards.
+        if ($section !== '') {
+            foreach ($this->sortPages($level['items']) as $page) {
+                if ($page->slug !== $section && $this->visible($page, $context)) {
+                    $cards[] = new SectionCard($page->slug, $page->title, ($this->urlResolver)($page->slug), $page->description);
+                }
+            }
+        }
+
+        foreach ($this->sortGroups($level['children']) as $node) {
+            $card = $this->groupCard($node, $context);
+
+            if ($card !== null) {
+                $cards[] = $card;
+            }
+        }
+
+        return $cards;
+    }
+
+    /**
+     * @return array{items: list<PageReference>, children: array<string, mixed>}|null
+     */
+    private function level(string $section): ?array
+    {
+        $level = $this->skeleton();
+
+        if ($section === '') {
+            return $level;
+        }
+
+        foreach (explode('/', $section) as $segment) {
+            $level = $level['children'][$segment] ?? null;
+
+            if ($level === null) {
+                return null;
+            }
+        }
+
+        return $level;
+    }
+
+    /**
+     * @param  array<string, mixed>  $node
+     */
+    private function groupCard(array $node, DocumentationContext $context): ?SectionCard
+    {
+        $group = $this->filterGroup($node, $context);
+
+        if ($group === null) {
+            return null;
+        }
+
+        $pages = $this->flatten([$group]);
+        $index = null;
+
+        foreach ($group->items as $item) {
+            if ($item->slug === $node['directory']) {
+                $index = $item;
+                break;
+            }
+        }
+
+        return new SectionCard(
+            $node['directory'],
+            $node['label'],
+            $index?->url ?? $pages[0]->url,
+            ($node['description'] ?? null) ?? $index?->description,
+            $node['icon'],
+            count($pages),
+        );
+    }
+
+    /**
      * @return array{0: ?NavigationItem, 1: ?NavigationItem}
      */
     public function prevNext(string $slug, DocumentationContext $context): array
@@ -267,6 +362,7 @@ final class NavigationBuilder
                     $cursor['children'][$segment] = [
                         'label' => $meta['label'] ?? Str::headline($segment),
                         'icon' => $meta['icon'] ?? null,
+                        'description' => $meta['description'] ?? null,
                         'order' => $meta['order'] ?? null,
                         'directory' => $accumulated,
                         'section' => ($meta['section'] ?? false) === true,

@@ -5,6 +5,7 @@ order: 0
 layout: landing
 hero:
   badge: Documentation
+  search: true
   cta:
     - label: Get started
       href: getting-started/installation
@@ -16,22 +17,8 @@ hero:
 Double-entry accounting your engineers will actually enjoy integrating with.
 These docs adapt to who you are and what your account can do.
 
-::::cards
-:::card title="Getting Started" icon="rocket" href="getting-started/installation"
-Install the SDK, configure your ledger, and record your first transaction.
+:::section-cards
 :::
-:::card title="Billing" icon="credit-card" href="billing/overview"
-Plans, payment methods, and invoices — managed from inside your app.
-:::
-:::can ability="reports.view"
-:::card title="Reports" icon="chart" href="reports"
-Profit & loss, balance sheet, and cash flow for account admins.
-:::
-:::
-:::card title="Core Concepts" icon="book" href="getting-started/concepts"
-Ledgers, accounts, and entries — the three nouns you need to hold in your head.
-:::
-::::
 
 Everything here is powered by
 [Docent](https://github.com/stechstudio/laravel-docent), so the navigation,

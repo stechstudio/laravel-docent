@@ -234,6 +234,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Page Layouts
+    |--------------------------------------------------------------------------
+    |
+    | A page opts out of the docs chrome with front-matter `layout: <name>`.
+    | Names resolve to `docent::layouts.<name>` views, so a custom layout is
+    | one new file in resources/views/vendor/docent/layouts/ — no package
+    | views need forking. Map a name here instead to point it at any view in
+    | your application. Every layout receives the same documented payload as
+    | the built-in `landing` layout.
+    |
+    */
+
+    'layouts' => [
+        // 'help-center' => 'docs.help-center',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | In-app Help Widget
     |--------------------------------------------------------------------------
     |

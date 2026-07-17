@@ -669,6 +669,65 @@ function openVideoEditor(editor, getPos, node, anchor) {
     openPopover(anchor, panel);
 }
 
+export function DocsSectionCards() {
+    return Node.create({
+        name: 'docsSectionCards',
+        group: 'block',
+        atom: true,
+        selectable: true,
+        addAttributes: () => ({ section: { default: '' }, columns: { default: 3 } }),
+        parseHTML: () => [{ tag: 'div[data-docs-section-cards]' }],
+        renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-docs-section-cards': '' })],
+        addNodeView() {
+            return ({ node, editor, getPos }) => {
+                const dom = h('div', { class: 'dax-node dax-widget dax-widget-section-cards', contenteditable: 'false' });
+                let current = node;
+                const paint = () => {
+                    dom.innerHTML = '';
+                    dom.append(
+                        h('span', { class: 'dax-widget-ic', html: ui('cards', 16) }),
+                        h('span', { class: 'dax-widget-label' }, [
+                            h('span', { class: 'dax-widget-kind' }, 'Section cards'),
+                            h('span', { class: 'dax-widget-name' }, current.attrs.section || 'All top-level sections'),
+                        ]),
+                        h('span', { class: 'dax-node-actions' }, [
+                            editButton(() => openSectionCardsEditor(editor, getPos, current, dom)),
+                            deleteButton(() => deleteNode(editor, getPos)),
+                        ]),
+                    );
+                };
+                paint();
+                return {
+                    dom,
+                    update(updated) {
+                        if (updated.type !== node.type) return false;
+                        current = updated;
+                        paint();
+                        return true;
+                    },
+                    stopEvent: () => true,
+                    ignoreMutation: () => true,
+                };
+            };
+        },
+    });
+}
+
+function openSectionCardsEditor(editor, getPos, node, anchor) {
+    const panel = h('div', { class: 'dax-pop-body' });
+    panel.append(
+        popHeader('Section cards'),
+        field('Directory (blank for all top-level sections)', node.attrs.section || '', (value) => setAttrs(editor, getPos, { section: value.trim() }), {
+            mono: true, placeholder: 'getting-started',
+        }),
+        field('Columns', String(node.attrs.columns || 3), (value) => {
+            const columns = parseInt(value, 10);
+            if (Number.isInteger(columns) && columns > 0) setAttrs(editor, getPos, { columns });
+        }),
+    );
+    openPopover(anchor, panel);
+}
+
 export function DocsCodeGroup() {
     return contentComponent({
         name: 'docsCodeGroup', content: 'codeBlock*', tag: 'data-docs-code-group', label: 'Code group', icon: 'code',
@@ -1036,6 +1095,7 @@ export function docentNodes(context) {
         DocsTab(),
         DocsFrame(),
         DocsVideo(),
+        DocsSectionCards(),
         DocsCodeGroup(),
         DocsValue(context),
         DocsAppLink(context),

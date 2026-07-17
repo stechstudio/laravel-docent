@@ -33,6 +33,7 @@ use STS\Docent\Documents\Ast\ListItem;
 use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Ast\OrderedList;
 use STS\Docent\Documents\Ast\Paragraph;
+use STS\Docent\Documents\Ast\SectionCards;
 use STS\Docent\Documents\Ast\SoftBreak;
 use STS\Docent\Documents\Ast\Step;
 use STS\Docent\Documents\Ast\Steps;
@@ -134,7 +135,8 @@ final class MarkdownExporter
             $node instanceof Steps, $node instanceof Step,
             $node instanceof Accordion, $node instanceof Tabs,
             $node instanceof Tab, $node instanceof Frame => $this->directive($node),
-            $node instanceof Video, $node instanceof CodeGroup => $this->directive($node),
+            $node instanceof Video, $node instanceof CodeGroup,
+            $node instanceof SectionCards => $this->directive($node),
             default => '',
         };
     }
@@ -352,6 +354,9 @@ final class MarkdownExporter
             $node instanceof Video => 'video'.($node->url !== '' ? ' '.$node->url : '')
                 .($node->caption !== null ? ' caption="'.$node->caption.'"' : ''),
             $node instanceof CodeGroup => 'code-group',
+            $node instanceof SectionCards => 'section-cards'
+                .($node->section !== '' ? ' '.$node->section : '')
+                .($node->columns !== 3 ? ' columns="'.$node->columns.'"' : ''),
             default => '',
         };
     }
@@ -419,7 +424,8 @@ final class MarkdownExporter
             || $node instanceof Tab
             || $node instanceof Frame
             || $node instanceof Video
-            || $node instanceof CodeGroup;
+            || $node instanceof CodeGroup
+            || $node instanceof SectionCards;
     }
 
     /**

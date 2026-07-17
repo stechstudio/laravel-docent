@@ -62,22 +62,23 @@ final class Page
     }
 
     /**
-     * The page layout: `docs` (default) or `landing`. The controller uses this
-     * to pick the view and suppress the sidebar/TOC chrome.
+     * The page layout: `docs` (default) or any named layout resolved through
+     * {@see DocentManager::layoutView()}. Non-docs layouts render without the
+     * sidebar/TOC chrome.
      */
     public function layout(): string
     {
         return $this->frontMatter()->layout();
     }
 
-    public function isLanding(): bool
-    {
-        return $this->layout() === 'landing';
-    }
-
     public function heroBadge(): ?string
     {
         return $this->frontMatter()->heroBadge();
+    }
+
+    public function heroSearch(): bool
+    {
+        return $this->frontMatter()->heroSearch();
     }
 
     /**
