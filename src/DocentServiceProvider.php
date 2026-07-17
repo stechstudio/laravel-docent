@@ -62,7 +62,10 @@ use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
 use STS\Docent\Search\SearchQueryAnalyzer;
+use STS\Docent\Sites\CurrentSite;
 use STS\Docent\Sites\SiteConfig;
+use STS\Docent\Sites\SiteRegistry;
+use STS\Docent\Sites\SiteServices;
 use STS\Docent\Support\DocentCache;
 
 final class DocentServiceProvider extends ServiceProvider
@@ -72,6 +75,19 @@ final class DocentServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/docent.php', 'docent');
 
         $this->app->singleton(IntegrationRegistry::class, static fn (Application $app): IntegrationRegistry => new IntegrationRegistry(static fn (string $class): object => $app->make($class)));
+
+        $this->app->singleton(SiteRegistry::class, static fn (Application $app): SiteRegistry => new SiteRegistry(
+            $app,
+            $app->make(IntegrationRegistry::class),
+        ));
+        $this->app->scoped(CurrentSite::class, static fn (Application $app): CurrentSite => new CurrentSite(
+            $app->make(SiteRegistry::class),
+        ));
+        $this->app->scoped(SiteServices::class, static fn (Application $app): SiteServices => new SiteServices(
+            $app,
+            $app->make(SiteRegistry::class),
+            $app->make(CurrentSite::class),
+        ));
 
         $this->app->scoped(DocumentationMode::class, static fn (): DocumentationMode => new DocumentationMode);
 

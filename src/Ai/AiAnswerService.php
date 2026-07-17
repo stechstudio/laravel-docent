@@ -12,21 +12,17 @@ use STS\Docent\DocentManager;
 
 final class AiAnswerService
 {
-    private string $provider;
+    private ?string $provider = null;
 
-    private string $model;
+    private ?string $model = null;
 
     public function __construct(
         private readonly DocentManager $docent,
-        PrismGuard $guard,
+        private readonly PrismGuard $guard,
+        bool $validate = true,
     ) {
-        $guard->ensureInstalled();
-
-        $this->provider = trim((string) $this->docent->config('ai.provider'));
-        $this->model = trim((string) $this->docent->config('ai.model'));
-
-        if ($this->provider === '' || $this->model === '') {
-            throw new LogicException('Docent AI requires both docent.ai.provider and docent.ai.model.');
+        if ($validate) {
+            $this->credentials();
         }
     }
 
@@ -36,6 +32,7 @@ final class AiAnswerService
     {
         $facade = 'Prism\\Prism\\Facades\\Prism';
         $messages = [];
+        [$provider, $model] = $this->credentials();
 
         foreach ($history as $turn) {
             $messages[] = new UserMessage($turn->question);
@@ -44,11 +41,30 @@ final class AiAnswerService
 
         $messages[] = new UserMessage(AiPrompt::question($question));
         $request = $facade::text()
-            ->using($this->provider, $this->model)
+            ->using($provider, $model)
             ->withSystemPrompt(AiPrompt::system($corpus))
             ->withMessages($messages)
             ->withMaxTokens(max(1, (int) $this->docent->config('ai.max_tokens', 1200)));
 
         yield from $request->asStream();
+    }
+
+    /** @return array{string, string} */
+    private function credentials(): array
+    {
+        if ($this->provider !== null && $this->model !== null) {
+            return [$this->provider, $this->model];
+        }
+
+        $this->guard->ensureInstalled();
+
+        $provider = trim((string) $this->docent->config('ai.provider'));
+        $model = trim((string) $this->docent->config('ai.model'));
+
+        if ($provider === '' || $model === '') {
+            throw new LogicException('Docent AI requires both docent.ai.provider and docent.ai.model.');
+        }
+
+        return [$this->provider = $provider, $this->model = $model];
     }
 }

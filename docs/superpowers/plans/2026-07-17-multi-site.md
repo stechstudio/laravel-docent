@@ -533,7 +533,7 @@ The singleton registry owns durable registration overlays, while scoped services
 - Produces on scoped `SiteServices`: `current()`, `site(?string $key = null)`, `service(string $class)`, and `serviceFor(string $key, string $class)`. It memoizes the **entire** graph for a key in one assignment before returning any member.
 - Produces: `SetCurrentSite` middleware — `handle(Request $request, Closure $next, string $key)` calls `$currentSite->set($key)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```php
 <?php
@@ -642,9 +642,9 @@ it('requires an explicit filesystem path for non-docs sites', function () {
 })->throws(RuntimeException::class);
 ```
 
-- [ ] **Step 2: Run to verify failure** — `vendor/bin/pest tests/Feature/Sites/SiteRegistryTest.php` — FAIL, class not found.
+- [x] **Step 2: Run to verify failure** — `vendor/bin/pest tests/Feature/Sites/SiteRegistryTest.php` — FAIL, class not found.
 
-- [ ] **Step 3: Implement `SiteRegistry`.** Skeleton (the `build()` body ports the provider's current wiring verbatim, per site):
+- [x] **Step 3: Implement `SiteRegistry`.** Skeleton (the `build()` body ports the provider's current wiring verbatim, per site):
 
 ```php
 <?php
@@ -782,7 +782,8 @@ private function buildAll(string $key): array
         // Shared, site-agnostic services still come from the container:
         // DocumentParser, ContentHtmlSanitizer, PrismGuard, DocumentationMode.
         // Construct CodeBlockRenderer with this graph's DocentCache and construct
-        // InsightSummary with the site's key/connection; neither is a singleton.
+        // InsightSummary as a per-site instance; neither is a singleton. Task 7
+        // adds the site's key/connection to InsightSummary when DB scoping lands.
     }
 }
 ```
@@ -827,9 +828,9 @@ final class SetCurrentSite
 
 Register `SiteRegistry` as a **singleton**, and `CurrentSite` plus `SiteServices` as **scoped**. This keeps boot-time site registrations durable while ensuring request selection and mutable service state are Octane-safe. Validate site keys before using them in route names or middleware parameters.
 
-- [ ] **Step 4: Run the new tests** — `vendor/bin/pest tests/Feature/Sites/SiteRegistryTest.php` — PASS. Full suite still green (nothing else consumes the registry yet).
+- [x] **Step 4: Run the new tests** — `vendor/bin/pest tests/Feature/Sites/SiteRegistryTest.php` — PASS. Full suite still green (nothing else consumes the registry yet).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 composer lint && composer analyse && composer test
