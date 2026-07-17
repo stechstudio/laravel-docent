@@ -31,3 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional AI assistant answering viewer questions from the documentation corpus, with temporary conversations and an embeddable help widget.
 - Privacy-conscious documentation insights: top searches, low click-through queries, and page engagement.
 - Prebuilt, themeable UI with dark mode and server-side syntax highlighting; no build step required in the host app.
+
+### Fixed
+
+- Assistant answers now favor flat, readable Markdown with properly fenced code examples and clickable documentation citations.

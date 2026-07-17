@@ -64,6 +64,18 @@ it('links only exact viewer-visible citations', function () {
         ->toContain('Data');
 });
 
+it('autolinks bare viewer-visible citations without linking other urls', function () {
+    $html = renderAiAnswer(
+        'Source: https://app.test/docs/video. Ignore https://evil.test/docs/video.',
+    );
+
+    expect($html)
+        ->toContain('href="https://app.test/docs/video"')
+        ->toContain('data-docent-assistant-citation=""')
+        ->not->toContain('href="https://evil.test/docs/video"')
+        ->toContain('https://evil.test/docs/video');
+});
+
 it('renders malformed markdown without trusting unfinished markup', function () {
     $html = renderAiAnswer("[unfinished](https://app.test/docs/video\n\n<svg onload=alert(1)>");
 

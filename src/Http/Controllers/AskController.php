@@ -237,7 +237,7 @@ final class AskController
         $historyHash = hash('sha256', json_encode($history, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
         return implode(':', [
-            'ai-answer-v2',
+            'ai-answer-v3',
             $corpus->retrievalVersion,
             $mode,
             $historyHash,

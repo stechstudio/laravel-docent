@@ -90,7 +90,7 @@ it('streams signed conversation metadata and the citation whitelist before Prism
         ->toContain("event: stream_end\n");
     expect(streamedAnswer($stream))->toBe('Use the setup guide: http://localhost/docs/guides/setup');
     expect(streamedEvent($stream, 'answer_rendered')['html'] ?? null)
-        ->toBe('<p>Use the setup guide: http://localhost/docs/guides/setup</p>');
+        ->toBe('<p>Use the setup guide: <a href="http://localhost/docs/guides/setup" class="docent-assistant-link" data-docent-assistant-citation="">http://localhost/docs/guides/setup</a></p>');
 });
 
 it('renders a dedicated reader Assistant outside search', function () {

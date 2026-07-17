@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Ai;
 
 use League\CommonMark\Environment\Environment;
+use League\CommonMark\Extension\Autolink\AutolinkExtension;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\CommonMark\Node\Inline\Image;
 use League\CommonMark\Extension\CommonMark\Node\Inline\Link;
@@ -24,6 +25,7 @@ final class AiAnswerRenderer
             'allow_unsafe_links' => false,
         ]);
         $environment->addExtension(new CommonMarkCoreExtension);
+        $environment->addExtension(new AutolinkExtension);
         $environment->addRenderer(Link::class, new AiAnswerLinkRenderer(array_column($citations, 'url')), 100);
         $environment->addRenderer(Image::class, new AiAnswerImageRenderer, 100);
 

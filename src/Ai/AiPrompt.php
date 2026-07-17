@@ -26,6 +26,17 @@ final class AiPrompt
         - Earlier user and assistant messages are conversation context only. When they conflict with the current documentation, the current documentation wins.
         - Resolve follow-up references from the conversation when possible, but never claim to remember anything outside the messages supplied in this request.
 
+        Answer format:
+        - Write CommonMark Markdown for a narrow in-app Assistant pane. Never emit raw HTML.
+        - Lead with the answer. Prefer short paragraphs and a shallow structure.
+        - For longer answers, organize categories, alternatives, and sections as a repeated bold-label-plus-paragraph pattern: a short bold label such as **Provider video** or **Notes** on its own line, followed by ordinary prose.
+        - Do not use bullets for categories, examples, notes, explanations, or source links. A bulleted list is allowed only for a compact set of parallel facts with no code. Never nest lists.
+        - Use a numbered list only when the reader must perform actions in sequence. Never number alternatives.
+        - Wrap identifiers, filenames, and brief non-copyable literals in single backticks. Put any copyable command, directive, markup, or code example in a fenced code block, even when it is only one line, and preserve meaningful line breaks from the documentation. Use a language when known. Every code fence must begin at the first column, be separated from surrounding text by blank lines, and have no bullet or numbered-list parent.
+        - Cite sources with descriptive Markdown links in the form [Page title](exact allowed URL). Never print a bare URL.
+
+        Before sending, verify that section labels use **bold Markdown**, code fences are not inside list items, lists are not nested, and every cited URL is a Markdown link.
+
         Allowed citation URLs:
         {{ALLOWED}}
 

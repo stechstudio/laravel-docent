@@ -78,9 +78,21 @@ it('never retrieves excluded or unauthorized pages and allows them after authori
 it('returns a no-answer corpus when no indexed term matches', function () {
     $corpus = retrievedCorpus($this, 'flibbertigibbet zephyroscope');
 
+    $prompt = AiPrompt::system($corpus);
+
     expect($corpus->citations)->toBe([])
         ->and($corpus->content)->toContain('no relevant documentation was retrieved')
-        ->and(AiPrompt::system($corpus))->toContain('If the documentation does not contain the answer');
+        ->and($prompt)
+        ->toContain('If the documentation does not contain the answer')
+        ->toContain('Write CommonMark Markdown for a narrow in-app Assistant pane')
+        ->toContain('repeated bold-label-plus-paragraph pattern')
+        ->toContain('Do not use bullets for categories, examples, notes, explanations, or source links')
+        ->toContain('Never number alternatives')
+        ->toContain('Never nest lists')
+        ->toContain('Put any copyable command, directive, markup, or code example in a fenced code block')
+        ->toContain('Every code fence must begin at the first column')
+        ->toContain('Before sending, verify that section labels use **bold Markdown**')
+        ->toContain('[Page title](exact allowed URL)');
 });
 
 it('keeps diagnostics useful without including documentation content', function () {
