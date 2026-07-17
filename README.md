@@ -99,9 +99,13 @@ Only enable shared caching when the documentation and every uploaded image are
 intentionally public:
 
 ```php
-'admin' => [
-    'uploads' => [
-        'public_cache' => true,
+'sites' => [
+    'docs' => [
+        'admin' => [
+            'uploads' => [
+                'public_cache' => true,
+            ],
+        ],
     ],
 ],
 ```
@@ -141,7 +145,29 @@ Docent::component('plan-usage', PlanUsageComponent::class);
 Docent::audience('billing-admin', fn ($context) => $context->user?->can('billing.manage') ?? false);
 ```
 
-Your internals can refactor freely; the identifiers your docs reference stay stable, and `docent:check` catches any drift.
+Registrations on the facade are available to every configured site. Register the
+same identifier on one site's manager to override it only there:
+
+```php
+Docent::value('support.email', fn () => 'help@example.com');
+
+Docent::site('admin')->value('support.email', fn () => 'ops@example.com');
+```
+
+Every integration closure receives a context whose `site` property exposes the
+current site's `key` and `name`. That lets one global registration branch when
+the value genuinely depends on the documentation surface:
+
+```php
+Docent::value('support.portal', fn ($context) => match ($context->site?->key) {
+    'admin' => route('admin.support'),
+    default => route('support'),
+});
+```
+
+Site-scoped registrations win over global ones; all other identifiers fall back
+to the global registry. Your internals can refactor freely, the identifiers your
+docs reference stay stable, and `docent:check` catches any drift.
 
 ## Permission-safe by design
 
@@ -271,11 +297,29 @@ locale.
 ## Validate your docs like code
 
 ```bash
-php artisan docent:check          # errors exit 1
-php artisan docent:check --strict # warnings fail too
+php artisan docent:check                       # check every site; errors exit 1
+php artisan docent:check --site=admin          # check one site's corpus
+php artisan docent:check --strict --site=admin # warnings fail too
 ```
 
-The checker walks your whole tree and reports broken internal links, unknown values, links, conditions, components, and audiences, nonexistent named routes, missing includes and include cycles, missing images, duplicate slugs, heading hierarchy jumps, and front matter problems. Every report has a file and line number, ready for CI.
+The checker walks each selected tree and reports broken internal links, unknown
+values, links, conditions, components, and audiences, nonexistent named routes,
+missing includes and include cycles, missing images, duplicate slugs, heading
+hierarchy jumps, and front matter problems. It also validates the complete site
+map once, reporting invalid defaults, keys, paths, and overlapping routes. Every
+report has a file and line number, ready for CI.
+
+The other maintenance commands follow the same selection rule: omitting
+`--site` processes every configured site, while `--site=admin` processes only
+that key. An unknown key exits with an error.
+
+```bash
+php artisan docent:clear --site=admin
+php artisan docent:insights:prune --site=admin
+```
+
+`docent:install` is different by design: it scaffolds only the configured
+default site's filesystem.
 
 ### Checks for host applications
 
@@ -316,18 +360,78 @@ Publish the views (`--tag=docent-views`) for deeper customization.
 ```php
 // config/docent.php
 return [
-    'name' => env('DOCENT_NAME'),                 // defaults to "{app name} Docs"
-    'route' => [
-        'prefix' => 'docs',
-        'domain' => null,
-        'middleware' => ['web'],                  // add 'auth' for private docs
-    ],
-    'filesystem' => ['path' => null],             // defaults to resource_path('docs')
-    'authorization' => ['denied_response' => 404], // or 403, or 'redirect:/login'
+    'default' => 'public',
+
+    // Shared defaults. Any site may override these sections.
+    'database' => ['enabled' => true, 'connection' => null],
+    'authorization' => ['denied_response' => 404],
     'search' => ['enabled' => true],
     'theme' => ['accent' => '#0284c7', 'logo' => null],
+
+    'sites' => [
+        'public' => [
+            'name' => 'Help Center',
+            'description' => 'Product documentation for customers.',
+            'route' => [
+                'prefix' => 'help',
+                'domain' => null,
+                'middleware' => ['web'],
+            ],
+            'filesystem' => ['path' => resource_path('docs-public')],
+        ],
+
+        'admin' => [
+            'name' => 'Admin Docs',
+            'description' => 'Internal operating documentation.',
+            'route' => [
+                'prefix' => 'admin/docs',
+                'domain' => 'admin.example.com',
+                'middleware' => ['web', 'auth'],
+            ],
+            'filesystem' => ['path' => resource_path('docs-admin')],
+            'admin' => [
+                'enabled' => true,
+                'path' => 'admin',
+                'gate' => 'manageAdminDocs',
+            ],
+            'theme' => ['accent' => '#e11d48'],
+        ],
+    ],
 ];
 ```
+
+Configuration resolves in three levels: the site entry, then a top-level shared
+value, then the package default. `theme`, `search`, `ai`, `insights`, `content`,
+`database`, `cache`, `authorization`, and `widget` can therefore be shared or
+overridden per site. Site identity and routing never cascade: `name`,
+`description`, `route`, `filesystem`, `admin`, `navigation`, and `layouts` must
+live inside the site entry.
+
+The shipped `docs` key keeps the zero-config filesystem fallback of
+`resource_path('docs')`. Every other site key must set `filesystem.path`.
+
+Every route name includes its site key, including the shipped default site:
+
+```php
+route('docent.public.home');
+route('docent.admin.show', ['slug' => 'internal/runbook']);
+```
+
+The old unkeyed `docent.*` route names were intentionally removed during 0.1.0
+development. Use `docent.{key}.*` names in application code.
+
+Target a site from the in-app help widget with its `site` attribute. Omitting it
+uses `docent.default`, and multiple widgets may target different sites on the
+same host page.
+
+```blade
+<x-docent::widget site="public" />
+```
+
+Database-backed content, Assistant questions, and insight events share their
+tables but are isolated by a `site` column. Page identity is `(site, slug)`, so
+the same slug may exist once on every site while duplicates within one site are
+rejected.
 
 ## Requirements
 

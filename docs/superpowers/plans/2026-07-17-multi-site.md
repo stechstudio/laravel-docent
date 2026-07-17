@@ -1186,9 +1186,9 @@ Write each `/* … */` out fully — they are one- or two-assertion bodies follo
 **Files:**
 - Modify: `README.md` (configuration + registration sections), `CHANGELOG.md`, `workbench/resources/docs` install docs if they document config keys (grep for `docent.route.prefix` and `Docent::value` across the package's own docs pages)
 
-- [ ] **Step 1:** Document: the `sites` config shape with the public/admin example from the spec; the cascade rule and the site-only key list; `Docent::site('x')` and global-vs-scoped registration with `$context->site`; keyed route names (`docent.{key}.*`) with the 0.1.0 breaking note; the widget `site` attribute; `--site` console options; the `(site, slug)` uniqueness rule.
-- [ ] **Step 2:** `CHANGELOG.md` under Unreleased — Breaking: config restructured into `sites`, route names now `docent.{key}.*`, `docent_*` tables gain a `site` column (re-run migrations; pre-1.0). Added: multi-site support (one line per Task 5–10 feature).
-- [ ] **Step 3:** `composer lint && composer analyse && composer test`, then commit — `git commit -m "docs: multi-site configuration and registration guide"`
+- [x] **Step 1:** Document: the `sites` config shape with the public/admin example from the spec; the cascade rule and the site-only key list; `Docent::site('x')` and global-vs-scoped registration with `$context->site`; keyed route names (`docent.{key}.*`) with the 0.1.0 breaking note; the widget `site` attribute; `--site` console options; the `(site, slug)` uniqueness rule.
+- [x] **Step 2:** `CHANGELOG.md` under Unreleased — Breaking: config restructured into `sites`, route names now `docent.{key}.*`, `docent_*` tables gain a `site` column (re-run migrations; pre-1.0). Added: multi-site support (one line per Task 5–10 feature).
+- [x] **Step 3:** `composer lint && composer analyse && composer test` — PASS (547 tests, 2,111 assertions; PHPStan clean), then commit — `git commit -m "docs: multi-site configuration and registration guide"`
 
 ---
 

@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking changes (pre-1.0)
+
+- Restructured site identity, routing, filesystem, admin, navigation, and layout configuration under `docent.sites`, with `docent.default` selecting the fallback site.
+- Renamed every route from `docent.*` to the site-keyed `docent.{key}.*` form, including the shipped `docs` site.
+- Added a `site` column to the shared `docent_pages`, `docent_ai_questions`, and `docent_insight_events` tables and changed page uniqueness to `(site, slug)`. Pre-release applications should rerun the published migrations.
+
 ### Added
 
+- Multiple independent documentation sites from one installation, each with its own corpus, route prefix or domain, middleware, branding, feature switches, and admin gate.
+- A lazy site registry and site-aware manager/service graphs with shared configuration defaults and explicit site-only settings.
+- Global and site-scoped integration registration with site-local precedence and the current site exposed on every `DocumentationContext`.
+- Site-isolated database pages, Assistant questions, insights, search indexes, caches, `llms.txt` output, uploads, and admin operations.
+- Site targeting for `<x-docent::widget>` and keyed route helpers through `DocentManager`.
+- `--site` selection for `docent:clear`, `docent:check`, and `docent:insights:prune`, plus whole-map definition checks for invalid sites and overlapping routes.
 - In-app documentation site rendered inside the host application's runtime, with authentication, gates, and policies applied to pages, navigation, and search.
 - Markdown authoring with YAML front matter, audience-conditional blocks, dynamic values, named-route app links, includes, and embedded Blade components.
 - Structural directives for task-focused guides: callouts, steps, tabs, accordions, code groups, frames, and video embeds.
