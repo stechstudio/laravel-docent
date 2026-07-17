@@ -48,7 +48,7 @@ final class IntegrationRegistry
     /**
      * @param  ?Closure(class-string): object  $classResolver
      */
-    public function __construct(?Closure $classResolver = null)
+    public function __construct(?Closure $classResolver = null, private readonly ?self $parent = null)
     {
         $this->classResolver = $classResolver ?? static fn (string $class): object => new $class;
     }
@@ -142,7 +142,7 @@ final class IntegrationRegistry
      */
     public function suggestionsFor(string $page): array
     {
-        $slugs = [];
+        $slugs = $this->parent?->suggestionsFor($page) ?? [];
 
         foreach ($this->suggestions as $pattern => $suggestions) {
             if (Str::is($pattern, $page)) {
@@ -161,27 +161,27 @@ final class IntegrationRegistry
 
     public function hasCondition(string $name): bool
     {
-        return isset($this->conditions[$name]);
+        return isset($this->conditions[$name]) || ($this->parent?->hasCondition($name) ?? false);
     }
 
     public function hasValue(string $name): bool
     {
-        return isset($this->values[$name]);
+        return isset($this->values[$name]) || ($this->parent?->hasValue($name) ?? false);
     }
 
     public function hasLink(string $name): bool
     {
-        return isset($this->links[$name]);
+        return isset($this->links[$name]) || ($this->parent?->hasLink($name) ?? false);
     }
 
     public function hasComponent(string $name): bool
     {
-        return isset($this->components[$name]);
+        return isset($this->components[$name]) || ($this->parent?->hasComponent($name) ?? false);
     }
 
     public function hasAudience(string $name): bool
     {
-        return isset($this->audiences[$name]);
+        return isset($this->audiences[$name]) || ($this->parent?->hasAudience($name) ?? false);
     }
 
     /**
@@ -192,7 +192,7 @@ final class IntegrationRegistry
         $registered = $this->conditions[$name] ?? null;
 
         if ($registered === null) {
-            return null;
+            return $this->parent?->resolveCondition($name, $context);
         }
 
         return (bool) $this->invoke($registered->resolver, [$context]);
@@ -206,7 +206,7 @@ final class IntegrationRegistry
         $registered = $this->audiences[$name] ?? null;
 
         if ($registered === null) {
-            return null;
+            return $this->parent?->resolveAudience($name, $context);
         }
 
         return (bool) $this->invoke($registered->resolver, [$context]);
@@ -222,7 +222,7 @@ final class IntegrationRegistry
         $registered = $this->values[$name] ?? null;
 
         if ($registered === null) {
-            return null;
+            return $this->parent?->resolveValue($name, $context, $arguments);
         }
 
         return (string) $this->invoke($registered->resolver, [$context, ...$arguments]);
@@ -234,7 +234,11 @@ final class IntegrationRegistry
      */
     public function valueLabel(string $name): string
     {
-        return $this->values[$name]->label ?? $name;
+        if (isset($this->values[$name])) {
+            return $this->values[$name]->label ?? $name;
+        }
+
+        return $this->parent?->valueLabel($name) ?? $name;
     }
 
     /**
@@ -247,7 +251,7 @@ final class IntegrationRegistry
         $registered = $this->links[$name] ?? null;
 
         if ($registered === null) {
-            return null;
+            return $this->parent?->resolveLink($name, $context, $parameters);
         }
 
         return (string) $this->invoke($registered->resolver, [$context, ...$parameters]);
@@ -261,7 +265,7 @@ final class IntegrationRegistry
         $registered = $this->components[$name] ?? null;
 
         if ($registered === null) {
-            return null;
+            return $this->parent?->resolveComponent($name);
         }
 
         $resolver = $registered->resolver;
@@ -290,13 +294,31 @@ final class IntegrationRegistry
      */
     public function describe(): array
     {
+        $parent = $this->parent?->describe();
+
         return [
-            'conditions' => $this->describeAll($this->conditions),
-            'values' => $this->describeAll($this->values),
-            'links' => $this->describeAll($this->links),
-            'components' => $this->describeAll($this->components),
-            'audiences' => $this->describeAll($this->audiences),
+            'conditions' => $this->mergeDescriptions($parent['conditions'] ?? [], $this->describeAll($this->conditions)),
+            'values' => $this->mergeDescriptions($parent['values'] ?? [], $this->describeAll($this->values)),
+            'links' => $this->mergeDescriptions($parent['links'] ?? [], $this->describeAll($this->links)),
+            'components' => $this->mergeDescriptions($parent['components'] ?? [], $this->describeAll($this->components)),
+            'audiences' => $this->mergeDescriptions($parent['audiences'] ?? [], $this->describeAll($this->audiences)),
         ];
+    }
+
+    /**
+     * @param  list<array{name: string, label: ?string, description: ?string}>  $parent
+     * @param  list<array{name: string, label: ?string, description: ?string}>  $local
+     * @return list<array{name: string, label: ?string, description: ?string}>
+     */
+    private function mergeDescriptions(array $parent, array $local): array
+    {
+        $merged = [];
+
+        foreach ([...$parent, ...$local] as $item) {
+            $merged[$item['name']] = $item;
+        }
+
+        return array_values($merged);
     }
 
     /**

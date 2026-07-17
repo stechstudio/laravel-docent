@@ -7,6 +7,7 @@ namespace STS\Docent\Runtime;
 use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
+use STS\Docent\Sites\SiteRef;
 
 /**
  * The per-request rendering context: who is viewing, with what parameters,
@@ -28,6 +29,7 @@ final class DocumentationContext
         public readonly array $parameters = [],
         public readonly ?string $audience = null,
         private readonly ?Closure $gate = null,
+        public readonly ?SiteRef $site = null,
     ) {}
 
     /**

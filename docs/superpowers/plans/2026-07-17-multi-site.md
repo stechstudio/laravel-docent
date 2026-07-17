@@ -175,7 +175,7 @@ git commit -m "feat: SiteConfig cascade for per-site configuration"
 **Interfaces:**
 - Produces: `new SiteRef(string $key, string $name)` with public readonly `key`/`name`; `DocumentationContext->site: ?SiteRef` (new optional constructor arg, after `$gate`); `new IntegrationRegistry(?Closure $classResolver = null, ?IntegrationRegistry $parent = null)` — every `has*`/`resolve*`/`valueLabel` falls back to `$parent` on local miss, `suggestionsFor` merges parent-then-local (dedup, cap 5), `describe()` merges with local winning by `name`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/Unit/Sites/SiteRefTest.php`:
 
@@ -263,12 +263,12 @@ it('does not inherit a parent label when a local registration omits one', functi
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `vendor/bin/pest tests/Unit/Sites/SiteRefTest.php tests/Unit/Runtime/RegistryFallbackTest.php`
 Expected: FAIL — `SiteRef` not found; unknown named argument `parent`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 `src/Sites/SiteRef.php`:
 
@@ -355,7 +355,7 @@ public function suggestionsFor(string $page): array
 
 `describe()` delegates to a merge: for each kind, start from `$this->parent?->describe()[$kind] ?? []`, index by `name`, overlay local entries, return `array_values`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `vendor/bin/pest tests/Unit/Sites/SiteRefTest.php tests/Unit/Runtime/RegistryFallbackTest.php`
 Expected: PASS
