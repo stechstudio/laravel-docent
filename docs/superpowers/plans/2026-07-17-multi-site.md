@@ -1022,7 +1022,7 @@ it('prefers a site-scoped closure over the global one end to end', function () {
 **Interfaces:**
 - Produces: `<x-docent::widget />` renders the **default** site's widget; `<x-docent::widget site="admin" />` renders the admin site's widget (its URLs point at `admin/docs/_widget…`). Unknown `site` throws `InvalidArgumentException` (surface config typos loudly).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```php
 <?php
@@ -1059,9 +1059,9 @@ it('defaults to the default site', function () {
 
 (Match the assertion style of the existing `tests/Widget` suite — reuse its helpers if it renders the component differently.)
 
-- [ ] **Step 2: Verify failure** — unknown attribute / wrong URLs.
+- [x] **Step 2: Verify failure** — unknown attribute / wrong URLs.
 
-- [ ] **Step 3: Implement.** Top of `widget.blade.php`:
+- [x] **Step 3: Implement.** Top of `widget.blade.php`:
 
 ```blade
 @props(['site' => null])
@@ -1073,7 +1073,7 @@ it('defaults to the default site', function () {
 
 `Docent::site(null)` returns the default site (Task 5 signature). Sweep the component body for any remaining facade-level reads from the Task 3 interim state and point them at `$docent`.
 
-- [ ] **Step 4: Run tests, full suite** — PASS. **Step 5: Commit** — `git commit -m "feat: widget component targets a configured site"`
+- [x] **Step 4: Run tests, full suite** — PASS. **Step 5: Commit** — `git commit -m "feat: widget component targets a configured site"`
 
 ---
 

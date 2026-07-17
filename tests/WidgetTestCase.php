@@ -11,6 +11,11 @@ abstract class WidgetTestCase extends TestCase
         parent::defineEnvironment($app);
 
         $app['config']->set('docent.widget.enabled', true);
+        $app['config']->set('docent.sites.admin', [
+            'name' => 'Admin Docs',
+            'route' => ['prefix' => 'admin/docs', 'middleware' => ['web']],
+            'filesystem' => ['path' => __DIR__.'/fixtures/docs'],
+        ]);
     }
 
     protected function setUp(): void
