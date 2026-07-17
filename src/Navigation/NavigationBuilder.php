@@ -299,7 +299,7 @@ final class NavigationBuilder
         return new SectionCard(
             $node['directory'],
             $node['label'],
-            $index?->url ?? $pages[0]->url,
+            $index->url ?? $pages[0]->url,
             ($node['description'] ?? null) ?? $index?->description,
             $node['icon'],
             count($pages),
