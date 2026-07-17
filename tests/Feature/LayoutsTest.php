@@ -43,8 +43,8 @@ it('scopes section cards to one directory and skips its index page', function ()
 });
 
 it('resolves a named layout through the config map', function () {
-    config()->set('docent.layouts.hub', 'docent::layouts.landing');
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/docs');
+    config()->set('docent.sites.docs.layouts.hub', 'docent::layouts.landing');
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/docs');
 
     file_put_contents(dirname(__DIR__).'/fixtures/docs/custom-layout.md', <<<'MD'
     ---
@@ -97,7 +97,7 @@ it('defers the topbar search to a hero search box', function () {
 
 it('lets a custom layout override the topbar regions', function () {
     view()->addNamespace('doctest', dirname(__DIR__).'/fixtures/views');
-    config()->set('docent.layouts.custom-chrome', 'doctest::custom-topbar');
+    config()->set('docent.sites.docs.layouts.custom-chrome', 'doctest::custom-topbar');
 
     file_put_contents(dirname(__DIR__).'/fixtures/docs/custom-chrome.md', <<<'MD'
     ---

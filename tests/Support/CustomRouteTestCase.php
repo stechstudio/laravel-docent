@@ -14,7 +14,7 @@ abstract class CustomRouteTestCase extends TestCase
     {
         parent::defineEnvironment($app);
 
-        $app['config']->set('docent.route.prefix', 'handbook');
-        $app['config']->set('docent.route.middleware', ['web']);
+        $app['config']->set('docent.sites.docs.route.prefix', 'handbook');
+        $app['config']->set('docent.sites.docs.route.middleware', ['web']);
     }
 }

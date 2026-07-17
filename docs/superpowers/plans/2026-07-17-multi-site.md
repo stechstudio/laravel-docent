@@ -438,7 +438,7 @@ Still single-site (`docs`), still bare route names — but the config file takes
 - Consumes: `SiteConfig` from Task 1.
 - Produces: `DocentManager::__construct(...)` gains `private readonly SiteConfig $siteConfig` (last parameter); `DocentManager::key(): string` returns `$this->siteConfig->key`; `DocentManager::config()` body becomes `return $this->siteConfig->get($path, $default);`.
 
-- [ ] **Step 1: Rewrite `config/docent.php`.** Keep every existing block and its doc comment. New top-level shape — shared sections stay at top level verbatim (`database`, `authorization`, `content`, `search`, `ai`, `insights`, `widget`, `cache`, `theme`), site-only sections move inside `sites.docs`:
+- [x] **Step 1: Rewrite `config/docent.php`.** Keep every existing block and its doc comment. New top-level shape — shared sections stay at top level verbatim (`database`, `authorization`, `content`, `search`, `ai`, `insights`, `widget`, `cache`, `theme`), site-only sections move inside `sites.docs`:
 
 ```php
 return [
@@ -473,11 +473,11 @@ return [
 
 Add a header comment on `sites` explaining: keys are host-chosen; every shared section above may be repeated inside a site entry to override it; site-only sections (`name`, `description`, `route`, `filesystem`, `admin`, `navigation`, `layouts`) live only here.
 
-- [ ] **Step 2: Wire SiteConfig into the manager.** In `DocentServiceProvider::register()`, the `DocentManager` scoped closure gains a final argument: `new SiteConfig('docs', (array) $app['config']->get('docent', []))`. `DocentManager::config()` body becomes `return $this->siteConfig->get($path, $default);`; add `public function key(): string { return $this->siteConfig->key; }`. Update the provider's own remaining reads (route group, admin group, feature toggles, about command, `FilesystemRepository` binding, `NavigationBuilder` link resolver) to build one `$site = new SiteConfig('docs', ...)` locally and read `$site->get('route.prefix', 'docs')` etc. `FilesystemRepository` path resolution becomes `$site->get('filesystem.path') ?? $app->resourcePath('docs')`.
+- [x] **Step 2: Wire SiteConfig into the manager.** In `DocentServiceProvider::register()`, the `DocentManager` scoped closure gains a final argument: `new SiteConfig('docs', (array) $app['config']->get('docent', []))`. `DocentManager::config()` body becomes `return $this->siteConfig->get($path, $default);`; add `public function key(): string { return $this->siteConfig->key; }`. Update the provider's own remaining reads (route group, admin group, feature toggles, about command, `FilesystemRepository` binding, `NavigationBuilder` link resolver) to build one `$site = new SiteConfig('docs', ...)` locally and read `$site->get('route.prefix', 'docs')` etc. `FilesystemRepository` path resolution becomes `$site->get('filesystem.path') ?? $app->resourcePath('docs')`.
 
-- [ ] **Step 3: Update the tests' config keys.** In `tests/TestCase.php::defineEnvironment()`: `docent.filesystem.path` → `docent.sites.docs.filesystem.path`; `docent.name` → `docent.sites.docs.name`. Then sweep the suite for the site-only keys (`grep -rn "set('docent\.\(name\|description\|route\|filesystem\|admin\.\|admin'\|navigation\|layouts\)" tests`): prepend `sites.docs.` to each — e.g. `config()->set('docent.route.prefix', 'help')` → `config()->set('docent.sites.docs.route.prefix', 'help')`. Shared keys (`ai.*`, `theme.*`, `search.*`, `widget.*`, `insights.*`, `database.*`, `content.*`, `authorization.*`, `cache.*`) stay top-level — that's the cascade working.
+- [x] **Step 3: Update the tests' config keys.** In `tests/TestCase.php::defineEnvironment()`: `docent.filesystem.path` → `docent.sites.docs.filesystem.path`; `docent.name` → `docent.sites.docs.name`. Then sweep the suite for the site-only keys (`grep -rn "set('docent\.\(name\|description\|route\|filesystem\|admin\.\|admin'\|navigation\|layouts\)" tests`): prepend `sites.docs.` to each — e.g. `config()->set('docent.route.prefix', 'help')` → `config()->set('docent.sites.docs.route.prefix', 'help')`. Shared keys (`ai.*`, `theme.*`, `search.*`, `widget.*`, `insights.*`, `database.*`, `content.*`, `authorization.*`, `cache.*`) stay top-level — that's the cascade working.
 
-- [ ] **Step 4: Add a cascade feature test**, `tests/Feature/SiteConfigCascadeTest.php`:
+- [x] **Step 4: Add a cascade feature test**, `tests/Feature/SiteConfigCascadeTest.php`:
 
 ```php
 <?php
@@ -500,10 +500,10 @@ it('shared top level applies when the site omits the key', function () {
 });
 ```
 
-- [ ] **Step 5: Full suite, then commit**
+- [x] **Step 5: Full suite, then commit**
 
 Run: `composer lint && composer analyse && composer test`
-Expected: PASS.
+Expected: PASS. As of this task, formatting, focused analysis, and the full test suite pass; repository-wide analysis still reports only the two pre-existing `NavigationBuilder` findings recorded in Task 3.
 
 ```bash
 git add -A config src tests

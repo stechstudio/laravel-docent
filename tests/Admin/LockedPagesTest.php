@@ -5,14 +5,14 @@ use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
 
 beforeEach(function () {
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/locked-docs');
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/locked-docs');
     app()->forgetInstance(DocumentationRepository::class);
     app()->forgetScopedInstances();
     $this->actingAs($this->adminUser());
 });
 
 it('resolves page and group locks as a one-way filesystem cascade', function () {
-    $filesystem = new FilesystemRepository(config('docent.filesystem.path'));
+    $filesystem = new FilesystemRepository(config('docent.sites.docs.filesystem.path'));
     $references = collect($filesystem->all())->keyBy('slug');
 
     expect($filesystem->pageLocked('locked'))->toBeTrue()

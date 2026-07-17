@@ -13,7 +13,7 @@ use STS\Docent\Documents\Parser\MarkdownDocumentParser;
  */
 function check(string $fixture, array $parameters = []): array
 {
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/'.$fixture);
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/'.$fixture);
     app()->forgetInstance(DocumentationRepository::class);
 
     $exit = Artisan::call('docent:check', $parameters);
@@ -113,12 +113,12 @@ it('warns about nested and empty promoted sections', function () {
 });
 
 it('validates persistent navigation link targets and icons', function () {
-    config()->set('docent.navigation.links', [
+    config()->set('docent.sites.docs.navigation.links', [
         ['label' => 'Missing page', 'page' => 'does-not-exist', 'icon' => 'not-a-real-icon'],
         ['label' => 'Missing route', 'route' => 'does.not.exist'],
         ['label' => 'Ambiguous', 'url' => 'https://example.com', 'page' => 'index'],
     ]);
-    config()->set('docent.navigation.topbar', [
+    config()->set('docent.sites.docs.navigation.topbar', [
         ['label' => 'Bad repo link', 'page' => 'also-does-not-exist'],
     ]);
 

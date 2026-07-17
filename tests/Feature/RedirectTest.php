@@ -10,7 +10,7 @@ use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
 
 beforeEach(function () {
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/redirect-docs');
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/redirect-docs');
 
     foreach ([DocumentationRepository::class, DocentManager::class, NavigationBuilder::class, SearchIndexer::class, SearchEngine::class, AiRetriever::class] as $service) {
         app()->forgetInstance($service);
@@ -77,7 +77,7 @@ it('keeps redirect stubs out of navigation, search, agent output, and assistant 
 });
 
 it('uses the real page when its slug collides with a redirect stub', function () {
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/redirect-check-docs');
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/redirect-check-docs');
     app()->forgetInstance(DocumentationRepository::class);
     app()->forgetInstance(DocentManager::class);
 

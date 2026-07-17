@@ -36,6 +36,7 @@ it('renders Assistant as a widget view only when AI is enabled', function () {
         ->assertDontSee('Temporary conversation. Answers are grounded in the docs available to you.');
 
     config()->set('docent.ai.enabled', false);
+    $this->resetDocentScope();
 
     $this->get('/docs/_widget')
         ->assertOk()
@@ -55,12 +56,12 @@ it('renders visible sections as flat top-level widget groups', function () {
 });
 
 it('keeps pinned page links inside the widget and external links in a new tab', function () {
-    config()->set('docent.navigation.links', [
+    config()->set('docent.sites.docs.navigation.links', [
         ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://support.example.com'],
         ['label' => 'Setup guide', 'icon' => 'rocket-launch', 'page' => 'guides/setup'],
     ]);
     // Topbar utility links are docs-site chrome and stay out of the panel.
-    config()->set('docent.navigation.topbar', [
+    config()->set('docent.sites.docs.navigation.topbar', [
         ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
     ]);
 

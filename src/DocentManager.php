@@ -43,6 +43,7 @@ use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Sites\SiteConfig;
 use STS\Docent\Support\DocentCache;
 use STS\Docent\Support\GrayPalette;
 use STS\Docent\Support\Icon;
@@ -74,6 +75,7 @@ final class DocentManager
         private readonly FilesystemRepository $filesystem,
         private readonly DocumentationMode $mode,
         private readonly ContentHtmlSanitizer $htmlSanitizer,
+        private readonly SiteConfig $siteConfig,
     ) {}
 
     /** @var array<string, string> */
@@ -654,7 +656,12 @@ final class DocentManager
      */
     public function config(string $path, mixed $default = null): mixed
     {
-        return config('docent.'.$path, $default);
+        return $this->siteConfig->get($path, $default);
+    }
+
+    public function key(): string
+    {
+        return $this->siteConfig->key;
     }
 
     public function routeName(string $suffix): string

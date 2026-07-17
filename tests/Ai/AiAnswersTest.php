@@ -433,6 +433,7 @@ it('resets safely when the visible corpus changes and never sends stale history'
     $conversation = streamedEvent($first, 'conversation');
 
     config()->set('docent.ai.corpus_budget', 1);
+    $this->resetDocentScope();
     [, $second] = continueDocs($this, 'What now?', $conversation);
     $reset = streamedEvent($second, 'conversation');
 

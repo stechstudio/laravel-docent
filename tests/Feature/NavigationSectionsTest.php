@@ -27,7 +27,7 @@ it('composes ordered sections from top-level group metadata', function () {
 });
 
 it('uses a configurable default section label and keeps it first', function () {
-    config()->set('docent.navigation.default_section', 'Help center');
+    config()->set('docent.sites.docs.navigation.default_section', 'Help center');
 
     $sections = app(DocentManager::class)->navigationSections($this->contextFor($this->adminUser()));
 

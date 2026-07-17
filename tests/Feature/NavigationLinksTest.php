@@ -10,7 +10,7 @@ beforeEach(function () {
     // refreshes; real requests refresh it during dispatch.
     Route::getRoutes()->refreshNameLookups();
 
-    config()->set('docent.navigation.links', [
+    config()->set('docent.sites.docs.navigation.links', [
         ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://support.example.com'],
         ['label' => 'Setup guide', 'icon' => 'rocket-launch', 'page' => 'guides/setup'],
         ['label' => 'Admin console', 'icon' => 'wrench', 'route' => 'host.admin', 'can' => 'reports.view'],
@@ -50,7 +50,7 @@ it('renders pinned links at the top of desktop and mobile navigation', function 
 });
 
 it('drops invalid entries and invalid icons without breaking navigation', function () {
-    config()->set('docent.navigation.links', [
+    config()->set('docent.sites.docs.navigation.links', [
         ['label' => 'Too many', 'page' => 'guides/setup', 'url' => 'https://example.com'],
         ['label' => '', 'url' => 'https://example.com'],
         ['label' => 'Missing page', 'page' => 'missing'],
@@ -67,7 +67,7 @@ it('drops invalid entries and invalid icons without breaking navigation', functi
 });
 
 it('resolves topbar utility links with the same gating rules', function () {
-    config()->set('docent.navigation.topbar', [
+    config()->set('docent.sites.docs.navigation.topbar', [
         ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
         ['label' => 'Internal tools', 'icon' => 'wrench', 'route' => 'host.admin', 'can' => 'reports.view'],
     ]);
@@ -83,7 +83,7 @@ it('resolves topbar utility links with the same gating rules', function () {
 });
 
 it('renders topbar links as labeled icon buttons in the header', function () {
-    config()->set('docent.navigation.topbar', [
+    config()->set('docent.sites.docs.navigation.topbar', [
         ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
     ]);
 

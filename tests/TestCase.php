@@ -28,8 +28,8 @@ abstract class TestCase extends Orchestra
 
     protected function defineEnvironment($app): void
     {
-        $app['config']->set('docent.filesystem.path', dirname(__DIR__).'/tests/fixtures/docs');
-        $app['config']->set('docent.name', 'Fixture Docs');
+        $app['config']->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/tests/fixtures/docs');
+        $app['config']->set('docent.sites.docs.name', 'Fixture Docs');
         $app['config']->set('cache.default', 'array');
 
         Gate::define('billing.manage', fn ($user) => (bool) ($user->is_admin ?? false));
@@ -67,5 +67,19 @@ abstract class TestCase extends Orchestra
                 ? Gate::forUser($viewer)->allows($ability, $arguments)
                 : Gate::allows($ability, $arguments),
         );
+    }
+
+    /**
+     * Refresh request-scoped services after a test mutates config between HTTP
+     * requests. Route objects cache controller instances in the test process,
+     * so those must be flushed along with the container's scoped instances.
+     */
+    public function resetDocentScope(): void
+    {
+        $this->app->forgetScopedInstances();
+
+        foreach ($this->app['router']->getRoutes() as $route) {
+            $route->flushController();
+        }
     }
 }

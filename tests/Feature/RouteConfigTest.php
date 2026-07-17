@@ -15,7 +15,7 @@ it('registers named docs routes with the configured prefix and middleware', func
 });
 
 it('honors a custom route prefix from config', function () {
-    config()->set('docent.route.prefix', 'handbook');
+    config()->set('docent.sites.docs.route.prefix', 'handbook');
 
     (new DocentServiceProvider($this->app))->boot();
     Route::getRoutes()->refreshNameLookups();

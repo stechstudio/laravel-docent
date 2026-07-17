@@ -84,43 +84,47 @@ final class DocentServiceProvider extends ServiceProvider
         $this->app->singleton(ContentHtmlSanitizer::class);
 
         // A plain bind (not a singleton) so it always reflects the current
-        // configured path — tests re-point `docent.filesystem.path` and expect a
-        // fresh read when they forget the repository.
-        $this->app->bind(FilesystemRepository::class, static fn (Application $app): FilesystemRepository => new FilesystemRepository(
-            $app['config']->get('docent.filesystem.path') ?? $app->resourcePath('docs'),
-        ));
+        // configured path when tests re-point a site and forget the repository.
+        $this->app->bind(FilesystemRepository::class, static function (Application $app): FilesystemRepository {
+            $site = self::siteConfig($app);
+
+            return new FilesystemRepository(
+                $site->get('filesystem.path') ?? $app->resourcePath('docs'),
+            );
+        });
 
         $this->app->singleton(DocumentationRepository::class, static function (Application $app): DocumentationRepository {
+            $site = self::siteConfig($app);
             $filesystem = $app->make(FilesystemRepository::class);
 
-            if (! $app['config']->get('docent.database.enabled', false)) {
+            if (! $site->get('database.enabled', false)) {
                 return $filesystem;
             }
 
             // Database over filesystem: a DB page overrides a file of the same slug.
             return new CompositeRepository(
-                new DatabaseRepository($app['config']->get('docent.database.connection')),
+                new DatabaseRepository($site->get('database.connection')),
                 $filesystem,
             );
         });
 
-        $this->app->singleton(DocentCache::class, static fn (Application $app): DocentCache => new DocentCache(
-            $app['cache']->store($app['config']->get('docent.cache.store')),
-            $app['config']->get('docent.cache.prefix', 'docent'),
-        ));
+        $this->app->singleton(DocentCache::class, static function (Application $app): DocentCache {
+            $site = self::siteConfig($app);
+
+            return new DocentCache(
+                $app['cache']->store($site->get('cache.store')),
+                $site->get('cache.prefix', 'docent'),
+            );
+        });
 
         $this->app->singleton(NavigationBuilder::class, static function (Application $app): NavigationBuilder {
-            $config = (array) $app['config']->get('docent', []);
-
-            // Task 4 moves site-only keys under sites.docs. Preserve the
-            // current single-site config shape until that migration lands.
-            $config['sites']['docs']['navigation'] ??= $config['navigation'] ?? [];
+            $site = self::siteConfig($app);
 
             return new NavigationBuilder(
                 $app->make(DocumentationRepository::class),
                 $app->make(IntegrationRegistry::class),
                 $app->make(DocentCache::class),
-                new SiteConfig('docs', $config),
+                $site,
                 static fn (string $slug): string => $app->make(DocumentationMode::class)->widget()
                     ? route($slug === '' ? 'docent.widget.home' : 'docent.widget.show', $slug === '' ? [] : ['slug' => $slug])
                     : ($slug === '' ? route('docent.home') : route('docent.show', $slug)),
@@ -137,6 +141,7 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(FilesystemRepository::class),
             $app->make(DocumentationMode::class),
             $app->make(ContentHtmlSanitizer::class),
+            self::siteConfig($app),
         ));
 
         $this->app->scoped(SearchIndexer::class, static fn (Application $app): SearchIndexer => new SearchIndexer(
@@ -145,11 +150,15 @@ final class DocentServiceProvider extends ServiceProvider
             $app->make(DocentManager::class),
         ));
 
-        $this->app->scoped(SearchEngine::class, static fn (Application $app): SearchEngine => new SearchEngine(
-            $app->make(SearchIndexer::class),
-            $app->make(DocentManager::class),
-            new SearchQueryAnalyzer($app['config']->get('docent.search.stop_words')),
-        ));
+        $this->app->scoped(SearchEngine::class, static function (Application $app): SearchEngine {
+            $site = self::siteConfig($app);
+
+            return new SearchEngine(
+                $app->make(SearchIndexer::class),
+                $app->make(DocentManager::class),
+                new SearchQueryAnalyzer($site->get('search.stop_words')),
+            );
+        });
 
         $this->app->singleton(PrismGuard::class);
         $this->app->scoped(AiRetriever::class, static fn (Application $app): AiRetriever => new AiRetriever(
@@ -200,11 +209,13 @@ final class DocentServiceProvider extends ServiceProvider
 
     private function registerRoutes(): void
     {
+        $site = self::siteConfig($this->app);
+
         Route::group([
-            'prefix' => config('docent.route.prefix', 'docs'),
-            'domain' => config('docent.route.domain'),
-            'middleware' => config('docent.route.middleware', ['web']),
-        ], function (): void {
+            'prefix' => $site->get('route.prefix', 'docs'),
+            'domain' => $site->get('route.domain'),
+            'middleware' => $site->get('route.middleware', ['web']),
+        ], function () use ($site): void {
             Route::get('/', [PageController::class, 'home'])->name('docent.home');
 
             Route::get('/_assets/{file}', AssetController::class)
@@ -215,25 +226,25 @@ final class DocentServiceProvider extends ServiceProvider
                 ->where('path', '.*')
                 ->name('docent.upload');
 
-            if (config('docent.search.enabled', true)) {
+            if ($site->get('search.enabled', true)) {
                 Route::get('/_search', SearchController::class)->name('docent.search');
             }
 
-            if (config('docent.insights.enabled', false)) {
+            if ($site->get('insights.enabled', false)) {
                 Route::post('/_insights', InsightsController::class)->name('docent.insights.store');
             }
 
-            if (config('docent.ai.enabled', false)) {
+            if ($site->get('ai.enabled', false)) {
                 Route::post('/_ask', AskController::class)->name('docent.ask');
                 Route::delete('/_ask/conversation', AskConversationController::class)->name('docent.ask.conversation.destroy');
                 Route::post('/_ask/feedback', AskFeedbackController::class)->name('docent.ask.feedback');
             }
 
-            if (config('docent.admin.enabled', false) && config('docent.database.enabled', false)) {
-                $this->registerAdminRoutes();
+            if ($site->get('admin.enabled', false) && $site->get('database.enabled', false)) {
+                $this->registerAdminRoutes($site);
             }
 
-            if (config('docent.widget.enabled', false)) {
+            if ($site->get('widget.enabled', false)) {
                 Route::get('/_widget', [WidgetController::class, 'home'])->name('docent.widget.home');
                 Route::get('/_widget/_suggestions', WidgetSuggestionsController::class)->name('docent.widget.suggestions');
                 Route::get('/_widget/{slug}', [WidgetController::class, 'show'])
@@ -251,16 +262,16 @@ final class DocentServiceProvider extends ServiceProvider
      * The admin panel and its JSON API, registered inside the docs route group
      * (so prefix/domain/middleware apply) and additionally guarded by the
      * configured gate. Registered before the reader's catch-all `{slug}` route,
-     * so the panel path (`admin` by default, `docent.admin.path`) shadows any
-     * docs page with that exact slug; page-scoped action routes are likewise
+     * so the panel path (`admin` by default, `sites.docs.admin.path`) shadows
+     * any docs page with that exact slug; page-scoped action routes are likewise
      * declared before the catch-all `{slug}` detail routes so the more
      * specific paths win.
      */
-    private function registerAdminRoutes(): void
+    private function registerAdminRoutes(SiteConfig $site): void
     {
-        $path = trim((string) config('docent.admin.path', 'admin'), '/');
+        $path = trim((string) $site->get('admin.path', 'admin'), '/');
 
-        Route::middleware('can:'.config('docent.admin.gate', 'viewDocentAdmin'))->prefix($path)->group(function (): void {
+        Route::middleware('can:'.$site->get('admin.gate', 'viewDocentAdmin'))->prefix($path)->group(function () use ($site): void {
             Route::get('/', AdminController::class)->name('docent.admin');
 
             Route::get('api/tree', TreeController::class)->name('docent.admin.tree');
@@ -269,7 +280,7 @@ final class DocentServiceProvider extends ServiceProvider
             Route::post('api/preview', PreviewController::class)->name('docent.admin.preview');
             Route::post('api/uploads', UploadController::class)->name('docent.admin.uploads');
 
-            if (config('docent.insights.enabled', false)) {
+            if ($site->get('insights.enabled', false)) {
                 Route::get('insights', AdminInsightsController::class)->name('docent.admin.insights');
                 Route::get('insights.csv', InsightsExportController::class)->name('docent.admin.insights.export');
             }
@@ -312,21 +323,24 @@ final class DocentServiceProvider extends ServiceProvider
             return;
         }
 
+        $site = self::siteConfig($this->app);
+
         AboutCommand::add('Docent', fn (): array => [
             'Version' => DocentManager::VERSION,
             'Pages' => (string) count(iterator_to_array($this->app->make(DocumentationRepository::class)->all())),
-            'Route Prefix' => '/'.config('docent.route.prefix', 'docs'),
-            'Database' => $this->databaseSummary(),
+            'Route Prefix' => '/'.$site->get('route.prefix', 'docs'),
+            'Database' => $this->databaseSummary($site),
         ]);
     }
 
-    private function databaseSummary(): string
+    private function databaseSummary(SiteConfig $site): string
     {
-        if (! config('docent.database.enabled', false)) {
+        if (! $site->get('database.enabled', false)) {
             return 'Disabled';
         }
 
-        $connection = config('docent.database.connection');
+        $configured = $site->get('database.connection');
+        $connection = $configured === null ? null : (string) $configured;
 
         if (! Schema::connection($connection)->hasTable('docent_pages')) {
             return 'Enabled (not migrated)';
@@ -335,5 +349,10 @@ final class DocentServiceProvider extends ServiceProvider
         $count = DocentPage::on($connection)->published()->count();
 
         return 'Enabled ('.$count.' '.Str::plural('page', $count).')';
+    }
+
+    private static function siteConfig(Application $app): SiteConfig
+    {
+        return new SiteConfig('docs', (array) $app['config']->get('docent', []));
     }
 }

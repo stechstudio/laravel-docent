@@ -32,7 +32,7 @@ it('keeps warm ranked search under the documented target on 1000 generated pages
         rmdir($root);
     });
 
-    config()->set('docent.filesystem.path', $root);
+    config()->set('docent.sites.docs.filesystem.path', $root);
     app()->instance(DocumentationRepository::class, new FilesystemRepository($root));
     foreach ([NavigationBuilder::class, DocentManager::class, SearchIndexer::class, SearchEngine::class] as $service) {
         app()->forgetInstance($service);

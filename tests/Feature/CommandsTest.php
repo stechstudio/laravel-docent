@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
     $this->docsPath = sys_get_temp_dir().'/docent-install-'.uniqid();
-    config()->set('docent.filesystem.path', $this->docsPath);
+    config()->set('docent.sites.docs.filesystem.path', $this->docsPath);
 });
 
 afterEach(function () {

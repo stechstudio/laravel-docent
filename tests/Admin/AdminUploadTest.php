@@ -105,7 +105,7 @@ it('serves the uploaded image through the docs _uploads streaming route', functi
 
 it('allows explicit public immutable caching for public documentation', function () {
     Storage::fake('public');
-    config()->set('docent.admin.uploads.public_cache', true);
+    config()->set('docent.sites.docs.admin.uploads.public_cache', true);
     Storage::disk('public')->put('docent/public.webp', 'image');
 
     $this->get('/docs/_uploads/docent/public.webp')

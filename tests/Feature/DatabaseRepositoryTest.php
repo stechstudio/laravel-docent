@@ -89,7 +89,7 @@ it('reads group metadata from a reserved _groups row front matter, without publi
 it('lets a database group override beat a filesystem _group.yml through the composite', function () {
     $composite = new CompositeRepository(
         new DatabaseRepository,
-        new FilesystemRepository(config('docent.filesystem.path')),
+        new FilesystemRepository(config('docent.sites.docs.filesystem.path')),
     );
 
     // billing/_group.yml → label Billing, order 2.

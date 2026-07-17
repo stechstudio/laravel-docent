@@ -16,7 +16,7 @@ abstract class AdminTestCase extends TestCase
         parent::defineEnvironment($app);
 
         $app['config']->set('docent.database.enabled', true);
-        $app['config']->set('docent.admin.enabled', true);
+        $app['config']->set('docent.sites.docs.admin.enabled', true);
 
         Gate::define('viewDocentAdmin', fn ($user) => (bool) ($user->is_admin ?? false));
     }

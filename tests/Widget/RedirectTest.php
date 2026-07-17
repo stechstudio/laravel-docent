@@ -7,7 +7,7 @@ use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
 
 beforeEach(function () {
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/redirect-docs');
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/redirect-docs');
 
     foreach ([DocumentationRepository::class, DocentManager::class, NavigationBuilder::class, SearchIndexer::class, SearchEngine::class] as $service) {
         app()->forgetInstance($service);

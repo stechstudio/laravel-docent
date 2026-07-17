@@ -61,7 +61,7 @@ it('negotiates markdown only when it is explicitly preferred', function () {
 });
 
 it('publishes a permission-filtered llms index in navigation order', function () {
-    config()->set('docent.description', 'Help for the fixture application.');
+    config()->set('docent.sites.docs.description', 'Help for the fixture application.');
 
     $guest = $this->get('/docs/llms.txt')
         ->assertOk()

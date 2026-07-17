@@ -46,6 +46,7 @@ it('scales radius down for sharp and up for soft', function () {
     expect(docsBody())->toContain('--radius-lg:0.25rem;');
 
     config()->set('docent.theme.radius', 'soft');
+    $this->resetDocentScope();
     expect(docsBody())->toContain('--radius-lg:0.75rem;');
 });
 
@@ -64,6 +65,7 @@ it('emits a webfont stylesheet link only when font.href is set', function () {
         ->and(docsBody())->not->toContain('fonts.bunny.net');
 
     config()->set('docent.theme.font.href', 'https://fonts.bunny.net/css?family=inter');
+    $this->resetDocentScope();
 
     $html = docsBody();
 
@@ -76,6 +78,7 @@ it('emits a favicon link only when configured', function () {
     expect(docsBody())->not->toContain('rel="icon"');
 
     config()->set('docent.theme.favicon', '/favicon.svg');
+    $this->resetDocentScope();
 
     expect(docsBody())->toContain('<link rel="icon" href="/favicon.svg">');
 });

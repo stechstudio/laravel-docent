@@ -17,7 +17,7 @@ it('renders a landing page without sidebar or toc, with hero and resolved ctas',
 });
 
 it('keeps section tabs and topbar links in the landing header', function () {
-    config()->set('docent.navigation.topbar', [
+    config()->set('docent.sites.docs.navigation.topbar', [
         ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/acme/acme'],
     ]);
 
@@ -55,7 +55,7 @@ it('renders card grids on regular docs pages too', function () {
 });
 
 it('flags broken card hrefs, broken hero ctas, and unknown icons in docent:check', function () {
-    config()->set('docent.filesystem.path', dirname(__DIR__).'/fixtures/broken-docs');
+    config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/broken-docs');
     app()->forgetInstance(DocumentationRepository::class);
 
     $exit = Artisan::call('docent:check');

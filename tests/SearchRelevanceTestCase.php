@@ -8,6 +8,6 @@ abstract class SearchRelevanceTestCase extends TestCase
     {
         parent::defineEnvironment($app);
 
-        $app['config']->set('docent.filesystem.path', __DIR__.'/fixtures/search-relevance');
+        $app['config']->set('docent.sites.docs.filesystem.path', __DIR__.'/fixtures/search-relevance');
     }
 }
