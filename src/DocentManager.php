@@ -44,6 +44,7 @@ use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Sites\SiteConfig;
+use STS\Docent\Sites\SiteRef;
 use STS\Docent\Support\DocentCache;
 use STS\Docent\Support\GrayPalette;
 use STS\Docent\Support\Icon;
@@ -254,6 +255,7 @@ final class DocentManager
             gate: static fn (string $ability, array $arguments, ?Authenticatable $user): bool => $user !== null
                 ? Gate::forUser($user)->allows($ability, $arguments)
                 : Gate::allows($ability, $arguments),
+            site: $this->siteRef(),
         );
     }
 
@@ -662,6 +664,11 @@ final class DocentManager
     public function key(): string
     {
         return $this->siteConfig->key;
+    }
+
+    public function siteRef(): SiteRef
+    {
+        return new SiteRef($this->key(), $this->siteName());
     }
 
     public function routeName(string $suffix): string

@@ -965,7 +965,7 @@ git commit -m "feat!: scope database pages, insights, and AI questions by site"
 - Consumes: `SiteRef`, `registryFor()` overlays from Task 5, keyed routes from Task 6.
 - Produces: `DocentManager::siteRef(): SiteRef` → `new SiteRef($this->key(), $this->siteName())`; `contextFor()` adds `site: $this->siteRef()` to the `DocumentationContext` it builds.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```php
 <?php
@@ -1003,13 +1003,13 @@ it('prefers a site-scoped closure over the global one end to end', function () {
 });
 ```
 
-- [ ] **Step 2: Verify failure** — `$context->site` is null.
+- [x] **Step 2: Verify failure** — `$context->site` is null.
 
-- [ ] **Step 3: Implement** the two-line manager change (`siteRef()` + `site:` argument in `contextFor()`). Verify `viewerFingerprint()` still isolates caches per site — the site key is already in the cache prefix, so no change needed there; note this in the commit body.
+- [x] **Step 3: Implement** the two-line manager change (`siteRef()` + `site:` argument in `contextFor()`). Verify `viewerFingerprint()` still isolates caches per site — the site key is already in the cache prefix, so no change needed there; note this in the commit body.
 
-- [ ] **Step 4: Run the new test and full suite** — PASS.
+- [x] **Step 4: Run the new test and full suite** — PASS.
 
-- [ ] **Step 5: Commit** — `git commit -m "feat: closures receive the current site on the documentation context"`
+- [x] **Step 5: Commit** — `git commit -m "feat: closures receive the current site on the documentation context"`
 
 ---
 
