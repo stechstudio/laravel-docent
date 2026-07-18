@@ -38,7 +38,10 @@ final class UploadsController
     public function __invoke(string $path): Response
     {
         abort_if(str_contains($path, '..'), 404);
-        abort_unless(str_starts_with($path, 'docent/'), 404);
+
+        // Each site serves only its own upload namespace — a shared disk must
+        // never let one site's route stream another site's images.
+        abort_unless(str_starts_with($path, 'docent/'.$this->docent->key().'/'), 404);
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $mimeType = self::MIME_TYPES[$extension] ?? null;

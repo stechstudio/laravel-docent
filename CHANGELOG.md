@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restructured site identity, routing, filesystem, admin, navigation, and layout configuration under `docent.sites`, with `docent.default` selecting the fallback site.
 - Renamed every route from `docent.*` to the site-keyed `docent.{key}.*` form, including the shipped `docs` site.
 - Added a `site` column to the shared `docent_pages`, `docent_ai_questions`, and `docent_insight_events` tables and changed page uniqueness to `(site, slug)`. Pre-release applications should rerun the published migrations.
+- Admin uploads are now stored and served under a per-site namespace (`docent/{site}/…`); previously uploaded files under the flat `docent/` directory must be moved into their site's directory (e.g. `docent/docs/`) or re-uploaded.
+- The `<x-docent::search-box>` and `<x-docent::hero>` components now require a `:docent` prop (the site manager); host layouts embedding them bare must pass it, e.g. `<x-docent::search-box :docent="$docent" />`.
 
 ### Added
 

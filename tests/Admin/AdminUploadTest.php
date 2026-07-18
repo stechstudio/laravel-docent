@@ -16,7 +16,7 @@ it('stores an uploaded image on the admin disk and returns its url and path', fu
 
     $path = $response->json('path');
 
-    expect($path)->toStartWith('docent/');
+    expect($path)->toStartWith('docent/docs/');
     Storage::disk('public')->assertExists($path);
     expect($response->json('url'))->toContain($path);
 });
@@ -91,7 +91,7 @@ it('serves the uploaded image through the docs _uploads streaming route', functi
     $path = $response->json('path');
 
     // The URL is the streaming route (works on any disk, no storage:link)...
-    expect($response->json('url'))->toContain('/docs/_uploads/docent/');
+    expect($response->json('url'))->toContain('/docs/_uploads/docent/docs/');
 
     // ...and it streams the file back with long-lived private caching.
     $this->get($response->json('url'))
@@ -106,9 +106,9 @@ it('serves the uploaded image through the docs _uploads streaming route', functi
 it('allows explicit public immutable caching for public documentation', function () {
     Storage::fake('public');
     config()->set('docent.sites.docs.admin.uploads.public_cache', true);
-    Storage::disk('public')->put('docent/public.webp', 'image');
+    Storage::disk('public')->put('docent/docs/public.webp', 'image');
 
-    $this->get('/docs/_uploads/docent/public.webp')
+    $this->get('/docs/_uploads/docent/docs/public.webp')
         ->assertOk()
         ->assertHeader('Cache-Control', 'immutable, max-age=31536000, public')
         ->assertHeader('Content-Type', 'image/webp');
@@ -116,14 +116,14 @@ it('allows explicit public immutable caching for public documentation', function
 
 it('contains active svg when it is opened as a document', function () {
     Storage::fake('public');
-    Storage::disk('public')->put('docent/danger.svg', <<<'SVG'
+    Storage::disk('public')->put('docent/docs/danger.svg', <<<'SVG'
         <svg xmlns="http://www.w3.org/2000/svg" onload="window.svgExecuted = true">
             <script>window.svgExecuted = true</script>
             <foreignObject><body xmlns="http://www.w3.org/1999/xhtml" onload="window.svgExecuted = true" /></foreignObject>
         </svg>
         SVG);
 
-    $this->get('/docs/_uploads/docent/danger.svg')
+    $this->get('/docs/_uploads/docent/docs/danger.svg')
         ->assertOk()
         ->assertHeader('Content-Type', 'image/svg+xml')
         ->assertHeader('Content-Disposition', 'inline; filename=danger.svg')
@@ -139,12 +139,12 @@ it('404s uploads-route requests outside the docent directory', function () {
     Storage::disk('public')->put('elsewhere/file.png', 'x');
 
     $this->get('/docs/_uploads/elsewhere/file.png')->assertNotFound();
-    $this->get('/docs/_uploads/docent/missing.png')->assertNotFound();
+    $this->get('/docs/_uploads/docent/docs/missing.png')->assertNotFound();
 });
 
 it('refuses to serve non-image files from the upload directory', function () {
     Storage::fake('public');
-    Storage::disk('public')->put('docent/page.html', '<script>alert(1)</script>');
+    Storage::disk('public')->put('docent/docs/page.html', '<script>alert(1)</script>');
 
-    $this->get('/docs/_uploads/docent/page.html')->assertNotFound();
+    $this->get('/docs/_uploads/docent/docs/page.html')->assertNotFound();
 });
