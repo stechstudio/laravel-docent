@@ -114,29 +114,13 @@ final class SearchEngine
         $best = null;
 
         foreach ($record->sections as $section) {
-            $score = 0.0;
-            $matched = [];
+            $sectionScore = $this->scoreSection($section, $globalScores, $globalText, $query, $index);
 
-            foreach ($query->terms as $position => $term) {
-                [$termScore, $termMatched] = $globalScores[$position];
-
-                foreach (['heading' => $section->headingTokens, 'body' => $section->bodyTokens] as $field => $tokens) {
-                    [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);
-                    $termScore += $fieldScore;
-                    $termMatched = $termMatched || $fieldMatched;
-                }
-
-                $score += $termScore;
-                $matched[$position] = $termMatched;
-            }
-
-            $coverage = count(array_filter($matched)) / max(1, count($query->terms));
-            if ($coverage <= 0) {
+            if ($sectionScore === null) {
                 continue;
             }
 
-            $score *= 0.4 + (1.6 * ($coverage ** 2));
-            $score += $this->phraseBonus($query->phrase, $globalText, $section);
+            [$score, $section] = $sectionScore;
 
             if ($best === null || $score > $best['score']
                 || ($score === $best['score'] && $section->order < $best['section']->order)) {
@@ -145,6 +129,40 @@ final class SearchEngine
         }
 
         return $best;
+    }
+
+    /**
+     * @param  array<int, array{float, bool}>  $globalScores
+     * @param  array<string, string>  $globalText
+     * @return array{float, SearchSection}|null the weighted score, or null when no term matched
+     */
+    private function scoreSection(SearchSection $section, array $globalScores, array $globalText, SearchQuery $query, SearchIndex $index): ?array
+    {
+        $score = 0.0;
+        $matched = [];
+
+        foreach ($query->terms as $position => $term) {
+            [$termScore, $termMatched] = $globalScores[$position];
+
+            foreach (['heading' => $section->headingTokens, 'body' => $section->bodyTokens] as $field => $tokens) {
+                [$fieldScore, $fieldMatched] = $this->fieldScore($tokens, $field, $term, $index);
+                $termScore += $fieldScore;
+                $termMatched = $termMatched || $fieldMatched;
+            }
+
+            $score += $termScore;
+            $matched[$position] = $termMatched;
+        }
+
+        $coverage = count(array_filter($matched)) / max(1, count($query->terms));
+        if ($coverage <= 0) {
+            return null;
+        }
+
+        $score *= 0.4 + (1.6 * ($coverage ** 2));
+        $score += $this->phraseBonus($query->phrase, $globalText, $section);
+
+        return [$score, $section];
     }
 
     /**
