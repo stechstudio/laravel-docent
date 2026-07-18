@@ -37,6 +37,15 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class Editor
 {
+    /** Where the effective page/group content comes from — the admin JS compares these exact strings. */
+    private const STORE_DATABASE = 'database';
+
+    private const STORE_FILESYSTEM = 'filesystem';
+
+    private const GROUP_SOURCE_DATABASE = 'database';
+
+    private const GROUP_SOURCE_FILE = 'file';
+
     public function __construct(
         private readonly DocentManager $docent,
         private readonly DocumentationRepository $repository,
@@ -90,7 +99,7 @@ final class Editor
                 'slug' => $page->slug,
                 'title' => $page->title,
                 'group' => $this->baseDirOf($page->slug),
-                'store' => 'database',
+                'store' => self::STORE_DATABASE,
                 'shadowed' => isset($files[$page->slug]),
                 'published' => $page->isPublished(),
                 'hasUnpublishedChanges' => $page->hasUnpublishedChanges(),
@@ -104,7 +113,7 @@ final class Editor
                 'slug' => $slug,
                 'title' => $reference->title,
                 'group' => $reference->directory,
-                'store' => 'filesystem',
+                'store' => self::STORE_FILESYSTEM,
                 'shadowed' => isset($dbSlugs[$slug]),
                 'published' => null,
                 'hasUnpublishedChanges' => null,
@@ -212,8 +221,8 @@ final class Editor
                 'order' => is_numeric($order) ? (int) $order : null,
                 'icon' => is_string($icon) && $icon !== '' ? $icon : null,
                 'source' => isset($dbGroups[$directory])
-                    ? 'database'
-                    : ($this->filesystem->groupMeta($directory) !== null ? 'file' : null),
+                    ? self::GROUP_SOURCE_DATABASE
+                    : ($this->filesystem->groupMeta($directory) !== null ? self::GROUP_SOURCE_FILE : null),
             ];
         }
 
@@ -466,7 +475,7 @@ final class Editor
                     'created_by' => $revision->created_by,
                 ],
             )->all(),
-            'store' => 'database',
+            'store' => self::STORE_DATABASE,
             'locked' => false,
         ];
     }
@@ -486,7 +495,7 @@ final class Editor
             'content_tiptap' => $this->tiptapFor($content, $source->format),
             'front_matter' => $frontMatter,
             'format' => $source->format,
-            'store' => 'filesystem',
+            'store' => self::STORE_FILESYSTEM,
             'readonly' => true,
             'locked' => $this->filesystemSlugLocked($slug) || $redirectStub,
         ];
