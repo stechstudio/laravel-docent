@@ -23,6 +23,7 @@ use STS\Docent\Ai\Conversation\AiConversationResolution;
 use STS\Docent\Ai\Models\AiQuestion;
 use STS\Docent\DocentManager;
 use STS\Docent\Insights\InsightRecorder;
+use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Support\DocentCache;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
@@ -65,32 +66,21 @@ final class AskController
         $context = $this->docent->contextFor($request);
         $corpusVersion = $this->corpus->version($context, $widget);
 
-        try {
-            $resolution = $this->conversations->resolve(
-                $request,
-                $context,
-                $corpusVersion,
-                $mode,
-                isset($validated['conversation_id']) ? (string) $validated['conversation_id'] : null,
-                isset($validated['conversation_token']) ? (string) $validated['conversation_token'] : null,
-            );
-        } catch (AiConversationForbidden $exception) {
-            return response()->json(['message' => $exception->getMessage()], 403);
-        } catch (AiConversationExpired $exception) {
-            return response()->json(['message' => $exception->getMessage(), 'code' => 'conversation_expired'], 409);
+        $resolution = $this->resolveConversation($request, $context, $corpusVersion, $mode, $validated);
+
+        if ($resolution instanceof JsonResponse) {
+            return $resolution;
         }
 
         $conversation = $resolution->conversation;
         $regenerate = (bool) ($validated['regenerate'] ?? false);
 
         if ($regenerate) {
-            $last = $conversation->turns[array_key_last($conversation->turns)] ?? null;
+            $conversation = $this->withoutRegeneratedTurn($conversation, $question);
 
-            if ($last === null || ! hash_equals($last->question, $question)) {
-                return response()->json(['message' => 'Only the most recent answer can be regenerated.'], 422);
+            if ($conversation instanceof JsonResponse) {
+                return $conversation;
             }
-
-            $conversation = $conversation->withoutLastTurn();
         }
 
         $currentSlug = trim((string) ($validated['current_slug'] ?? ''));
@@ -120,6 +110,38 @@ final class AskController
         }
 
         return $this->liveResponse($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveConversation(Request $request, DocumentationContext $context, string $corpusVersion, string $mode, array $validated): AiConversationResolution|JsonResponse
+    {
+        try {
+            return $this->conversations->resolve(
+                $request,
+                $context,
+                $corpusVersion,
+                $mode,
+                isset($validated['conversation_id']) ? (string) $validated['conversation_id'] : null,
+                isset($validated['conversation_token']) ? (string) $validated['conversation_token'] : null,
+            );
+        } catch (AiConversationForbidden $exception) {
+            return response()->json(['message' => $exception->getMessage()], 403);
+        } catch (AiConversationExpired $exception) {
+            return response()->json(['message' => $exception->getMessage(), 'code' => 'conversation_expired'], 409);
+        }
+    }
+
+    private function withoutRegeneratedTurn(AiConversation $conversation, string $question): AiConversation|JsonResponse
+    {
+        $last = $conversation->turns[array_key_last($conversation->turns)] ?? null;
+
+        if ($last === null || ! hash_equals($last->question, $question)) {
+            return response()->json(['message' => 'Only the most recent answer can be regenerated.'], 422);
+        }
+
+        return $conversation->withoutLastTurn();
     }
 
     private function cachedResponse(
