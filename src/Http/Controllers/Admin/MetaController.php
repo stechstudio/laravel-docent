@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\JsonResponse;
-use STS\Docent\DocentManager;
+use STS\Docent\Admin\Editor;
 
 /**
  * Registry metadata for the editor's pickers: conditions, values, links,
@@ -13,8 +13,8 @@ use STS\Docent\DocentManager;
  */
 final class MetaController
 {
-    public function __invoke(DocentManager $docent): JsonResponse
+    public function __invoke(Editor $editor): JsonResponse
     {
-        return response()->json($docent->pickerMeta());
+        return response()->json($editor->pickerMeta());
     }
 }

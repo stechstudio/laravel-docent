@@ -7,6 +7,7 @@ namespace STS\Docent\Http\Controllers\Admin;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use STS\Docent\Admin\Editor;
 use STS\Docent\DocentManager;
 use STS\Docent\Http\Controllers\Admin\Concerns\InteractsWithPages;
 
@@ -20,7 +21,7 @@ final class PreviewController
 {
     use InteractsWithPages;
 
-    public function __invoke(Request $request, DocentManager $docent): JsonResponse
+    public function __invoke(Request $request, DocentManager $docent, Editor $editor): JsonResponse
     {
         $request->validate(['front_matter' => ['array']]);
         $frontMatter = $request->input('front_matter', []);
@@ -30,16 +31,16 @@ final class PreviewController
             // Raw body, not input — TrimStrings would eat rich-text whitespace.
             $tiptap = $this->rawTiptap($request);
 
-            if ($tiptap === null || ($error = $docent->tiptapError($tiptap)) !== null) {
+            if ($tiptap === null || ($error = $editor->tiptapError($tiptap)) !== null) {
                 throw ValidationException::withMessages(['content_tiptap' => $error ?? 'Invalid document.']);
             }
 
-            $document = $docent->draftDocument('tiptap', json_encode($tiptap, JSON_THROW_ON_ERROR), $frontMatter);
+            $document = $editor->draftDocument('tiptap', json_encode($tiptap, JSON_THROW_ON_ERROR), $frontMatter);
         } else {
             $request->validate(['content' => ['present', 'string']]);
-            $document = $docent->draftDocument('markdown', $request->string('content')->toString(), $frontMatter);
+            $document = $editor->draftDocument('markdown', $request->string('content')->toString(), $frontMatter);
         }
 
-        return response()->json($docent->previewDraft($document, $docent->contextFor($request)));
+        return response()->json($editor->previewDraft($document, $docent->contextFor($request)));
     }
 }

@@ -6,7 +6,7 @@ namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use STS\Docent\DocentManager;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Http\Controllers\Admin\Concerns\InteractsWithPages;
 
 /**
@@ -18,41 +18,41 @@ final class PageStateController
 {
     use InteractsWithPages;
 
-    public function publish(string $slug, DocentManager $docent): JsonResponse
+    public function publish(string $slug, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
         $this->findPageOrFail($slug)->publish();
 
-        return response()->json($docent->adminDetail($slug));
+        return response()->json($editor->adminDetail($slug));
     }
 
-    public function unpublish(string $slug, DocentManager $docent): JsonResponse
+    public function unpublish(string $slug, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
         $this->findPageOrFail($slug)->unpublish();
 
-        return response()->json($docent->adminDetail($slug));
+        return response()->json($editor->adminDetail($slug));
     }
 
-    public function revert(string $slug, int $revision, DocentManager $docent): JsonResponse
+    public function revert(string $slug, int $revision, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
 
         $page = $this->findPageOrFail($slug);
         $target = $page->revisions()->whereKey($revision)->firstOr(fn () => abort(404));
 
         $page->revertTo($target);
 
-        return response()->json($docent->adminDetail($slug));
+        return response()->json($editor->adminDetail($slug));
     }
 
-    public function override(string $slug, Request $request, DocentManager $docent): JsonResponse
+    public function override(string $slug, Request $request, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
 
         if ($this->pageQuery()->where('slug', $slug)->exists()) {
             abort(409, 'A database page already exists for this slug.');
@@ -60,12 +60,12 @@ final class PageStateController
 
         $id = $request->user()?->getAuthIdentifier();
 
-        $page = $docent->overrideFromFilesystem($slug, $id === null ? null : (int) $id);
+        $page = $editor->overrideFromFilesystem($slug, $id === null ? null : (int) $id);
 
         if ($page === null) {
             abort(404);
         }
 
-        return response()->json($docent->adminDetail($slug));
+        return response()->json($editor->adminDetail($slug));
     }
 }

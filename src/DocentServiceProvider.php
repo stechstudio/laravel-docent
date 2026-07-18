@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Ai\AiAnswerService;
 use STS\Docent\Ai\AiConversationStore;
 use STS\Docent\Ai\AiCorpusBuilder;
@@ -96,6 +97,7 @@ final class DocentServiceProvider extends ServiceProvider
         $this->app->singleton(PrismGuard::class);
 
         $this->app->scoped(DocentManager::class, static fn (Application $app): DocentManager => $app->make(SiteRegistry::class)->current());
+        $this->app->scoped(Editor::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(Editor::class));
         $this->app->scoped(DocumentationRepository::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(DocumentationRepository::class));
         $this->app->scoped(FilesystemRepository::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(FilesystemRepository::class));
         $this->app->scoped(NavigationBuilder::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(NavigationBuilder::class));

@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Parser\TiptapDocumentParser;
@@ -16,7 +17,7 @@ use STS\Docent\Http\Controllers\Admin\Concerns\InteractsWithPages;
 /**
  * CRUD for database-authored pages. Thin: page writes go through
  * {@see DocentPage::write()} (which snapshots a revision), and the editor
- * payload plus inline reference checks come from {@see DocentManager}.
+ * payload plus inline reference checks come from {@see Editor}.
  */
 final class PageController
 {
@@ -30,11 +31,11 @@ final class PageController
         'title', 'description', 'authorize', 'audience', 'order', 'hidden', 'layout', 'hero', 'search', 'redirect',
     ];
 
-    public function store(Request $request, DocentManager $docent): JsonResponse
+    public function store(Request $request, DocentManager $docent, Editor $editor): JsonResponse
     {
         $slug = $request->string('slug')->toString();
         $this->assertValidSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
 
         if ($this->pageQuery()->where('slug', $slug)->exists()) {
             throw ValidationException::withMessages([
@@ -42,7 +43,7 @@ final class PageController
             ]);
         }
 
-        [$content, $frontMatter, $format] = $this->payload($request, $docent);
+        [$content, $frontMatter, $format] = $this->payload($request, $editor);
 
         DocentPage::write(
             $slug,
@@ -54,23 +55,23 @@ final class PageController
             $this->connection(),
         );
 
-        return $this->detailResponse($docent, $slug, $content, $frontMatter, $format, 201);
+        return $this->detailResponse($editor, $slug, $content, $frontMatter, $format, 201);
     }
 
-    public function show(string $slug, DocentManager $docent): JsonResponse
+    public function show(string $slug, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
 
-        return response()->json($docent->adminDetail($slug) ?? abort(404));
+        return response()->json($editor->adminDetail($slug) ?? abort(404));
     }
 
-    public function update(Request $request, string $slug, DocentManager $docent): JsonResponse
+    public function update(Request $request, string $slug, DocentManager $docent, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
         $this->assertValidSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
 
-        [$content, $frontMatter, $format] = $this->payload($request, $docent);
+        [$content, $frontMatter, $format] = $this->payload($request, $editor);
 
         DocentPage::write(
             $slug,
@@ -82,13 +83,13 @@ final class PageController
             $this->connection(),
         );
 
-        return $this->detailResponse($docent, $slug, $content, $frontMatter, $format);
+        return $this->detailResponse($editor, $slug, $content, $frontMatter, $format);
     }
 
-    public function destroy(string $slug, DocentManager $docent): JsonResponse
+    public function destroy(string $slug, Editor $editor): JsonResponse
     {
         $slug = $this->resolveSlug($slug);
-        $this->assertUnlocked($slug, $docent);
+        $this->assertUnlocked($slug, $editor);
         $this->findPageOrFail($slug)->delete();
 
         return response()->json(['deleted' => true]);
@@ -122,7 +123,7 @@ final class PageController
      *
      * @return array{0: string, 1: array<string, mixed>, 2: string}
      */
-    private function payload(Request $request, DocentManager $docent): array
+    private function payload(Request $request, Editor $editor): array
     {
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -146,7 +147,7 @@ final class PageController
             // meaningful whitespace inside rich-text nodes.
             $tiptap = $this->rawTiptap($request);
 
-            if ($tiptap === null || ($error = $docent->tiptapError($tiptap)) !== null) {
+            if ($tiptap === null || ($error = $editor->tiptapError($tiptap)) !== null) {
                 throw ValidationException::withMessages(['content_tiptap' => $error ?? 'Invalid document.']);
             }
 
@@ -161,11 +162,11 @@ final class PageController
     /**
      * @param  array<string, mixed>  $frontMatter
      */
-    private function detailResponse(DocentManager $docent, string $slug, string $content, array $frontMatter, string $format, int $status = 200): JsonResponse
+    private function detailResponse(Editor $editor, string $slug, string $content, array $frontMatter, string $format, int $status = 200): JsonResponse
     {
         return response()->json([
-            ...$docent->adminDetail($slug),
-            'issues' => $docent->draftIssues($slug, $docent->draftDocument($format, $content, $frontMatter)),
+            ...$editor->adminDetail($slug),
+            'issues' => $editor->draftIssues($slug, $editor->draftDocument($format, $content, $frontMatter)),
         ], $status);
     }
 

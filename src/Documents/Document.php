@@ -23,4 +23,28 @@ final class Document extends Node
     {
         return $this->frontMatter;
     }
+
+    /**
+     * A copy of this document with its front matter replaced — the seam that lets
+     * a Tiptap source's out-of-band metadata override the empty front matter the
+     * JSON parser produces.
+     *
+     * @param  array<string, mixed>  $frontMatter
+     */
+    public function withFrontMatter(array $frontMatter): self
+    {
+        $replacement = new self(new FrontMatter($frontMatter), $this->line, $this->htmlPolicy);
+        $replacement->setChildren($this->children);
+
+        return $replacement;
+    }
+
+    /** A copy of this document rendered under a different HTML policy. */
+    public function withHtmlPolicy(HtmlPolicy $policy): self
+    {
+        $replacement = new self($this->frontMatter, $this->line, $policy);
+        $replacement->setChildren($this->children);
+
+        return $replacement;
+    }
 }

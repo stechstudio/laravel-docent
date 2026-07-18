@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Artisan;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
@@ -181,7 +182,7 @@ it('reports invalid and empty content component structures in draft checks', fun
     ::::
     MD);
 
-    $checks = array_column(app(DocentManager::class)->draftIssues('components', $document), 'check');
+    $checks = array_column(app(Editor::class)->draftIssues('components', $document), 'check');
 
     expect($checks)->toContain(
         'orphan-step',

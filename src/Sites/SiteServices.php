@@ -7,6 +7,7 @@ namespace STS\Docent\Sites;
 use Illuminate\Contracts\Foundation\Application;
 use InvalidArgumentException;
 use RuntimeException;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Ai\AiAnswerService;
 use STS\Docent\Ai\AiConversationStore;
 use STS\Docent\Ai\AiCorpusBuilder;
@@ -45,6 +46,7 @@ final class SiteServices
      */
     public const ALIASES = [
         DocentManager::class,
+        Editor::class,
         DocumentationRepository::class,
         FilesystemRepository::class,
         NavigationBuilder::class,
@@ -160,11 +162,11 @@ final class SiteServices
             $cache,
             $navigation,
             $codeBlocks,
-            $filesystem,
             $mode,
             $this->app->make(ContentHtmlSanitizer::class),
             $config,
         );
+        $editor = new Editor($manager, $repository, $filesystem, $this->app->make(DocumentParser::class), $registry);
         $indexer = new SearchIndexer($repository, $cache, $manager);
         $stopWords = $config->get('search.stop_words');
         $search = new SearchEngine(
@@ -190,6 +192,7 @@ final class SiteServices
             CodeBlockRenderer::class => $codeBlocks,
             PhikiCodeBlockRenderer::class => $codeBlocks,
             DocentManager::class => $manager,
+            Editor::class => $editor,
             SearchIndexer::class => $indexer,
             SearchEngine::class => $search,
             AiRetriever::class => $retriever,

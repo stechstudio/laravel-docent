@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\JsonResponse;
-use STS\Docent\DocentManager;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Support\Icon;
 
 /**
@@ -16,13 +16,13 @@ use STS\Docent\Support\Icon;
  */
 final class TreeController
 {
-    public function __invoke(DocentManager $docent): JsonResponse
+    public function __invoke(Editor $editor): JsonResponse
     {
         return response()->json([
-            'pages' => $docent->adminTree(),
+            'pages' => $editor->adminTree(),
             'groups' => array_map(
                 static fn (array $group): array => [...$group, 'iconSvg' => $group['icon'] !== null ? Icon::svg($group['icon']) : null],
-                $docent->adminGroups(),
+                $editor->adminGroups(),
             ),
         ]);
     }

@@ -7,6 +7,7 @@ namespace STS\Docent\Http\Controllers\Admin\Concerns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\DocentManager;
 
@@ -62,9 +63,9 @@ trait InteractsWithPages
         }
     }
 
-    protected function assertUnlocked(string $slug, DocentManager $docent): void
+    protected function assertUnlocked(string $slug, Editor $editor): void
     {
-        if ($docent->filesystemSlugLocked($slug)) {
+        if ($editor->filesystemSlugLocked($slug)) {
             abort(403, "The repository page '{$slug}' is locked and cannot be changed in Docent admin.");
         }
     }

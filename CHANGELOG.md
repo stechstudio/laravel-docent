@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes (pre-1.0)
 
+- Moved the admin authoring API (`adminTree`, `adminDetail`, `filesystemSlugLocked`, `adminGroups`, `updateGroupMeta`, `removeGroupMeta`, `overrideFromFilesystem`, `draftDocument`, `tiptapError`, `exportMarkdown`, `previewDraft`, `draftIssues`, and `pickerMeta`) from `DocentManager` to `STS\Docent\Admin\Editor`; applications calling these methods on the manager or `Docent` facade must resolve the current site's `Editor` instead.
 - Restructured site identity, routing, filesystem, admin, navigation, and layout configuration under `docent.sites`, with `docent.default` selecting the fallback site.
 - Renamed every route from `docent.*` to the site-keyed `docent.{key}.*` form, including the shipped `docs` site.
 - Added a `site` column to the shared `docent_pages`, `docent_ai_questions`, and `docent_insight_events` tables and changed page uniqueness to `(site, slug)`. Pre-release applications should rerun the published migrations.

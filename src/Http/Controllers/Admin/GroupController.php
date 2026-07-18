@@ -6,25 +6,25 @@ namespace STS\Docent\Http\Controllers\Admin;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use STS\Docent\DocentManager;
+use STS\Docent\Admin\Editor;
 use STS\Docent\Support\Icon;
 
 /**
  * Manage sidebar group metadata (label/order/icon) for directories that hold
  * pages. Writes land as reserved `_groups/{directory}` rows overriding any
  * `_group.yml`, taking effect immediately with no publish step. Thin: the work
- * lives in {@see DocentManager}.
+ * lives in {@see Editor}.
  */
 final class GroupController
 {
-    public function index(DocentManager $docent): JsonResponse
+    public function index(Editor $editor): JsonResponse
     {
-        return response()->json(['groups' => $docent->adminGroups()]);
+        return response()->json(['groups' => $editor->adminGroups()]);
     }
 
-    public function update(Request $request, string $directory, DocentManager $docent): JsonResponse
+    public function update(Request $request, string $directory, Editor $editor): JsonResponse
     {
-        $this->assertManageable($directory, $docent);
+        $this->assertManageable($directory, $editor);
 
         $validated = $request->validate([
             'label' => ['required', 'string', 'max:120'],
@@ -46,31 +46,31 @@ final class GroupController
             $meta['icon'] = $validated['icon'];
         }
 
-        $docent->updateGroupMeta($directory, $meta, $this->authorId($request));
+        $editor->updateGroupMeta($directory, $meta, $this->authorId($request));
 
-        return response()->json(['groups' => $docent->adminGroups()]);
+        return response()->json(['groups' => $editor->adminGroups()]);
     }
 
-    public function destroy(string $directory, DocentManager $docent): JsonResponse
+    public function destroy(string $directory, Editor $editor): JsonResponse
     {
-        $this->assertManageable($directory, $docent);
+        $this->assertManageable($directory, $editor);
 
-        abort_unless($docent->removeGroupMeta($directory), 404);
+        abort_unless($editor->removeGroupMeta($directory), 404);
 
-        return response()->json(['groups' => $docent->adminGroups()]);
+        return response()->json(['groups' => $editor->adminGroups()]);
     }
 
     /**
      * A directory is manageable only when it is a well-formed slug path AND
      * currently holds pages — otherwise a 404, mirroring the page routes.
      */
-    private function assertManageable(string $directory, DocentManager $docent): void
+    private function assertManageable(string $directory, Editor $editor): void
     {
         if (preg_match('#^[a-z0-9]([a-z0-9/-]*[a-z0-9])?$#', $directory) !== 1) {
             abort(404);
         }
 
-        foreach ($docent->adminGroups() as $group) {
+        foreach ($editor->adminGroups() as $group) {
             if ($group['directory'] === $directory) {
                 return;
             }
