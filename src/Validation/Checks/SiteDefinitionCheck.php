@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Validation\Checks;
 
+use STS\Docent\Sites\SiteRegistry;
 use STS\Docent\Validation\Check;
 use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\Issue;
@@ -52,7 +53,7 @@ final class SiteDefinitionCheck implements Check
         foreach ($sites as $key => $definition) {
             $key = (string) $key;
 
-            if (preg_match('/^[A-Za-z0-9_-]+$/', $key) !== 1) {
+            if (preg_match(SiteRegistry::KEY_PATTERN, $key) !== 1) {
                 yield Issue::error(
                     'invalid-site-key',
                     'docent.sites.'.$key,

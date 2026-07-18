@@ -18,6 +18,13 @@ use STS\Docent\Runtime\IntegrationRegistry;
  */
 final class SiteRegistry
 {
+    /**
+     * Valid site keys — embedded in route names, middleware parameters, and
+     * cache prefixes, so nothing outside this character set is allowed. The
+     * single source of truth for every key validation in the package.
+     */
+    public const KEY_PATTERN = '/^[A-Za-z0-9_-]+$/';
+
     /** @var array<string, IntegrationRegistry> */
     private array $registries = [];
 
@@ -161,7 +168,7 @@ final class SiteRegistry
 
     private function validateKey(string $key): void
     {
-        if (preg_match('/^[A-Za-z0-9_-]+$/', $key) !== 1) {
+        if (preg_match(self::KEY_PATTERN, $key) !== 1) {
             throw new InvalidArgumentException("Invalid Docent site key [{$key}]. Site keys may contain only letters, numbers, underscores, and hyphens.");
         }
     }

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace STS\Docent\Search;
 
-use Illuminate\Container\Container;
-
 final class SearchQueryAnalyzer
 {
     /** @var list<string> */
@@ -19,14 +17,16 @@ final class SearchQueryAnalyzer
     /** @var list<string> */
     private array $stopWords;
 
-    /** @param ?list<string> $stopWords */
+    /**
+     * Stop words come from the site graph (`search.stop_words`, already
+     * site-resolved); null keeps the shipped English defaults. Deliberately
+     * no config fallback here — a raw global read would bypass per-site
+     * overrides.
+     *
+     * @param  ?list<string>  $stopWords
+     */
     public function __construct(?array $stopWords = null)
     {
-        if ($stopWords === null && Container::getInstance()->bound('config')) {
-            $configured = Container::getInstance()->make('config')->get('docent.search.stop_words');
-            $stopWords = is_array($configured) ? $configured : null;
-        }
-
         $this->stopWords = array_values(array_unique(array_map(
             static fn (mixed $word): string => mb_strtolower(trim((string) $word)),
             $stopWords ?? self::DEFAULT_STOP_WORDS,

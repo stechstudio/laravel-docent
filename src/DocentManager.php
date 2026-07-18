@@ -647,9 +647,16 @@ final class DocentManager
         return $target === null ? $destination : $this->url($target['slug']).$target['suffix'];
     }
 
+    /**
+     * The configured site name, falling back to a headline of the site key
+     * (`admin-docs` → "Admin Docs") so a site without a `name` never renders
+     * an empty wordmark or a broken llms.txt heading.
+     */
     public function siteName(): string
     {
-        return (string) $this->config('name');
+        $name = $this->config('name');
+
+        return is_string($name) && trim($name) !== '' ? $name : Str::headline($this->key());
     }
 
     /**

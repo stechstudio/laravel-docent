@@ -100,7 +100,7 @@ final class CheckCommand extends Command
         foreach (array_keys($configured) as $key) {
             $key = (string) $key;
 
-            if (preg_match('/^[A-Za-z0-9_-]+$/', $key) === 1) {
+            if (preg_match(SiteRegistry::KEY_PATTERN, $key) === 1) {
                 $keys[] = $key;
             }
         }
