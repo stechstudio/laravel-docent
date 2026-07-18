@@ -573,24 +573,21 @@ final class NavigationBuilder
         return $groups;
     }
 
-    /**
-     * @param  list<NavigationItem|NavigationGroup>  $nodes
+    /** @param list<NavigationItem|NavigationGroup> $nodes
      * @return list<NavigationItem>
      */
-    private function flatten(array $nodes): array
+    public function flatten(array $nodes): array
     {
-        $flat = [];
+        $items = [];
 
         foreach ($nodes as $node) {
             if ($node instanceof NavigationItem) {
-                $flat[] = $node;
-
-                continue;
+                $items[] = $node;
+            } else {
+                array_push($items, ...$node->items, ...$this->flatten($node->groups));
             }
-
-            $flat = array_merge($flat, $node->items, $this->flatten($node->groups));
         }
 
-        return $flat;
+        return $items;
     }
 }

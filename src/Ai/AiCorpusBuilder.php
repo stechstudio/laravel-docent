@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Ai;
 
+use STS\Docent\Content\AgentFeed;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Runtime\DocumentationContext;
@@ -17,6 +18,7 @@ final class AiCorpusBuilder
         private readonly DocentManager $docent,
         private readonly DocumentationRepository $repository,
         private readonly AiRetriever $retriever,
+        private readonly AgentFeed $feed,
     ) {}
 
     public function version(DocumentationContext $context, bool $widget = false): string
@@ -59,7 +61,7 @@ final class AiCorpusBuilder
                 ? $this->docent->widgetUrl($candidate->record->slug)
                 : $this->docent->fullUrl($candidate->record->slug);
             $separator = $included === [] ? '' : "\n\n";
-            $markdown = trim($this->docent->agentMarkdown($page, $context));
+            $markdown = trim($this->feed->agentMarkdown($page, $context));
             $block = $this->pageBlock($candidate->record->title, $url, $markdown);
             $remaining = $limit - $characters - strlen($separator);
 

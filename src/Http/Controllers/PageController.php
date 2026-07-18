@@ -7,6 +7,7 @@ namespace STS\Docent\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use STS\Docent\Content\AgentFeed;
 use STS\Docent\DocentManager;
 use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Page;
@@ -20,6 +21,7 @@ final class PageController
 {
     public function __construct(
         private readonly DocentManager $docent,
+        private readonly AgentFeed $feed,
         private readonly InsightRecorder $insights,
     ) {}
 
@@ -75,7 +77,7 @@ final class PageController
         }
 
         if ($markdown) {
-            return response($this->docent->agentMarkdown($page, $context), 200, [
+            return response($this->feed->agentMarkdown($page, $context), 200, [
                 'Content-Type' => 'text/markdown; charset=utf-8',
                 'X-Robots-Tag' => 'noindex, nofollow',
                 'Vary' => 'Accept',
@@ -92,7 +94,7 @@ final class PageController
                 'heroBadge' => $page->heroBadge(),
                 'heroCta' => $page->heroCta(),
                 'heroSearch' => $page->heroSearch(),
-            ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
+            ])->header('Link', $this->feed->discoveryLinkHeader())->header('Vary', 'Accept');
         }
 
         [$prev, $next] = $this->docent->prevNext($slug, $context);
@@ -105,7 +107,7 @@ final class PageController
             'toc' => $page->toc($context),
             'prev' => $prev,
             'next' => $next,
-        ])->header('Link', $this->docent->discoveryLinkHeader())->header('Vary', 'Accept');
+        ])->header('Link', $this->feed->discoveryLinkHeader())->header('Vary', 'Accept');
     }
 
     /**

@@ -6,18 +6,19 @@ namespace STS\Docent\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use STS\Docent\Content\AgentFeed;
 use STS\Docent\DocentManager;
 
 final class LlmsController
 {
-    public function index(Request $request, DocentManager $docent): Response
+    public function index(Request $request, DocentManager $docent, AgentFeed $feed): Response
     {
-        return $this->response($docent->llmsText($docent->contextFor($request)));
+        return $this->response($feed->llmsText($docent->contextFor($request)));
     }
 
-    public function full(Request $request, DocentManager $docent): Response
+    public function full(Request $request, DocentManager $docent, AgentFeed $feed): Response
     {
-        return $this->response($docent->llmsFullText($docent->contextFor($request)));
+        return $this->response($feed->llmsFullText($docent->contextFor($request)));
     }
 
     private function response(string $content): Response

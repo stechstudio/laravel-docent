@@ -1,6 +1,7 @@
 <?php
 
 use STS\Docent\Ai\AiRetriever;
+use STS\Docent\Content\AgentFeed;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Navigation\NavigationBuilder;
@@ -12,7 +13,7 @@ use STS\Docent\Search\SearchIndexer;
 beforeEach(function () {
     config()->set('docent.sites.docs.filesystem.path', dirname(__DIR__).'/fixtures/redirect-docs');
 
-    foreach ([DocumentationRepository::class, DocentManager::class, NavigationBuilder::class, SearchIndexer::class, SearchEngine::class, AiRetriever::class] as $service) {
+    foreach ([AgentFeed::class, DocumentationRepository::class, DocentManager::class, NavigationBuilder::class, SearchIndexer::class, SearchEngine::class, AiRetriever::class] as $service) {
         app()->forgetInstance($service);
     }
 });
@@ -46,6 +47,7 @@ it('follows short chains to the final page and rejects chains beyond the bound',
 
 it('keeps redirect stubs out of navigation, search, agent output, and assistant retrieval', function () {
     $manager = app(DocentManager::class);
+    $feed = app(AgentFeed::class);
     $context = $this->contextFor(null);
     $navigation = $manager->navigation($context);
     $slugs = [];
@@ -72,8 +74,8 @@ it('keeps redirect stubs out of navigation, search, agent output, and assistant 
     expect($slugs)->not->toContain('old-setup', 'older-setup', 'old-secret')
         ->and($recordSlugs)->not->toContain('old-setup', 'older-setup', 'old-secret')
         ->and(array_map(static fn ($candidate): string => $candidate->record->slug, $retrieval->candidates))->not->toContain('old-setup')
-        ->and($manager->llmsText($context))->not->toContain('Retired Setup')
-        ->and($manager->llmsFullText($context))->not->toContain('Retired workflow marker');
+        ->and($feed->llmsText($context))->not->toContain('Retired Setup')
+        ->and($feed->llmsFullText($context))->not->toContain('Retired workflow marker');
 });
 
 it('uses the real page when its slug collides with a redirect stub', function () {

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes (pre-1.0)
 
+- Moved `agentMarkdown`, `llmsText`, `llmsFullText`, and `discoveryLinkHeader` from `DocentManager` to `STS\Docent\Content\AgentFeed`; resolve it from the container, where it is site-scoped like the manager.
 - Moved the admin authoring API (`adminTree`, `adminDetail`, `filesystemSlugLocked`, `adminGroups`, `updateGroupMeta`, `removeGroupMeta`, `overrideFromFilesystem`, `draftDocument`, `tiptapError`, `exportMarkdown`, `previewDraft`, `draftIssues`, and `pickerMeta`) from `DocentManager` to `STS\Docent\Admin\Editor`; applications calling these methods on the manager or `Docent` facade must resolve the current site's `Editor` instead.
 - Restructured site identity, routing, filesystem, admin, navigation, and layout configuration under `docent.sites`, with `docent.default` selecting the fallback site.
 - Renamed every route from `docent.*` to the site-keyed `docent.{key}.*` form, including the shipped `docs` site.

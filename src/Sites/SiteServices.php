@@ -14,6 +14,7 @@ use STS\Docent\Ai\AiCorpusBuilder;
 use STS\Docent\Ai\AiQuestionLogger;
 use STS\Docent\Ai\AiRetriever;
 use STS\Docent\Ai\PrismGuard;
+use STS\Docent\Content\AgentFeed;
 use STS\Docent\Content\Repositories\CompositeRepository;
 use STS\Docent\Content\Repositories\DatabaseRepository;
 use STS\Docent\Content\Repositories\DocumentationRepository;
@@ -47,6 +48,7 @@ final class SiteServices
     public const ALIASES = [
         DocentManager::class,
         Editor::class,
+        AgentFeed::class,
         DocumentationRepository::class,
         FilesystemRepository::class,
         NavigationBuilder::class,
@@ -166,6 +168,7 @@ final class SiteServices
             $this->app->make(ContentHtmlSanitizer::class),
             $config,
         );
+        $agentFeed = new AgentFeed($manager, $repository, $cache, $registry, $navigation);
         $editor = new Editor($manager, $repository, $filesystem, $this->app->make(DocumentParser::class), $registry);
         $indexer = new SearchIndexer($repository, $cache, $manager);
         $stopWords = $config->get('search.stop_words');
@@ -175,7 +178,7 @@ final class SiteServices
             new SearchQueryAnalyzer(is_array($stopWords) ? $stopWords : null),
         );
         $retriever = new AiRetriever($search, $indexer, $manager);
-        $corpus = new AiCorpusBuilder($manager, $repository, $retriever);
+        $corpus = new AiCorpusBuilder($manager, $repository, $retriever, $agentFeed);
         $answers = new AiAnswerService($manager, $this->app->make(PrismGuard::class), validate: false);
         $questionLogger = new AiQuestionLogger($manager);
         $conversations = new AiConversationStore($cache, $manager);
@@ -193,6 +196,7 @@ final class SiteServices
             PhikiCodeBlockRenderer::class => $codeBlocks,
             DocentManager::class => $manager,
             Editor::class => $editor,
+            AgentFeed::class => $agentFeed,
             SearchIndexer::class => $indexer,
             SearchEngine::class => $search,
             AiRetriever::class => $retriever,

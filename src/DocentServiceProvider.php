@@ -24,6 +24,7 @@ use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\InstallCommand;
 use STS\Docent\Console\PruneInsightsCommand;
+use STS\Docent\Content\AgentFeed;
 use STS\Docent\Content\Models\DocentPage;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Content\Repositories\FilesystemRepository;
@@ -98,6 +99,7 @@ final class DocentServiceProvider extends ServiceProvider
 
         $this->app->scoped(DocentManager::class, static fn (Application $app): DocentManager => $app->make(SiteRegistry::class)->current());
         $this->app->scoped(Editor::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(Editor::class));
+        $this->app->scoped(AgentFeed::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(AgentFeed::class));
         $this->app->scoped(DocumentationRepository::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(DocumentationRepository::class));
         $this->app->scoped(FilesystemRepository::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(FilesystemRepository::class));
         $this->app->scoped(NavigationBuilder::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(NavigationBuilder::class));
