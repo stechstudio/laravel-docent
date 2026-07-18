@@ -90,6 +90,9 @@ normal deep links and table-of-contents entries.
 Public reader pages include canonical, Open Graph, Twitter, and TechArticle
 metadata. Each site also serves a cached `sitemap.xml` containing only pages a
 guest can see; set shared or per-site `seo.sitemap` to `false` to disable it.
+Point `seo.image` at a social-preview image (path or absolute URL) to enrich
+link unfurls with a large card; any page can override it with an `image:`
+front matter key.
 
 When the database-backed admin is enabled, editors can normally create an editable copy of a repository page. Add `locked: true` to a page's front matter when the repository version must always win. The same key in `_group.yml` locks every repository page and partial below that directory; a page-level `locked: false` cannot weaken the group lock. Locked pages remain visible in the admin as rendered, read-only content.
 

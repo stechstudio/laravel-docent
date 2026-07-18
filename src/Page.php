@@ -46,6 +46,11 @@ final class Page
         return $this->frontMatter()->description();
     }
 
+    public function image(): ?string
+    {
+        return $this->frontMatter()->image();
+    }
+
     public function searchExcluded(): bool
     {
         return $this->frontMatter()->searchExcluded();

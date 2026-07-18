@@ -79,6 +79,10 @@ return [
     'seo' => [
         // Serve {prefix}/sitemap.xml listing the pages a guest may see.
         'sitemap' => true,
+
+        // A social-preview image for link unfurls (path or absolute URL).
+        // Pages can override it with an `image:` front matter key.
+        'image' => null,
     ],
 
     /*

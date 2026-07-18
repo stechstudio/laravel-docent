@@ -32,6 +32,14 @@ final class FrontMatter
         return is_scalar($description) ? (string) $description : null;
     }
 
+    /** A social-preview image for this page, overriding the site's `seo.image`. */
+    public function image(): ?string
+    {
+        $image = $this->get('image');
+
+        return is_string($image) && trim($image) !== '' ? trim($image) : null;
+    }
+
     /**
      * Gate/ability string that authorizes viewing the whole page.
      */

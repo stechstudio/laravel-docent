@@ -2,6 +2,7 @@
 title: Setup
 description: Set things up.
 order: 1
+image: /img/setup-card.png
 ---
 
 # Setup

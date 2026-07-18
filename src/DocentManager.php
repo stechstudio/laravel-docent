@@ -328,6 +328,25 @@ final class DocentManager
             : 'Application guides and help documentation for '.$this->siteName().'.';
     }
 
+    /**
+     * The absolute social-preview image URL for a page: a front-matter `image`
+     * wins over the shared `seo.image`, and app-relative paths resolve against
+     * the application URL so crawlers always receive an absolute URL. Null
+     * when neither is set — link unfurls fall back to text.
+     */
+    public function seoImage(?string $pageImage = null): ?string
+    {
+        $image = $pageImage ?? $this->config('seo.image');
+
+        if (! is_string($image) || trim($image) === '') {
+            return null;
+        }
+
+        $image = trim($image);
+
+        return preg_match('#^(?:https?:)?//#i', $image) === 1 ? $image : url($image);
+    }
+
     /** @return array<string, mixed> */
     public function widgetConfig(): array
     {

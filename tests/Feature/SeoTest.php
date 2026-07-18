@@ -63,3 +63,38 @@ it('renders canonical, social, and structured metadata on pages', function () {
         ->toHaveKey('@type', 'TechArticle')
         ->toHaveKey('url', 'http://localhost/docs/guides/setup');
 });
+
+it('omits social images and uses the summary card by default', function () {
+    $html = $this->get('/docs/billing/overview')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<meta name="twitter:card" content="summary">')
+        ->not->toContain('og:image');
+});
+
+it('renders the shared seo.image on pages without their own', function () {
+    config()->set('docent.seo.image', 'https://cdn.example.com/help-card.png');
+    $this->resetDocentScope();
+
+    $html = $this->get('/docs/billing/overview')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<meta property="og:image" content="https://cdn.example.com/help-card.png">')
+        ->toContain('<meta name="twitter:image" content="https://cdn.example.com/help-card.png">')
+        ->toContain('<meta name="twitter:card" content="summary_large_image">');
+});
+
+it('lets a page front-matter image beat the site default and resolves it absolute', function () {
+    config()->set('docent.seo.image', 'https://cdn.example.com/help-card.png');
+    $this->resetDocentScope();
+
+    $html = $this->get('/docs/guides/setup')->assertOk()->getContent();
+    preg_match('~<script type="application/ld\+json">(.*?)</script>~s', $html, $matches);
+    $structuredData = json_decode($matches[1] ?? '', true, flags: JSON_THROW_ON_ERROR);
+
+    expect($html)
+        ->toContain('<meta property="og:image" content="http://localhost/img/setup-card.png">')
+        ->not->toContain('help-card.png');
+
+    expect($structuredData)->toHaveKey('image', 'http://localhost/img/setup-card.png');
+});
