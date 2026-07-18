@@ -4,10 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ ($title ?? null) && ! str_contains($siteName, $title) ? $title.' — '.$siteName : $siteName }}</title>
+    @php($seoTitle = ($title ?? null) && ! str_contains($siteName, $title) ? $title.' — '.$siteName : $siteName)
+    <title>{{ $seoTitle }}</title>
     @isset($description)
         @if($description)<meta name="description" content="{{ $description }}">@endif
     @endisset
+    @include('docent::partials.seo')
 
     @if($docent->favicon())
         <link rel="icon" href="{{ $docent->favicon() }}">

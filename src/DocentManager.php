@@ -244,6 +244,20 @@ final class DocentManager
     }
 
     /**
+     * The context of an anonymous visitor, regardless of who is browsing —
+     * public surfaces (sitemap) must never widen to the current viewer.
+     */
+    public function guestContext(): DocumentationContext
+    {
+        return new DocumentationContext(
+            user: null,
+            request: null,
+            gate: static fn (string $ability, array $arguments, ?Authenticatable $user): bool => Gate::forUser(null)->allows($ability, $arguments),
+            site: $this->siteRef(),
+        );
+    }
+
+    /**
      * Resolve the Blade view for a front-matter `layout` value. Anything but
      * the default `docs` layout resolves through the host's `docent.layouts`
      * config map first, then the `docent::layouts.*` namespace — where hosts

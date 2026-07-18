@@ -67,6 +67,27 @@ it('keeps llms.txt corpora separate', function () {
         ->assertSee('Runbook');
 });
 
+it('keeps each sitemap within its own site and prefix', function () {
+    $public = $this->get('/help/sitemap.xml')->assertOk()->getContent();
+
+    expect($public)
+        ->toContain('<loc>http://localhost/help</loc>')
+        ->toContain('<loc>http://localhost/help/guides/setup</loc>')
+        ->not->toContain('admin/docs')
+        ->not->toContain('internal/runbook');
+
+    $this->resetDocentScope();
+    $admin = $this->actingAs($this->adminDocsEditor())
+        ->get('/admin/docs/sitemap.xml')
+        ->assertOk()
+        ->getContent();
+
+    expect($admin)
+        ->toContain('<loc>http://localhost/admin/docs</loc>')
+        ->toContain('<loc>http://localhost/admin/docs/internal/runbook</loc>')
+        ->not->toContain('/help/');
+});
+
 it('brands each site from its own theme override', function () {
     $this->get('/help')
         ->assertOk()

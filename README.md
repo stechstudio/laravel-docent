@@ -87,6 +87,10 @@ collapsible `:::accordion` answers, `:::tabs` with labeled `:::tab` panels,
 print, and agent-facing Markdown; headings inside accordions and tabs keep their
 normal deep links and table-of-contents entries.
 
+Public reader pages include canonical, Open Graph, Twitter, and TechArticle
+metadata. Each site also serves a cached `sitemap.xml` containing only pages a
+guest can see; set shared or per-site `seo.sitemap` to `false` to disable it.
+
 When the database-backed admin is enabled, editors can normally create an editable copy of a repository page. Add `locked: true` to a page's front matter when the repository version must always win. The same key in `_group.yml` locks every repository page and partial below that directory; a page-level `locked: false` cannot weaken the group lock. Locked pages remain visible in the admin as rendered, read-only content.
 
 Admin image uploads support PNG, JPEG, GIF, WebP, and SVG on any configured

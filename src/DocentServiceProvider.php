@@ -52,6 +52,7 @@ use STS\Docent\Http\Controllers\InsightsController;
 use STS\Docent\Http\Controllers\LlmsController;
 use STS\Docent\Http\Controllers\PageController;
 use STS\Docent\Http\Controllers\SearchController;
+use STS\Docent\Http\Controllers\SitemapController;
 use STS\Docent\Http\Controllers\UploadsController;
 use STS\Docent\Http\Controllers\WidgetController;
 use STS\Docent\Http\Controllers\WidgetSuggestionsController;
@@ -192,6 +193,7 @@ final class DocentServiceProvider extends ServiceProvider
 
                 Route::get('/llms.txt', [LlmsController::class, 'index'])->name('llms');
                 Route::get('/llms-full.txt', [LlmsController::class, 'full'])->name('llms-full');
+                Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
 
                 Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('show');
             });
