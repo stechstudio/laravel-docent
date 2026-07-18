@@ -180,35 +180,64 @@ final class NavigationBuilder
 
             $target = $targets[0];
             $value = trim($definition[$target]);
-            $external = false;
-            $active = false;
+            $resolved = $this->resolveLinkTarget($target, $value, $context, $currentSlug, $pages);
 
-            if ($target === 'page') {
-                $pages ??= $this->pageMap();
-                $page = $pages[$value] ?? null;
-
-                if ($page === null || ! $this->visible($page, $context)) {
-                    continue;
-                }
-
-                $url = ($this->urlResolver)($value);
-                $active = $currentSlug === $value;
-            } elseif ($target === 'route') {
-                if (! Route::has($value)) {
-                    continue;
-                }
-
-                $url = route($value);
-            } else {
-                $url = $value;
-                $external = preg_match('#^(?:(?:https?:)?//|[a-z][a-z0-9+.-]*:)#i', $url) === 1;
+            if ($resolved === null) {
+                continue;
             }
 
             [$icon, $iconIsImage] = $this->linkIcon($definition['icon'] ?? null);
-            $links[] = new NavigationLink($label, $url, $icon, $iconIsImage, $external, $active);
+            $links[] = new NavigationLink(
+                $label,
+                $resolved['url'],
+                $icon,
+                $iconIsImage,
+                $resolved['external'],
+                $resolved['active'],
+            );
         }
 
         return $links;
+    }
+
+    /**
+     * @param  array<string, PageReference>|null  $pages
+     * @return array{url: string, external: bool, active: bool}|null null = skip this entry
+     */
+    private function resolveLinkTarget(string $target, string $value, DocumentationContext $context, string $currentSlug, ?array &$pages): ?array
+    {
+        if ($target === 'page') {
+            $pages ??= $this->pageMap();
+            $page = $pages[$value] ?? null;
+
+            if ($page === null || ! $this->visible($page, $context)) {
+                return null;
+            }
+
+            return [
+                'url' => ($this->urlResolver)($value),
+                'external' => false,
+                'active' => $currentSlug === $value,
+            ];
+        }
+
+        if ($target === 'route') {
+            if (! Route::has($value)) {
+                return null;
+            }
+
+            return [
+                'url' => route($value),
+                'external' => false,
+                'active' => false,
+            ];
+        }
+
+        return [
+            'url' => $value,
+            'external' => preg_match('#^(?:(?:https?:)?//|[a-z][a-z0-9+.-]*:)#i', $value) === 1,
+            'active' => false,
+        ];
     }
 
     /**
