@@ -202,8 +202,13 @@ composer require prism-php/prism
     'enabled' => true,
     'provider' => env('DOCENT_AI_PROVIDER'),
     'model' => env('DOCENT_AI_MODEL'),
+    'language' => 'viewer',
 ],
 ```
+
+Set `language` to `viewer` to answer in the current application locale, to a
+fixed BCP 47 locale such as `de` or `pt-BR` to always use that language, or to
+`null` (the default) to answer in the documentation's language.
 
 Publish and run Docent's migrations to log questions and thumbs feedback. Set
 `log_questions` to `false` when no question analytics should be stored. The

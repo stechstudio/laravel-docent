@@ -114,6 +114,10 @@ return [
         'enabled' => false,
         'provider' => env('DOCENT_AI_PROVIDER'),
         'model' => env('DOCENT_AI_MODEL'),
+        // null = answer in the docs' language (today's behavior).
+        // 'viewer' = answer in the app locale of the request (app()->getLocale()).
+        // Any locale string (e.g. 'de', 'pt-BR') = always answer in that language.
+        'language' => null,
         'log_questions' => true,
         'max_tokens' => 1200,
         'throttle' => '10,1',

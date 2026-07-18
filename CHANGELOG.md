@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Publishable language files for translating the reader, search, Assistant, and widget interfaces.
+- Configurable Assistant answer language, including the current application's locale.
 - Guest-pruned per-site sitemaps plus canonical URLs, social metadata, and TechArticle JSON-LD on public reader pages.
 - Multiple independent documentation sites from one installation, each with its own corpus, route prefix or domain, middleware, branding, feature switches, and admin gate.
 - A lazy site registry and site-aware manager/service graphs with shared configuration defaults and explicit site-only settings.

@@ -58,6 +58,7 @@ final class AskController
         $question = $this->normalize((string) $validated['question']);
         $widget = $request->string('mode')->toString() === 'widget' && $this->docent->config('widget.enabled', false);
         $mode = $widget ? 'widget' : 'reader';
+        $language = $this->answerLanguage();
 
         if ($widget) {
             $this->docent->enableWidgetMode();
@@ -99,7 +100,7 @@ final class AskController
         }
 
         $log = $this->questions->start($question, $context);
-        $cacheKey = $this->cacheKey($corpus, $conversation, $question, $mode);
+        $cacheKey = $this->cacheKey($corpus, $conversation, $question, $mode, $language);
         $cached = $regenerate ? null : $this->cache->get($cacheKey);
 
         if (is_array($cached) && is_string($cached['answer'] ?? null)) {
@@ -109,7 +110,7 @@ final class AskController
             return $this->cachedResponse($corpus, $resolution, $conversation, $question, $log, $cached['answer']);
         }
 
-        return $this->liveResponse($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug);
+        return $this->liveResponse($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug, $language);
     }
 
     /**
@@ -179,8 +180,9 @@ final class AskController
         ?AiQuestion $log,
         string $mode,
         string $currentSlug,
+        ?string $language,
     ): StreamedResponse {
-        return $this->eventStream(function () use ($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug): void {
+        return $this->eventStream(function () use ($corpus, $resolution, $conversation, $question, $cacheKey, $log, $mode, $currentSlug, $language): void {
             try {
                 $this->emitConversation($resolution, $conversation);
                 $this->emit('citations', $this->citationsPayload($corpus, $log));
@@ -189,7 +191,7 @@ final class AskController
                 $streamEnd = ['finish_reason' => 'Stop'];
 
                 try {
-                    foreach ($this->answers->stream($corpus, $question, $conversation->turns) as $event) {
+                    foreach ($this->answers->stream($corpus, $question, $conversation->turns, $language) as $event) {
                         if ($event instanceof TextDeltaEvent) {
                             $answer .= $event->delta;
                         }
@@ -253,18 +255,41 @@ final class AskController
         ]);
     }
 
-    private function cacheKey(AiCorpus $corpus, AiConversation $conversation, string $question, string $mode): string
+    private function cacheKey(AiCorpus $corpus, AiConversation $conversation, string $question, string $mode, ?string $language): string
     {
         $history = array_map(static fn ($turn): array => [$turn->question, $turn->answer], $conversation->turns);
         $historyHash = hash('sha256', json_encode($history, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
-        return implode(':', [
+        $parts = [
             'ai-answer-v3',
             $corpus->retrievalVersion,
             $mode,
             $historyHash,
             sha1(mb_strtolower($question)),
-        ]);
+        ];
+
+        if ($language !== null) {
+            $parts[] = $language;
+        }
+
+        return implode(':', $parts);
+    }
+
+    private function answerLanguage(): ?string
+    {
+        $configured = $this->docent->config('ai.language');
+
+        if ($configured === null) {
+            return null;
+        }
+
+        $language = trim((string) $configured);
+
+        if ($language === '') {
+            return null;
+        }
+
+        return $language === 'viewer' ? app()->getLocale() : $language;
     }
 
     private function rateLimit(Request $request): ?JsonResponse

@@ -28,7 +28,7 @@ final class AiAnswerService
 
     /** @return Generator<object> */
     /** @param list<AiConversationTurn> $history */
-    public function stream(AiCorpus $corpus, string $question, array $history = []): Generator
+    public function stream(AiCorpus $corpus, string $question, array $history = [], ?string $language = null): Generator
     {
         $facade = 'Prism\\Prism\\Facades\\Prism';
         $messages = [];
@@ -42,7 +42,7 @@ final class AiAnswerService
         $messages[] = new UserMessage(AiPrompt::question($question));
         $request = $facade::text()
             ->using($provider, $model)
-            ->withSystemPrompt(AiPrompt::system($corpus))
+            ->withSystemPrompt(AiPrompt::system($corpus, $language))
             ->withMessages($messages)
             ->withMaxTokens(max(1, (int) $this->docent->config('ai.max_tokens', 1200)));
 

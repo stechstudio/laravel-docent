@@ -6,7 +6,7 @@ namespace STS\Docent\Ai;
 
 final class AiPrompt
 {
-    public static function system(AiCorpus $corpus): string
+    public static function system(AiCorpus $corpus, ?string $language = null): string
     {
         $allowed = implode("\n", array_map(
             static fn (array $citation): string => '- '.$citation['url'].' — '.$citation['title'],
@@ -45,7 +45,13 @@ final class AiPrompt
         </docent-untrusted-documentation>
         PROMPT;
 
-        return str_replace(['{{ALLOWED}}', '{{CORPUS}}'], [$allowed, $corpus->content], $template);
+        $prompt = str_replace(['{{ALLOWED}}', '{{CORPUS}}'], [$allowed, $corpus->content], $template);
+
+        if ($language === null) {
+            return $prompt;
+        }
+
+        return $prompt."\n\n".'Respond in the language identified by BCP 47 code "'.$language.'", regardless of the language of the documentation excerpts.';
     }
 
     public static function question(string $question): string
