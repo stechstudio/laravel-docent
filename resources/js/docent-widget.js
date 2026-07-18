@@ -13,6 +13,8 @@
 
     window.__docentWidgetBooted = true;
 
+    const str = (key, fallback) => config.strings?.[key] ?? fallback;
+
     const side = config.position === 'left' ? 'left' : 'right';
     const mode = config.mode === 'push' ? 'push' : 'overlay';
     const offset = Math.max(0, Number(config.offset) || 0);
@@ -51,7 +53,7 @@
 
         launcher = document.createElement('button');
         launcher.type = 'button';
-        launcher.setAttribute('aria-label', 'Help');
+        launcher.setAttribute('aria-label', str('help', 'Help'));
         launcher.setAttribute('aria-expanded', 'false');
         launcher.setAttribute('aria-haspopup', 'dialog');
         launcher.dataset.docentLauncher = '';
@@ -89,10 +91,10 @@
         panel = document.createElement('div');
         panel.dataset.docentPanel = '';
         panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-label', 'Documentation');
+        panel.setAttribute('aria-label', str('documentation', 'Documentation'));
 
         iframe = document.createElement('iframe');
-        iframe.title = 'Documentation';
+        iframe.title = str('documentation', 'Documentation');
         iframe.src = widgetHref(slug);
         iframe.setAttribute('allow', 'clipboard-write');
         styles(iframe, { width: '100%', height: '100%', border: '0', display: 'block', background: '#fff' });

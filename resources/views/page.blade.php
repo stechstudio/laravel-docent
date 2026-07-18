@@ -19,12 +19,12 @@
         </article>
 
         @if($prev || $next)
-            <nav class="docent-pagination mt-14 grid gap-4 border-t border-slate-200 pt-8 sm:grid-cols-2 dark:border-slate-800" aria-label="Pagination">
+            <nav class="docent-pagination mt-14 grid gap-4 border-t border-slate-200 pt-8 sm:grid-cols-2 dark:border-slate-800" aria-label="{{ __('docent::ui.common.pagination') }}">
                 @if($prev)
                     <a rel="prev" href="{{ $prev->url }}" class="group flex flex-col rounded-xl border border-slate-200 p-4 transition hover:border-[var(--docent-accent)] dark:border-slate-800">
                         <span class="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-                            Previous
+                            {{ __('docent::ui.common.previous') }}
                         </span>
                         <span class="mt-1 font-semibold text-slate-900 group-hover:text-[var(--docent-accent)] dark:text-white">{{ $prev->title }}</span>
                     </a>
@@ -34,7 +34,7 @@
                 @if($next)
                     <a rel="next" href="{{ $next->url }}" class="group flex flex-col items-end rounded-xl border border-slate-200 p-4 text-right transition hover:border-[var(--docent-accent)] dark:border-slate-800">
                         <span class="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                            Next
+                            {{ __('docent::ui.common.next') }}
                             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                         </span>
                         <span class="mt-1 font-semibold text-slate-900 group-hover:text-[var(--docent-accent)] dark:text-white">{{ $next->title }}</span>
@@ -47,8 +47,8 @@
 
 @section('rail')
     @if(!empty($toc))
-        <aside class="docent-rail docent-toc docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 xl:block" aria-label="On this page">
-            <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">On this page</p>
+        <aside class="docent-rail docent-toc docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 xl:block" aria-label="{{ __('docent::ui.common.on_this_page') }}">
+            <p class="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{{ __('docent::ui.common.on_this_page') }}</p>
             <ul class="space-y-1 text-sm">
                 @foreach($toc as $entry)
                     @include('docent::partials.toc-entry', ['entry' => $entry])

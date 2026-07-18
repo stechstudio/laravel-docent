@@ -1,5 +1,7 @@
 const SCHEMA_VERSION = 2;
 
+const str = (key, fallback) => window.docentUiStrings?.[key] ?? fallback;
+
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 }
@@ -235,7 +237,7 @@ export function registerDocentAssistant(Alpine) {
         },
 
         async newConversation() {
-            if (this.messages.length > 0 && !window.confirm('Start a new conversation? The current help session will be cleared.')) return;
+            if (this.messages.length > 0 && !window.confirm(str('confirm_new_conversation', 'Start a new conversation? The current help session will be cleared.'))) return;
 
             const id = this.conversationId;
             const token = this.conversationToken;
@@ -267,7 +269,7 @@ export function registerDocentAssistant(Alpine) {
             this._currentAssistantId = null;
             this._currentUserId = null;
             this.removeStoredState();
-            this.announcement = notice || 'A new conversation is ready.';
+            this.announcement = notice || str('new_conversation_ready', 'A new conversation is ready.');
             this.$nextTick(() => this.$refs.assistantComposer?.focus());
         },
 
@@ -278,10 +280,10 @@ export function registerDocentAssistant(Alpine) {
             const message = this.messageById(this._currentAssistantId);
             if (message?.status === 'streaming') {
                 message.status = 'error';
-                message.error = 'This answer was interrupted. Try the question again.';
+                message.error = str('interrupted_error', 'This answer was interrupted. Try the question again.');
             }
             if (announce) {
-                this.announcement = 'The answer was stopped.';
+                this.announcement = str('stopped_announcement', 'The answer was stopped.');
                 this.persist();
             }
         },
@@ -323,7 +325,7 @@ export function registerDocentAssistant(Alpine) {
             this.composer = '';
             this.conversationNotice = '';
             this.asking = true;
-            this.announcement = 'The Assistant is reading these docs.';
+            this.announcement = str('reading_announcement', 'The Assistant is reading these docs.');
             this._askAbort = new AbortController();
             this.syncBodyLock();
 
@@ -385,17 +387,17 @@ export function registerDocentAssistant(Alpine) {
                 if (!response.ok || !response.body) {
                     const payload = await response.json().catch(() => ({}));
                     if (payload.code === 'conversation_expired') {
-                        this.resetLocalConversation('That temporary help session expired. Ask again to start a new conversation.');
+                        this.resetLocalConversation(str('expired_notice', 'That temporary help session expired. Ask again to start a new conversation.'));
                         return;
                     }
-                    throw new Error(payload.message || 'The documentation answer is unavailable.');
+                    throw new Error(payload.message || str('unavailable_error', 'The documentation answer is unavailable.'));
                 }
 
                 await consumeEventStream(response, (event, data) => {
                     if (event === 'conversation') {
                         if (data.reset_reason) {
                             this.messages = this.messages.filter((item) => item.id === user.id || item.id === assistant.id);
-                            this.conversationNotice = 'The documentation available to you changed, so a new conversation was started.';
+                            this.conversationNotice = str('corpus_changed_notice', 'The documentation available to you changed, so a new conversation was started.');
                         }
                         this.conversationId = data.conversation_id || null;
                         this.conversationToken = data.conversation_token || null;
@@ -409,9 +411,9 @@ export function registerDocentAssistant(Alpine) {
                     } else if (event === 'answer_rendered') {
                         assistant.html = String(data.html || '');
                     } else if (event === 'error') {
-                        assistant.error = data.message || 'The documentation answer is unavailable.';
+                        assistant.error = data.message || str('unavailable_error', 'The documentation answer is unavailable.');
                     } else if (event === 'stream_end' && data.committed === false && !assistant.error) {
-                        assistant.error = 'The documentation did not return an answer. Try another question.';
+                        assistant.error = str('empty_error', 'The documentation did not return an answer. Try another question.');
                     }
                     this.$nextTick(() => this.scrollToLatest());
                 });
@@ -422,7 +424,7 @@ export function registerDocentAssistant(Alpine) {
                         status: 'answered',
                         citation_slugs: assistant.citations.map((citation) => citation.slug),
                     }, this.mode);
-                    this.announcement = 'The Assistant answer is ready.';
+                    this.announcement = str('ready_announcement', 'The Assistant answer is ready.');
                     this.persist();
                     this.$nextTick(() => {
                         this.enhanceCodeBlocks();
@@ -430,7 +432,7 @@ export function registerDocentAssistant(Alpine) {
                     });
                 } else {
                     assistant.status = 'error';
-                    assistant.error ||= 'The documentation did not return an answer. Try another question.';
+                    assistant.error ||= str('empty_error', 'The documentation did not return an answer. Try another question.');
                     assistantAnalytics('assistant_outcome', { status: 'unanswered', citation_slugs: [] }, this.mode);
                     this.announcement = assistant.error;
                     this.persist();
@@ -438,7 +440,7 @@ export function registerDocentAssistant(Alpine) {
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     assistant.status = 'error';
-                    assistant.error = error.message || 'The documentation answer is unavailable.';
+                    assistant.error = error.message || str('unavailable_error', 'The documentation answer is unavailable.');
                     assistantAnalytics('assistant_outcome', { status: 'unanswered', citation_slugs: [] }, this.mode);
                     this.announcement = assistant.error;
                     this.persist();
@@ -495,13 +497,13 @@ export function registerDocentAssistant(Alpine) {
                 // now that the copy button lives outside it.
                 pre.tabIndex = 0;
                 pre.setAttribute('role', 'region');
-                pre.setAttribute('aria-label', 'Code sample');
+                pre.setAttribute('aria-label', str('code_sample', 'Code sample'));
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'docent-assistant-code-copy';
                 button.dataset.docentAssistantCodeCopy = '';
-                button.setAttribute('aria-label', 'Copy code');
-                button.textContent = 'Copy';
+                button.setAttribute('aria-label', str('copy_code', 'Copy code'));
+                button.textContent = str('copy', 'Copy');
                 wrapper.appendChild(button);
             });
         },
@@ -513,8 +515,8 @@ export function registerDocentAssistant(Alpine) {
             if (!code) return;
             try {
                 await copyText(code.innerText);
-                button.textContent = 'Copied';
-                setTimeout(() => (button.textContent = 'Copy'), 1500);
+                button.textContent = str('copied', 'Copied');
+                setTimeout(() => (button.textContent = str('copy', 'Copy')), 1500);
             } catch (error) {}
         },
 

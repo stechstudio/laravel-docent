@@ -1,5 +1,5 @@
 @if(($navigationLinks ?? []) !== [])
-    <nav class="border-b border-slate-200 pb-5 dark:border-slate-800" aria-label="Helpful links">
+    <nav class="border-b border-slate-200 pb-5 dark:border-slate-800" aria-label="{{ __('docent::ui.common.helpful_links') }}">
         <ul class="space-y-1" role="list">
             @foreach($navigationLinks as $link)
                 <li>

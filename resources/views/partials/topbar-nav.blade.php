@@ -3,7 +3,7 @@
     replace or suppress this region with @section('topbar-nav').
 --}}
 @if(count($sections ?? []) > 1)
-    <nav class="docent-scroll min-w-0 max-w-2xl overflow-x-auto max-lg:hidden" aria-label="Documentation sections">
+    <nav class="docent-scroll min-w-0 max-w-2xl overflow-x-auto max-lg:hidden" aria-label="{{ __('docent::ui.common.documentation_sections') }}">
         <ul class="flex items-center gap-1" role="list">
             @foreach($sections as $section)
                 <li class="shrink-0">

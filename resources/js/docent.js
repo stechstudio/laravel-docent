@@ -2,6 +2,8 @@ import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import { registerDocentAssistant } from './docent-assistant';
 
+const str = (key, fallback) => window.docentUiStrings?.[key] ?? fallback;
+
 Alpine.plugin(collapse);
 registerDocentAssistant(Alpine);
 
@@ -458,7 +460,7 @@ Alpine.data('docentFrame', () => ({
         if (!image) return;
         image.tabIndex = 0;
         image.setAttribute('role', 'button');
-        image.setAttribute('aria-label', 'Open image preview');
+        image.setAttribute('aria-label', str('open_image_preview', 'Open image preview'));
         image.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter' && event.key !== ' ') return;
             event.preventDefault();
@@ -572,10 +574,10 @@ document.addEventListener('click', (e) => {
 
 function flag(btn) {
     btn.classList.add('is-copied');
-    btn.setAttribute('aria-label', 'Copied');
+    btn.setAttribute('aria-label', str('copied', 'Copied'));
     setTimeout(() => {
         btn.classList.remove('is-copied');
-        btn.setAttribute('aria-label', 'Copy code');
+        btn.setAttribute('aria-label', str('copy_code', 'Copy code'));
     }, 1500);
 }
 
@@ -588,7 +590,7 @@ function injectAnchors() {
         const a = document.createElement('a');
         a.className = 'docent-anchor';
         a.href = `#${h.id}`;
-        a.setAttribute('aria-label', 'Link to this section');
+        a.setAttribute('aria-label', str('link_to_section', 'Link to this section'));
         a.innerHTML =
             '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
         h.insertBefore(a, h.firstChild);

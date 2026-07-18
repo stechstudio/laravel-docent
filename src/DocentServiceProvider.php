@@ -131,11 +131,13 @@ final class DocentServiceProvider extends ServiceProvider
         $this->registerRoutes();
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'docent');
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'docent');
         Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'docent');
 
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/docent.php' => config_path('docent.php')], 'docent-config');
             $this->publishes([__DIR__.'/../resources/views' => resource_path('views/vendor/docent')], 'docent-views');
+            $this->publishes([__DIR__.'/../lang' => lang_path('vendor/docent')], 'docent-lang');
             $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/docent')], 'docent-assets');
             $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'docent-migrations');
 

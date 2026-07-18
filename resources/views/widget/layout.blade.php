@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($title ?? null) ? $title.' — '.$siteName : $siteName }}</title>
     <script>(function(){try{var t=localStorage.getItem('docentTheme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();</script>
+    @include('docent::partials.ui-strings')
     <link rel="stylesheet" href="{{ $docent->asset('docent.css') }}">
     <script defer src="{{ $docent->asset('docent.js') }}"></script>
     <style>{!! $docent->themeStyles() !!}</style>
@@ -30,13 +31,13 @@
                         <svg x-show="!loading" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <svg x-show="loading" x-cloak class="docent-search-spinner pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--docent-accent)]" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" class="opacity-25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
                         <input data-docent-widget-search x-ref="input" x-model="query" @input="onInput()" @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)" @keydown.enter.prevent="enter()"
-                               type="search" name="docent-widget-search" autocomplete="off" spellcheck="false" placeholder="Search help…" aria-label="Search documentation"
+                               type="search" name="docent-widget-search" autocomplete="off" spellcheck="false" placeholder="{{ __('docent::ui.search.widget_placeholder') }}" aria-label="{{ __('docent::ui.search.label') }}"
                                class="h-10 w-full rounded-xl bg-slate-50 py-2 pl-9 text-base text-slate-900 shadow-sm ring-1 ring-slate-950/10 placeholder:text-slate-400 focus:bg-white focus:outline-2 focus:-outline-offset-1 focus:outline-[var(--docent-accent)] dark:bg-slate-900 dark:text-white dark:shadow-none dark:ring-white/10 dark:focus:bg-slate-950 sm:text-sm {{ $aiEnabled ? 'pr-16' : 'pr-3' }}">
 
                         @if($aiEnabled)
-                            <button x-show="canAsk()" x-cloak type="button" @click="handoff()" aria-label="Ask Assistant"
+                            <button x-show="canAsk()" x-cloak type="button" @click="handoff()" aria-label="{{ __('docent::ui.search.ask_assistant') }}"
                                     class="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-slate-950/5 px-2 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-950/10 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--docent-accent)] dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15">
-                                Ask
+                                {{ __('docent::ui.search.ask') }}
                             </button>
                         @endif
 
@@ -44,7 +45,7 @@
                             {{-- First-search placeholder only; refinements keep
                                  the previous outcome pinned while the input
                                  spinner signals the work. --}}
-                            <div x-show="loading && !searched" role="status" class="px-3 py-7 text-center text-sm text-slate-400">Searching…</div>
+                            <div x-show="loading && !searched" role="status" class="px-3 py-7 text-center text-sm text-slate-400">{{ __('docent::ui.search.searching') }}</div>
                             <template x-for="(result, index) in results" :key="result.slug + '-' + index">
                                 <a :href="href(result)" @click.prevent="go(result)" @mouseenter="selected = index" :data-selected="selected === index"
                                    class="block rounded-lg px-3 py-2.5 transition" :class="selected === index ? 'bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)]' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'">
@@ -58,45 +59,45 @@
                                         :class="selected === results.length ? 'bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)]' : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/70'">
                                     <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)] text-[var(--docent-accent)] [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('sparkles') !!}</span>
                                     <span class="min-w-0">
-                                        <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">Ask Assistant about “<span x-text="query"></span>”</span>
-                                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Get an answer from these docs.</span>
+                                        <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ __('docent::ui.search.ask_about_prefix') }}<span x-text="query"></span>{{ __('docent::ui.search.ask_about_suffix') }}</span>
+                                        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ __('docent::ui.search.answer_from_docs') }}</span>
                                     </span>
                                 </button>
                             @endif
-                            <div x-show="searched && results.length === 0" class="px-3 py-7 text-center text-sm text-slate-400">No matching help pages.</div>
+                            <div x-show="searched && results.length === 0" class="px-3 py-7 text-center text-sm text-slate-400">{{ __('docent::ui.search.no_matching_help_pages') }}</div>
                         </div>
                     </div>
                 @endif
 
                 @if($aiEnabled)
                     <div x-show="assistantOpen" x-cloak class="flex min-w-0 flex-1 items-center gap-2">
-                        <button type="button" @click="backFromAssistant()" aria-label="Back to help"
+                        <button type="button" @click="backFromAssistant()" aria-label="{{ __('docent::ui.widget.back_to_help') }}"
                                 class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                             <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                             <span class="[&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('arrow-left') !!}</span>
                         </button>
-                        <p id="docent-assistant-title-widget" class="min-w-0 flex-1 truncate text-base font-semibold text-slate-950 dark:text-white sm:text-sm">Assistant</p>
-                        <button x-show="messages.length > 0" x-cloak type="button" @click="newConversation()" aria-label="Start a new conversation"
+                        <p id="docent-assistant-title-widget" class="min-w-0 flex-1 truncate text-base font-semibold text-slate-950 dark:text-white sm:text-sm">{{ __('docent::ui.assistant.title') }}</p>
+                        <button x-show="messages.length > 0" x-cloak type="button" @click="newConversation()" aria-label="{{ __('docent::ui.assistant.start_new_conversation') }}"
                                 class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                             <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                             <span class="[&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('trash') !!}</span>
                         </button>
                     </div>
 
-                    <button x-show="!assistantOpen" x-cloak type="button" @click="$dispatch('docent:assistant-open')" aria-label="Open Assistant" title="Open Assistant"
+                    <button x-show="!assistantOpen" x-cloak type="button" @click="$dispatch('docent:assistant-open')" aria-label="{{ __('docent::ui.assistant.open') }}" title="{{ __('docent::ui.assistant.open') }}"
                             class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                         <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                         <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('chat-bubble-left-right') !!}</span>
                     </button>
                 @endif
 
-                <a href="{{ $fullDocsUrl }}" target="_top" aria-label="Open full docs" title="Open full docs"
+                <a href="{{ $fullDocsUrl }}" target="_top" aria-label="{{ __('docent::ui.widget.open_full_docs') }}" title="{{ __('docent::ui.widget.open_full_docs') }}"
                    class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                     <span class="pointer-fine:hidden absolute left-1/2 top-1/2 size-[max(100%,3rem)] -translate-1/2" aria-hidden="true"></span>
                     <span class="shrink-0 [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('book-open') !!}</span>
                 </a>
 
-                <button type="button" data-docent-widget-close aria-label="Close help" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                <button type="button" data-docent-widget-close aria-label="{{ __('docent::ui.widget.close_help') }}" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                     <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>

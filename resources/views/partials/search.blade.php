@@ -5,7 +5,7 @@
          @docent:assistant-open.window="open && hide(false)"
          @keydown.escape.window="open && hide()"
          x-show="open" x-cloak
-         data-docent-search-dialog class="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Search documentation">
+         data-docent-search-dialog class="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="{{ __('docent::ui.search.label') }}">
 
         <div x-show="open" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
              x-transition:leave="transition ease-in duration-100" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
@@ -25,12 +25,12 @@
                     <svg x-show="!loading" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-slate-400" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <svg x-show="loading" x-cloak viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="docent-search-spinner shrink-0 text-[var(--docent-accent)]" aria-hidden="true"><circle cx="12" cy="12" r="9" class="opacity-25"/><path d="M21 12a9 9 0 0 0-9-9"/></svg>
                     <input x-ref="input" x-model="query" @input="onInput()" type="text" name="docent-search" autocomplete="off" spellcheck="false"
-                           placeholder="Search documentation…" aria-label="Search documentation"
+                           placeholder="{{ __('docent::ui.search.placeholder') }}" aria-label="{{ __('docent::ui.search.label') }}"
                            class="w-full bg-transparent py-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white">
                     @if($aiEnabled)
                         <button type="button" @click="handoff()" :disabled="!canAsk()"
                                 class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-950/5 py-2 pl-2.5 pr-2 text-sm font-medium text-slate-700 hover:bg-slate-950/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--docent-accent)] disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white/10 dark:text-slate-200 dark:hover:bg-white/15">
-                            Ask Assistant
+                            {{ __('docent::ui.search.ask_assistant') }}
                             <kbd data-docent-ask-kbd class="rounded bg-white/80 px-1.5 py-0.5 font-sans text-[0.6875rem] text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">⌘↵</kbd>
                         </button>
                     @endif
@@ -45,7 +45,7 @@
                          thinking signal — and results, the no-results notice,
                          and the Ask row land together in one atomic swap.
                          Screen readers still hear the transient state. --}}
-                    <div role="status" class="sr-only" x-text="loading ? 'Searching…' : ''"></div>
+                    <div role="status" class="sr-only" x-text="loading ? @js(__('docent::ui.search.searching')) : ''"></div>
 
                     {{-- Results --}}
                     <template x-for="(r, i) in results" :key="r.slug + '-' + i">
@@ -71,8 +71,8 @@
                                 :class="selected === results.length ? 'bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)]' : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/40 dark:hover:bg-slate-800/70'">
                             <span class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--docent-accent)_12%,transparent)] text-[var(--docent-accent)] [&_svg]:size-4" aria-hidden="true">{!! \STS\Docent\Support\Icon::svg('sparkles') !!}</span>
                             <span class="min-w-0">
-                                <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">Ask Assistant about “<span x-text="query"></span>”</span>
-                                <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">Get an answer from these docs.</span>
+                                <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ __('docent::ui.search.ask_about_prefix') }}<span x-text="query"></span>{{ __('docent::ui.search.ask_about_suffix') }}</span>
+                                <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ __('docent::ui.search.answer_from_docs') }}</span>
                             </span>
                         </button>
                     @endif
@@ -80,12 +80,12 @@
                     {{-- Empty (persists through refinement loads so the
                          panel never collapses between outcomes) --}}
                     <div x-show="searched && results.length === 0" class="px-3 py-8 text-center text-sm text-slate-400">
-                        No results for “<span x-text="query"></span>”
+                        {{ __('docent::ui.search.no_results_prefix') }}<span x-text="query"></span>{{ __('docent::ui.search.no_results_suffix') }}
                     </div>
 
                     {{-- Initial hint (persists through the first search) --}}
                     <div x-show="!searched" class="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                        Type to search the documentation.
+                        {{ __('docent::ui.search.type_to_search') }}
                     </div>
                     </div>
                 </div>

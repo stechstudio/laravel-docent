@@ -298,6 +298,16 @@ Question-shaped English queries use a conservative stop-word list from
 `docent.search.stop_words`. Replace the list—or set it to `[]`—for another
 locale.
 
+## Localize the reader UI
+
+Docent translates its reader, search, Assistant, and widget interface from the
+application locale. Publish the English source file with
+`php artisan vendor:publish --tag=docent-lang`, then copy it to the locale you
+support and translate its values. As with published Docent views, applications
+that publish the language file own its drift and must merge new keys when they
+upgrade Docent. Per-locale content trees are deliberately not supported; for
+translated documentation content, configure a separate site per locale.
+
 ## Validate your docs like code
 
 ```bash

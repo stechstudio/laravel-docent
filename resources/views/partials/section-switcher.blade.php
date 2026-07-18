@@ -1,6 +1,6 @@
 @if(count($sections ?? []) > 1)
-    <nav class="border-b border-slate-200 pb-5 dark:border-slate-800" aria-label="Documentation sections">
-        <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Sections</p>
+    <nav class="border-b border-slate-200 pb-5 dark:border-slate-800" aria-label="{{ __('docent::ui.common.documentation_sections') }}">
+        <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{{ __('docent::ui.common.sections') }}</p>
         <ul class="mt-2 space-y-1" role="list">
             @foreach($sections as $section)
                 <li>

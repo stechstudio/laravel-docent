@@ -3,9 +3,9 @@
 @section('content')
     <div class="px-5 py-6 sm:px-6">
         <div class="mb-6">
-            <p class="docent-contrast-accent text-[11px] font-semibold uppercase tracking-[0.16em]">Help center</p>
-            <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">How can we help?</h1>
-            <p class="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">Browse the guides below or search for an answer.</p>
+            <p class="docent-contrast-accent text-[11px] font-semibold uppercase tracking-[0.16em]">{{ __('docent::ui.widget.help_center') }}</p>
+            <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('docent::ui.widget.heading') }}</h1>
+            <p class="mt-1.5 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ __('docent::ui.widget.description') }}</p>
         </div>
 
         <section x-data="docentWidgetSuggestions(document.body.dataset.widgetSuggestionsUrl)"
@@ -15,7 +15,7 @@
                  x-cloak
                  class="mb-7">
             <div class="mb-2.5 flex items-center justify-between gap-3">
-                <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Suggested for this page</h2>
+                <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ __('docent::ui.widget.suggested') }}</h2>
                 <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
             </div>
             <div class="grid gap-2">
@@ -35,7 +35,7 @@
         @if($navigationLinks !== [])
             <section class="mb-7">
                 <div class="mb-2.5 flex items-center gap-3">
-                    <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Helpful links</h2>
+                    <h2 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ __('docent::ui.common.helpful_links') }}</h2>
                     <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800"></span>
                 </div>
                 <ul class="grid gap-1" role="list">
@@ -57,7 +57,7 @@
             </section>
         @endif
 
-        <nav class="docent-widget-nav" aria-label="Documentation">
+        <nav class="docent-widget-nav" aria-label="{{ __('docent::ui.common.documentation') }}">
             <ul class="space-y-5" role="list">
                 @foreach($sections as $section)
                     <li>

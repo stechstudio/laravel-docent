@@ -1,0 +1,18 @@
+<script>window.docentUiStrings = @js([
+    'open_image_preview' => __('docent::ui.common.open_image_preview'),
+    'copied' => __('docent::ui.common.copied'),
+    'copy_code' => __('docent::ui.common.copy_code'),
+    'link_to_section' => __('docent::ui.common.link_to_section'),
+    'copy' => __('docent::ui.common.copy'),
+    'code_sample' => __('docent::ui.common.code_sample'),
+    'confirm_new_conversation' => __('docent::ui.assistant.confirm_new_conversation'),
+    'new_conversation_ready' => __('docent::ui.assistant.new_conversation_ready'),
+    'interrupted_error' => __('docent::ui.assistant.interrupted_error'),
+    'stopped_announcement' => __('docent::ui.assistant.stopped_announcement'),
+    'reading_announcement' => __('docent::ui.assistant.reading_announcement'),
+    'expired_notice' => __('docent::ui.assistant.expired_notice'),
+    'unavailable_error' => __('docent::ui.assistant.unavailable_error'),
+    'corpus_changed_notice' => __('docent::ui.assistant.corpus_changed_notice'),
+    'empty_error' => __('docent::ui.assistant.empty_error'),
+    'ready_announcement' => __('docent::ui.assistant.ready_announcement'),
+]);</script>

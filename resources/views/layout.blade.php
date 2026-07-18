@@ -20,6 +20,7 @@
     @endif
 
     <script>(function(){try{var t=localStorage.getItem('docentTheme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d);}catch(e){}})();</script>
+    @include('docent::partials.ui-strings')
 
     <link rel="stylesheet" href="{{ $docent->asset('docent.css') }}">
     <script defer src="{{ $docent->asset('docent.js') }}"></script>
@@ -30,7 +31,7 @@
 <body data-docent-slug="{{ $currentSlug ?? '' }}" class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     @php($aiEnabled = (bool) $docent->config('ai.enabled', false))
     <a href="#docent-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-[var(--docent-accent)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">
-        Skip to content
+        {{ __('docent::ui.common.skip_to_content') }}
     </a>
 
     @if($aiEnabled)
@@ -47,7 +48,7 @@
             <div class="mx-auto flex h-full max-w-[100rem] items-center gap-3 px-4 sm:px-6">
                 @unless($landing ?? false)
                     <button type="button" class="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 lg:hidden dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                            @click="sidebar = true" aria-label="Open navigation" :aria-expanded="sidebar" aria-controls="docent-sidebar">
+                            @click="sidebar = true" aria-label="{{ __('docent::ui.common.open_navigation') }}" :aria-expanded="sidebar" aria-controls="docent-sidebar">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                     </button>
                 @endunless
@@ -89,7 +90,7 @@
                         @include('docent::partials.topbar-actions')
                     @endif
 
-                    <button type="button" @click="$store.theme.toggle()" aria-label="Toggle dark mode"
+                    <button type="button" @click="$store.theme.toggle()" aria-label="{{ __('docent::ui.common.toggle_dark_mode') }}"
                             class="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
                         <svg x-show="!$store.theme.dark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
                         <svg x-show="$store.theme.dark" x-cloak viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -120,7 +121,7 @@
                        class="docent-scroll absolute inset-y-0 left-0 w-72 max-w-[80%] overflow-y-auto bg-white p-6 shadow-xl dark:bg-slate-950">
                     <div class="mb-6 flex items-center justify-between">
                         <span class="font-semibold text-slate-900 dark:text-white">{{ $siteName }}</span>
-                        <button type="button" @click="sidebar = false" aria-label="Close navigation" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                        <button type="button" @click="sidebar = false" aria-label="{{ __('docent::ui.common.close_navigation') }}" class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>

@@ -358,6 +358,10 @@ final class DocentManager
             'preload' => (bool) $this->config('widget.preload', false),
             'icon' => $iconMarkup,
             'accent' => $this->accent(),
+            'strings' => [
+                'help' => __('docent::ui.widget.help'),
+                'documentation' => __('docent::ui.common.documentation'),
+            ],
         ];
     }
 
