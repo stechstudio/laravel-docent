@@ -30,6 +30,20 @@ test('answers stream, render citations, remember follow-ups, and accept feedback
     await expect(firstAnswer).toContainText('Add a video');
     await expect(firstAnswer.getByRole('link', { name: 'Content components' })).toBeVisible();
 
+    const codeBlock = firstAnswer.locator('[data-docent-assistant-code]');
+    const codeScroller = codeBlock.locator('pre');
+    const copyCode = codeBlock.getByRole('button', { name: 'Copy code' });
+    await codeScroller.locator('code').evaluate((code) => {
+        code.textContent += 'x'.repeat(200);
+    });
+    await expect.poll(() => codeScroller.evaluate((pre) => pre.scrollWidth > pre.clientWidth)).toBe(true);
+    const copyPosition = await copyCode.boundingBox();
+    await codeScroller.evaluate((pre) => {
+        pre.scrollLeft = pre.scrollWidth;
+    });
+    await expect.poll(() => codeScroller.evaluate((pre) => pre.scrollLeft)).toBeGreaterThan(0);
+    expect((await copyCode.boundingBox())?.x).toBeCloseTo(copyPosition?.x ?? 0, 0);
+
     const followUp = await askQuestion(panel, 'Where are its options?');
     await expect(followUp).toContainText('video options');
 

@@ -485,21 +485,31 @@ export function registerDocentAssistant(Alpine) {
 
         enhanceCodeBlocks() {
             this.$refs.assistantMessages?.querySelectorAll('pre').forEach((pre) => {
-                if (pre.querySelector('[data-docent-assistant-code-copy]')) return;
+                if (pre.closest('[data-docent-assistant-code]')) return;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'docent-assistant-code';
+                wrapper.dataset.docentAssistantCode = '';
+                pre.before(wrapper);
+                wrapper.appendChild(pre);
+                // The pre scrolls horizontally, so it must stay keyboard-reachable
+                // now that the copy button lives outside it.
+                pre.tabIndex = 0;
+                pre.setAttribute('role', 'region');
+                pre.setAttribute('aria-label', 'Code sample');
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'docent-assistant-code-copy';
                 button.dataset.docentAssistantCodeCopy = '';
                 button.setAttribute('aria-label', 'Copy code');
                 button.textContent = 'Copy';
-                pre.appendChild(button);
+                wrapper.appendChild(button);
             });
         },
 
         async copyCode(event) {
             const button = event.target.closest('[data-docent-assistant-code-copy]');
             if (!button) return;
-            const code = button.closest('pre')?.querySelector('code');
+            const code = button.closest('[data-docent-assistant-code]')?.querySelector('pre code');
             if (!code) return;
             try {
                 await copyText(code.innerText);

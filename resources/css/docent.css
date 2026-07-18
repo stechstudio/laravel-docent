@@ -181,11 +181,17 @@
         padding: 0.15em 0.35em;
     }
 
-    .docent-assistant-prose pre {
+    .docent-assistant-code {
         position: relative;
         max-width: 100%;
-        overflow-x: auto;
+        overflow: hidden;
         border-radius: var(--radius-xl);
+        background: var(--color-slate-950);
+    }
+
+    .docent-assistant-prose pre {
+        max-width: 100%;
+        overflow-x: auto;
         background: var(--color-slate-950);
         color: var(--color-slate-100);
         padding: 1rem;
@@ -223,6 +229,7 @@
         position: absolute;
         right: 0.5rem;
         top: 0.5rem;
+        z-index: 1;
         border-radius: var(--radius-md);
         background: color-mix(in srgb, white 10%, transparent);
         color: var(--color-slate-300);
