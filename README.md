@@ -433,6 +433,19 @@ tables but are isolated by a `site` column. Page identity is `(site, slug)`, so
 the same slug may exist once on every site while duplicates within one site are
 rejected.
 
+Admin image uploads are isolated the same way. Docent stores each file on the
+site's configured disk under `docent/{site}/`, and each site's `_uploads` route
+serves only its own directory. Two sites can safely share one disk: a private
+site's images stay behind that site's middleware, even when a public site
+serves uploads from the same disk.
+
+One lifecycle rule for host code: Docent selects the current site when the
+request's route is matched. Injecting `DocentManager` or any other Docent
+service works everywhere inside a Docent request, controllers and route
+middleware included. Code that runs before routing, such as a global
+middleware, should call `Docent::site('key')` instead, because an injection
+that early holds the default site's instance.
+
 ## Requirements
 
 - PHP 8.3+
