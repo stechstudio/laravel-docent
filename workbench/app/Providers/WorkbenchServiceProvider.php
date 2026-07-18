@@ -17,12 +17,22 @@ class WorkbenchServiceProvider extends ServiceProvider
     public function register(): void
     {
         config([
-            'docent.name' => 'Acme Ledger Docs',
-            'docent.filesystem.path' => dirname(__DIR__, 2).'/resources/docs',
+            // Site-only sections live inside the site entry on a multi-site config.
+            'docent.sites.docs.name' => 'Acme Ledger Docs',
+            'docent.sites.docs.filesystem.path' => dirname(__DIR__, 2).'/resources/docs',
+            // Demo the admin panel (gated below to the account owner).
+            'docent.sites.docs.admin.enabled' => true,
+            'docent.sites.docs.navigation.links' => [
+                ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://example.com/support'],
+                ['label' => 'Quickstart', 'icon' => 'rocket-launch', 'page' => 'getting-started/quickstart'],
+                ['label' => 'Billing settings', 'icon' => 'wrench', 'route' => 'workbench.billing.settings', 'can' => 'billing.manage'],
+            ],
+            'docent.sites.docs.navigation.topbar' => [
+                ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/stechstudio/laravel-docent'],
+            ],
+            // Shared sections cascade from the top level to every site.
             // Demo the composite store: database pages compose over the files.
             'docent.database.enabled' => true,
-            // Demo the admin panel (gated below to the account owner).
-            'docent.admin.enabled' => true,
             'docent.insights.enabled' => true,
             // Dogfood the same-origin help widget on the demo dashboard.
             'docent.widget.enabled' => true,
@@ -30,14 +40,6 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.ai.enabled' => true,
             'docent.ai.provider' => 'fake',
             'docent.ai.model' => 'workbench',
-            'docent.navigation.links' => [
-                ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://example.com/support'],
-                ['label' => 'Quickstart', 'icon' => 'rocket-launch', 'page' => 'getting-started/quickstart'],
-                ['label' => 'Billing settings', 'icon' => 'wrench', 'route' => 'workbench.billing.settings', 'can' => 'billing.manage'],
-            ],
-            'docent.navigation.topbar' => [
-                ['label' => 'GitHub', 'icon' => 'github', 'url' => 'https://github.com/stechstudio/laravel-docent'],
-            ],
         ]);
 
         // Try a different feel — theming tokens are pure config, no rebuild:
