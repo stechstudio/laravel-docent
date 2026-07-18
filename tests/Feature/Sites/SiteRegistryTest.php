@@ -145,3 +145,24 @@ it('requires an explicit filesystem path for non-docs sites', function () {
 
     $this->app->make(SiteRegistry::class)->site('extra');
 })->throws(RuntimeException::class, 'Docent site [extra] has no filesystem.path configured');
+
+it('rebinds scoped aliases resolved before the site selection changes', function () {
+    twoSiteConfig();
+
+    expect($this->app->make(DocentManager::class)->key())->toBe('public');
+
+    $this->app->make(CurrentSite::class)->set('admin');
+    $registry = $this->app->make(SiteRegistry::class);
+
+    expect($this->app->make(DocentManager::class)->key())->toBe('admin')
+        ->and($this->app->make(SearchEngine::class))->toBe($registry->serviceFor('admin', SearchEngine::class));
+});
+
+it('falls back to a headline of the site key when a site has no name', function () {
+    config()->set('docent.sites.admin-docs', [
+        'route' => ['prefix' => 'admin/docs', 'middleware' => ['web']],
+        'filesystem' => ['path' => dirname(__DIR__, 2).'/fixtures/docs'],
+    ]);
+
+    expect($this->app->make(SiteRegistry::class)->site('admin-docs')->siteName())->toBe('Admin Docs');
+});

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent;
 
+use Illuminate\Container\Container;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Routing\Events\RouteMatched;
@@ -78,8 +79,9 @@ final class DocentServiceProvider extends ServiceProvider
             $app,
             $app->make(IntegrationRegistry::class),
         ));
-        $this->app->scoped(CurrentSite::class, static fn (Application $app): CurrentSite => new CurrentSite(
+        $this->app->scoped(CurrentSite::class, static fn (Container $app): CurrentSite => new CurrentSite(
             $app->make(SiteRegistry::class),
+            $app,
         ));
         $this->app->scoped(SiteServices::class, static fn (Application $app): SiteServices => new SiteServices(
             $app,
@@ -148,7 +150,6 @@ final class DocentServiceProvider extends ServiceProvider
                 'domain' => $site->get('route.domain'),
                 'middleware' => [...(array) $site->get('route.middleware', ['web']), SetCurrentSite::class.':'.$key],
                 'as' => 'docent.'.$key.'.',
-                'metadata' => ['docent' => ['site' => $key]],
             ], function () use ($site): void {
                 Route::get('/', [PageController::class, 'home'])->name('home');
 
@@ -193,13 +194,28 @@ final class DocentServiceProvider extends ServiceProvider
         }
     }
 
-    /** Select the route's site before Laravel constructs its controller. */
+    /**
+     * Select the matched route's site before Laravel constructs its
+     * controller, so constructor-injected Docent services resolve against the
+     * right site. The key is derived from the route name — every Docent route
+     * is named `docent.{key}.…` — which works on every supported framework
+     * version. The SetCurrentSite route middleware sets the same key again
+     * inside the pipeline; it stays as the safety net for requests dispatched
+     * without a RouteMatched event (e.g. a host calling a Docent route
+     * action manually), so neither selection path should be removed alone.
+     */
     private function selectMatchedSite(): void
     {
         $this->app['events']->listen(RouteMatched::class, function (RouteMatched $event): void {
-            $key = $event->route->getMetadata('docent.site');
+            $name = $event->route->getName();
 
-            if (is_string($key)) {
+            if (! is_string($name) || ! str_starts_with($name, 'docent.')) {
+                return;
+            }
+
+            $key = explode('.', $name)[1] ?? '';
+
+            if ($this->app->make(SiteRegistry::class)->has($key)) {
                 $this->app->make(CurrentSite::class)->set($key);
             }
         });

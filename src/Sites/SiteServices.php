@@ -35,6 +35,32 @@ use STS\Docent\Support\DocentCache;
 /** Builds one internally consistent service graph per site and scope. */
 final class SiteServices
 {
+    /**
+     * The per-site classes the service provider aliases into the request
+     * scope. When the selected site changes mid-scope, {@see CurrentSite}
+     * forgets these memoized aliases so the next resolution rebinds to the
+     * newly selected site's graph.
+     *
+     * @var list<class-string>
+     */
+    public const ALIASES = [
+        DocentManager::class,
+        DocumentationRepository::class,
+        FilesystemRepository::class,
+        NavigationBuilder::class,
+        DocentCache::class,
+        CodeBlockRenderer::class,
+        SearchIndexer::class,
+        SearchEngine::class,
+        AiRetriever::class,
+        AiCorpusBuilder::class,
+        AiAnswerService::class,
+        AiQuestionLogger::class,
+        AiConversationStore::class,
+        InsightRecorder::class,
+        InsightSummary::class,
+    ];
+
     /** @var array<string, array<class-string, object>> */
     private array $services = [];
 
