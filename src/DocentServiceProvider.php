@@ -22,6 +22,7 @@ use STS\Docent\Ai\AiRetriever;
 use STS\Docent\Ai\PrismGuard;
 use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
+use STS\Docent\Console\GuideCommand;
 use STS\Docent\Console\InstallCommand;
 use STS\Docent\Console\PruneInsightsCommand;
 use STS\Docent\Content\AgentFeed;
@@ -141,7 +142,7 @@ final class DocentServiceProvider extends ServiceProvider
             $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/docent')], 'docent-assets');
             $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'docent-migrations');
 
-            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class, PruneInsightsCommand::class]);
+            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class, GuideCommand::class, PruneInsightsCommand::class]);
         }
 
         $this->registerAboutCommand();

@@ -94,6 +94,14 @@ Point `seo.image` at a social-preview image (path or absolute URL) to enrich
 link unfurls with a large card; any page can override it with an `image:`
 front matter key.
 
+Coding agents writing docs in your repository get their own entry point:
+`php artisan docent:guide` prints the authoring dialect reference followed by
+your application's inventory — every site with its content directory, plus the
+registered values, links, conditions, audiences, and components an author may
+reference. Point your agent instructions (CLAUDE.md, AGENTS.md) at it and pair
+it with `php artisan docent:check` as the validation loop. The same reference
+ships in the package at `vendor/stechstudio/laravel-docent/resources/guides/authoring.md`.
+
 When the database-backed admin is enabled, editors can normally create an editable copy of a repository page. Add `locked: true` to a page's front matter when the repository version must always win. The same key in `_group.yml` locks every repository page and partial below that directory; a page-level `locked: false` cannot weaken the group lock. Locked pages remain visible in the admin as rendered, read-only content.
 
 Admin image uploads support PNG, JPEG, GIF, WebP, and SVG on any configured
