@@ -29,6 +29,11 @@ final class Issue
         return new self(Severity::Warning, $check, $slug, $message, $line);
     }
 
+    public function withSeverity(Severity $severity): self
+    {
+        return new self($severity, $this->check, $this->slug, $this->message, $this->line);
+    }
+
     public function isError(): bool
     {
         return $this->severity === Severity::Error;

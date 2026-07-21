@@ -25,6 +25,7 @@ final class CheckCommand extends Command
 {
     protected $signature = 'docent:check
         {--strict : Treat warnings as failures}
+        {--format=console : Output format: console or json}
         {--site= : Check only the selected Docent site}';
 
     protected $description = 'Statically validate the documentation tree';
@@ -37,6 +38,11 @@ final class CheckCommand extends Command
         $config = (array) $this->laravel['config']->get('docent', []);
         $issues = DocsChecker::siteDefinitions($config);
         $keys = $this->selectedSites($config);
+        $overrides = is_array($config['check']['rules'] ?? null) ? $config['check']['rules'] : [];
+        $enabled = array_keys(array_filter(
+            $overrides,
+            static fn (mixed $severity): bool => is_string($severity) && $severity !== 'off',
+        ));
 
         if ($keys === null) {
             return self::FAILURE;
@@ -65,13 +71,33 @@ final class CheckCommand extends Command
                     docent: $docent,
                 );
 
-                $issues = [...$issues, ...DocsChecker::withDefaults()->run($context)];
+                $issues = [...$issues, ...DocsChecker::withDefaults()->run($context, $enabled)];
                 $pages += count($context->pages());
             }
         }
 
+        $issues = $this->applyOverrides($issues, $overrides);
         $errors = $this->count($issues, Severity::Error);
         $warnings = $this->count($issues, Severity::Warning);
+        $strict = (bool) $this->option('strict');
+
+        if ((string) $this->option('format') === 'json') {
+            $this->output->writeln((string) json_encode([
+                'ok' => $errors === 0 && (! $strict || $warnings === 0),
+                'pages' => $pages,
+                'errors' => $errors,
+                'warnings' => $warnings,
+                'issues' => array_map(static fn (Issue $i): array => [
+                    'check' => $i->check,
+                    'severity' => $i->severity->value,
+                    'slug' => $i->slug,
+                    'line' => $i->line,
+                    'message' => $i->message,
+                ], $issues),
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+            return $errors > 0 || ($strict && $warnings > 0) ? self::FAILURE : self::SUCCESS;
+        }
 
         if ($issues === []) {
             $this->components->info('Docent looks great — no problems found in '.$pages.' '.$this->pluralize('page', $pages).'.');
@@ -82,9 +108,35 @@ final class CheckCommand extends Command
         $this->render($issues);
         $this->summary($errors, $warnings);
 
-        $strict = (bool) $this->option('strict');
-
         return $errors > 0 || ($strict && $warnings > 0) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param  list<Issue>  $issues
+     * @param  array<string, mixed>  $overrides
+     * @return list<Issue>
+     */
+    private function applyOverrides(array $issues, array $overrides): array
+    {
+        $result = [];
+
+        foreach ($issues as $issue) {
+            $override = $overrides[$issue->check] ?? null;
+
+            if ($override === 'off') {
+                continue;
+            }
+
+            $severity = match ($override) {
+                'error' => Severity::Error,
+                'warning', 'warn' => Severity::Warning,
+                default => $issue->severity,
+            };
+
+            $result[] = $issue->severity === $severity ? $issue : $issue->withSeverity($severity);
+        }
+
+        return $result;
     }
 
     /**

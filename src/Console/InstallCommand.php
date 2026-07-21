@@ -6,6 +6,7 @@ namespace STS\Docent\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use STS\Docent\Sites\SiteRegistry;
 
 /**
@@ -27,6 +28,7 @@ final class InstallCommand extends Command
 
         $this->scaffold($docs.'/index.md', $this->indexStub());
         $this->scaffold($docs.'/getting-started/introduction.md', $this->introductionStub());
+        $this->writeAgentPointer((string) $docs);
 
         $withDatabase = (bool) $this->option('with-database');
 
@@ -38,6 +40,7 @@ final class InstallCommand extends Command
         $this->components->info('Docent installed.');
         $this->components->bulletList([
             'Write your docs in '.$docs,
+            'Told your coding agent about Docent in AGENTS.md — it will run docent:guide before writing docs',
             'Register app integrations (values, links, components) in a service provider via the Docent facade',
             'Visit /'.$docent->config('route.prefix', 'docs').' to browse',
             ...$withDatabase ? [
@@ -47,6 +50,45 @@ final class InstallCommand extends Command
         ]);
 
         return self::SUCCESS;
+    }
+
+    private function writeAgentPointer(string $docsPath): void
+    {
+        $target = File::exists(base_path('AGENTS.md'))
+            ? base_path('AGENTS.md')
+            : (File::exists(base_path('CLAUDE.md')) ? base_path('CLAUDE.md') : base_path('AGENTS.md'));
+
+        $rel = Str::startsWith($docsPath, base_path())
+            ? ltrim(Str::after($docsPath, base_path()), DIRECTORY_SEPARATOR)
+            : $docsPath;
+
+        $block = "<!-- docent:guide start -->\n"
+            ."## Documentation (Docent)\n\n"
+            .'Docs live in `'.$rel."`. Before writing or editing docs, run\n"
+            ."`php artisan docent:guide` to get the authoring dialect and this app's\n"
+            ."registered values, links, conditions, audiences, and components. Validate\n"
+            ."changes with `php artisan docent:check` and fix everything it reports.\n"
+            .'<!-- docent:guide end -->';
+
+        $existing = File::exists($target) ? File::get($target) : null;
+        $status = 'created';
+
+        if ($existing === null) {
+            $contents = $block."\n";
+        } elseif (str_contains($existing, '<!-- docent:guide start -->')) {
+            $contents = (string) preg_replace(
+                '/<!-- docent:guide start -->.*?<!-- docent:guide end -->/s',
+                $block,
+                $existing,
+            );
+            $status = 'updated';
+        } else {
+            $contents = rtrim($existing)."\n\n".$block."\n";
+            $status = 'updated';
+        }
+
+        File::put($target, $contents);
+        $this->components->twoColumnDetail($target, '<fg=green>'.$status.'</>');
     }
 
     private function scaffold(string $path, string $contents): void

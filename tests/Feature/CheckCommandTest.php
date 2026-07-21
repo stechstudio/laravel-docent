@@ -97,6 +97,76 @@ it('does not fail on warnings unless strict', function () {
     expect($output)->toContain('missing-title');
 });
 
+it('emits structured json with --format=json', function () {
+    [$exit, $output] = check('broken-docs', ['--format' => 'json']);
+
+    $data = json_decode($output, true);
+
+    expect($data)->toBeArray()
+        ->and($data['ok'])->toBeFalse()
+        ->and($data['errors'])->toBeGreaterThan(0)
+        ->and($data['issues'])->toBeArray()
+        ->and($data['issues'][0])->toHaveKeys(['check', 'severity', 'slug', 'message']);
+    expect($exit)->toBe(1);
+});
+
+it('emits valid json for a clean tree', function () {
+    [$exit, $output] = check('clean-docs', ['--format' => 'json']);
+    $data = json_decode($output, true);
+
+    expect($data['ok'])->toBeTrue()
+        ->and($data['issues'])->toBe([]);
+    expect($exit)->toBe(0);
+});
+
+it('silences a rule via config override', function () {
+    config()->set('docent.check.rules', ['broken-link' => 'off']);
+    [, $output] = check('broken-docs', ['--format' => 'json']);
+    $data = json_decode($output, true);
+
+    $checks = array_column($data['issues'], 'check');
+    expect($checks)->not->toContain('broken-link');
+});
+
+it('demotes an error rule to a warning via config override', function () {
+    config()->set('docent.check.rules', ['broken-link' => 'warning']);
+    [, $output] = check('broken-docs', ['--format' => 'json']);
+    $data = json_decode($output, true);
+
+    foreach ($data['issues'] as $issue) {
+        if ($issue['check'] === 'broken-link') {
+            expect($issue['severity'])->toBe('warning');
+        }
+    }
+});
+
+it('does not run opt-in quality rules by default', function () {
+    [, $output] = check('quality-docs', ['--format' => 'json']);
+    $checks = array_column(json_decode($output, true)['issues'], 'check');
+
+    expect($checks)->not->toContain('single-h1')
+        ->and($checks)->not->toContain('description-length');
+});
+
+it('runs an opt-in rule only when enabled in config', function () {
+    config()->set('docent.check.rules', ['single-h1' => 'warning', 'description-length' => 'warning']);
+    [, $output] = check('quality-docs', ['--format' => 'json']);
+    $checks = array_column(json_decode($output, true)['issues'], 'check');
+
+    expect($checks)->toContain('single-h1')
+        ->and($checks)->toContain('description-length');
+});
+
+it('can promote an opt-in rule to an error', function () {
+    config()->set('docent.check.rules', ['single-h1' => 'error']);
+    [$exit, $output] = check('quality-docs', ['--format' => 'json']);
+    $issues = json_decode($output, true)['issues'];
+
+    $single = array_values(array_filter($issues, fn ($i) => $i['check'] === 'single-h1'));
+    expect($single[0]['severity'])->toBe('error');
+    expect($exit)->toBe(1);
+});
+
 it('flags suggestions that point at nonexistent pages', function () {
     app(DocentManager::class)->suggest('billing.*', ['missing-page']);
 

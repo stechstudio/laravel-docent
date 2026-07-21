@@ -7,6 +7,7 @@ namespace STS\Docent\Validation;
 use STS\Docent\Validation\Checks\AiCorpusSizeCheck;
 use STS\Docent\Validation\Checks\BrokenLinkCheck;
 use STS\Docent\Validation\Checks\ContentComponentCheck;
+use STS\Docent\Validation\Checks\DescriptionLengthCheck;
 use STS\Docent\Validation\Checks\DuplicateSlugCheck;
 use STS\Docent\Validation\Checks\FrontMatterCheck;
 use STS\Docent\Validation\Checks\HeadingHierarchyCheck;
@@ -18,6 +19,7 @@ use STS\Docent\Validation\Checks\NavigationLinkCheck;
 use STS\Docent\Validation\Checks\NavigationSectionCheck;
 use STS\Docent\Validation\Checks\RedirectCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
+use STS\Docent\Validation\Checks\SingleH1Check;
 use STS\Docent\Validation\Checks\SiteDefinitionCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
@@ -68,6 +70,8 @@ final class DocsChecker
             new NavigationLinkCheck,
             new LockedPageShadowedCheck,
             new ShadowedPageCheck,
+            new SingleH1Check,
+            new DescriptionLengthCheck,
         ]);
     }
 
@@ -108,13 +112,18 @@ final class DocsChecker
     }
 
     /**
+     * @param  list<string>  $enabledRules  Rule ids of opt-in checks to run.
      * @return list<Issue>
      */
-    public function run(CheckContext $context): array
+    public function run(CheckContext $context, array $enabledRules = []): array
     {
         $issues = [];
 
         foreach ($this->checks as $check) {
+            if ($check instanceof OptInCheck && ! in_array($check->rule(), $enabledRules, true)) {
+                continue;
+            }
+
             foreach ($check->run($context) as $issue) {
                 $issues[] = $issue;
             }

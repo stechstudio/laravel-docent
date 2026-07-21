@@ -85,6 +85,16 @@ return [
         'image' => null,
     ],
 
+    'check' => [
+        // Override a rule's severity by its stable id, or silence it with 'off'.
+        // Opt-in quality rules run only when listed here as error/warning/warn.
+        // e.g. 'heading-hierarchy' => 'warning', 'search-keywords' => 'off'.
+        // Enable one with e.g. 'single-h1' => 'warning'.
+        'rules' => [
+            // 'unknown-icon' => 'warning',
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Search
