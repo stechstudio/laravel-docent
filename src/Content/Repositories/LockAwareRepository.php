@@ -8,6 +8,8 @@ namespace STS\Docent\Content\Repositories;
  * A repository that can make its own sources authoritative for selected
  * slugs. Locks are source-owned metadata: another repository cannot add or
  * remove them through the composite cascade.
+ *
+ * @internal
  */
 interface LockAwareRepository
 {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace STS\Docent;
 
 use Closure;
+use Composer\InstalledVersions;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,7 +48,11 @@ use STS\Docent\Support\RadiusScale;
  */
 final class DocentManager
 {
-    public const VERSION = '0.1.0';
+    /** @internal */
+    public static function version(): string
+    {
+        return InstalledVersions::getPrettyVersion('stechstudio/laravel-docent') ?? 'dev';
+    }
 
     public const MAX_REDIRECT_HOPS = 3;
 
@@ -129,6 +134,7 @@ final class DocentManager
         return $this->registry;
     }
 
+    /** @internal */
     public function repository(): DocumentationRepository
     {
         return $this->repository;
@@ -145,6 +151,8 @@ final class DocentManager
      * Resolve a redirect stub to its final page without revealing a missing or
      * unauthorized destination. Authors are expected to flatten chains; the
      * hard hop limit keeps malformed database-authored redirects bounded.
+     *
+     * @internal
      */
     public function redirectTarget(Page $stub, DocumentationContext $context): ?Page
     {
@@ -246,6 +254,8 @@ final class DocentManager
     /**
      * The context of an anonymous visitor, regardless of who is browsing —
      * public surfaces (sitemap) must never widen to the current viewer.
+     *
+     * @internal
      */
     public function guestContext(): DocumentationContext
     {
@@ -264,6 +274,8 @@ final class DocentManager
      * may add brand-new views (`resources/views/vendor/docent/layouts/`)
      * without forking any package file. An unknown layout fails loudly when
      * the view is rendered rather than silently falling back.
+     *
+     * @internal
      */
     public function layoutView(string $layout): string
     {
@@ -272,6 +284,7 @@ final class DocentManager
         return is_string($configured) && $configured !== '' ? $configured : 'docent::layouts.'.$layout;
     }
 
+    /** @internal */
     public function renderDocument(Document $document, DocumentationContext $context, string $baseDir = ''): string
     {
         $renderer = new HtmlRenderer(
@@ -297,6 +310,8 @@ final class DocentManager
      * Card summaries for a directory's children (every top-level directory
      * when `$section` is empty), filtered to what the viewer may see.
      *
+     * @internal
+     *
      * @return list<SectionCard>
      */
     public function sectionCards(string $section, DocumentationContext $context): array
@@ -304,16 +319,19 @@ final class DocentManager
         return $this->navigation->cards($section, $context);
     }
 
+    /** @internal */
     public function sectionCardsHtml(string $section, int $columns, DocumentationContext $context): string
     {
         return SectionCardsHtml::render($this->sectionCards($section, $context), $columns);
     }
 
+    /** @internal */
     public function markdownUrl(string $slug): string
     {
         return $this->route('show', ['slug' => ($slug === '' ? 'index' : $slug).'.md']);
     }
 
+    /** @internal */
     public function llmsUrl(bool $full = false): string
     {
         return $this->route($full ? 'llms-full' : 'llms');
@@ -347,7 +365,11 @@ final class DocentManager
         return preg_match('#^(?:https?:)?//#i', $image) === 1 ? $image : url($image);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @internal
+     *
+     * @return array<string, mixed>
+     */
     public function widgetConfig(): array
     {
         $mode = $this->config('widget.mode') === 'push' ? 'push' : 'overlay';
@@ -388,6 +410,8 @@ final class DocentManager
      * Resolve contextual suggestions without exposing missing or unauthorized
      * pages to the current viewer.
      *
+     * @internal
+     *
      * @return list<array{slug: string, title: string, description: ?string, url: string}>
      */
     public function widgetSuggestions(string $hostPage, DocumentationContext $context): array
@@ -398,6 +422,8 @@ final class DocentManager
     /**
      * Filter explicit slugs (e.g. a client-side override) through the same
      * authorization gate, so no suggestion surface can leak a gated page.
+     *
+     * @internal
      *
      * @param  list<string>  $slugs
      * @return list<array{slug: string, title: string, description: ?string, url: string}>
@@ -424,6 +450,7 @@ final class DocentManager
         return $suggestions;
     }
 
+    /** @internal */
     public function viewerFingerprint(DocumentationContext $context): string
     {
         $slugs = array_map(
@@ -442,6 +469,8 @@ final class DocentManager
      * session, viewer scope, and reader surface. The opaque value is safe to
      * render, while a session or permission change makes prior state
      * unreachable without exposing any of the binding inputs.
+     *
+     * @internal
      */
     public function assistantStateNamespace(Request $request, DocumentationContext $context, bool $widget = false): string
     {
@@ -467,6 +496,7 @@ final class DocentManager
         ]), $key === '' ? 'docent' : $key);
     }
 
+    /** @internal */
     public function partialDocument(string $name): ?Document
     {
         $source = $this->repository->partial($name);
@@ -479,6 +509,8 @@ final class DocentManager
      * `authorize` (gate/ability) and `audience`. The single source of truth for
      * page-level access, shared by {@see Page} and search so a hit can never
      * surface a page the viewer could not open.
+     *
+     * @internal
      */
     public function authorizes(?string $authorize, ?string $audience, DocumentationContext $context): bool
     {
@@ -493,6 +525,7 @@ final class DocentManager
         return true;
     }
 
+    /** @internal */
     public function audienceAllows(string $audience, DocumentationContext $context): bool
     {
         if ($context->audience !== null) {
@@ -511,11 +544,13 @@ final class DocentManager
         return $this->fullUrl($slug);
     }
 
+    /** @internal */
     public function fullUrl(string $slug): string
     {
         return $slug === '' ? $this->route('home') : $this->route('show', [$slug]);
     }
 
+    /** @internal */
     public function widgetUrl(string $slug = ''): string
     {
         return $slug === ''
@@ -523,6 +558,7 @@ final class DocentManager
             : $this->route('widget.show', ['slug' => $slug]);
     }
 
+    /** @internal */
     public function enableWidgetMode(): void
     {
         $this->mode->enableWidget();
@@ -533,6 +569,8 @@ final class DocentManager
      * docs-rooted destinations become page URLs; external URLs pass through
      * verbatim. Shared with landing-page CTA resolution so a front-matter href
      * behaves exactly like an in-body markdown link.
+     *
+     * @internal
      */
     public function resolveUrl(string $destination, string $baseDir = ''): string
     {
@@ -562,22 +600,29 @@ final class DocentManager
         return $this->siteConfig->get($path, $default);
     }
 
+    /** @internal */
     public function key(): string
     {
         return $this->siteConfig->key;
     }
 
+    /** @internal */
     public function siteRef(): SiteRef
     {
         return new SiteRef($this->key(), $this->siteName());
     }
 
+    /** @internal */
     public function routeName(string $suffix): string
     {
         return 'docent.'.$this->key().'.'.$suffix;
     }
 
-    /** @param array<string|int, mixed> $parameters */
+    /**
+     * @internal
+     *
+     * @param  array<string|int, mixed>  $parameters
+     */
     public function route(string $suffix, array $parameters = []): string
     {
         return route($this->routeName($suffix), $parameters);
@@ -585,6 +630,8 @@ final class DocentManager
 
     /**
      * The accent colour driving the whole UI, from `docent.theme.accent`.
+     *
+     * @internal
      */
     public function accent(): string
     {
@@ -593,6 +640,8 @@ final class DocentManager
 
     /**
      * The configured logo (path or URL), or null to fall back to a wordmark.
+     *
+     * @internal
      */
     public function logo(): ?string
     {
@@ -602,6 +651,8 @@ final class DocentManager
     /**
      * The dark-mode logo, or null to reuse {@see logo()} in both modes. The
      * header swaps between them via CSS, so there is no theme flash.
+     *
+     * @internal
      */
     public function logoDark(): ?string
     {
@@ -611,6 +662,8 @@ final class DocentManager
     /**
      * A square mark shown in the compact/mobile header, or null to keep the
      * full logo/wordmark at every size.
+     *
+     * @internal
      */
     public function logomark(): ?string
     {
@@ -619,6 +672,8 @@ final class DocentManager
 
     /**
      * The favicon (path or URL), emitted as <link rel="icon"> when set.
+     *
+     * @internal
      */
     public function favicon(): ?string
     {
@@ -628,6 +683,8 @@ final class DocentManager
     /**
      * Optional webfont stylesheet URL (Bunny/Google …). Null keeps the default
      * of zero external requests.
+     *
+     * @internal
      */
     public function fontHref(): ?string
     {
@@ -638,6 +695,8 @@ final class DocentManager
      * The complete contents of the dynamic <style> block: the accent, any
      * configured font stacks, and the gray/radius palette remaps. Emitted after
      * the built stylesheet so these host overrides always win the cascade.
+     *
+     * @internal
      */
     public function themeStyles(): string
     {
@@ -668,6 +727,8 @@ final class DocentManager
      * URL for a shipped asset. Prefers a host-published copy under
      * `public/vendor/docent` when present, otherwise the fallback asset route.
      * Both carry a content hash so caches bust the moment the file changes.
+     *
+     * @internal
      */
     public function asset(string $file): string
     {
@@ -680,6 +741,7 @@ final class DocentManager
         return $this->route('asset', ['file' => $file]).'?v='.$this->assetVersion($this->assetPath($file));
     }
 
+    /** @internal */
     public function assetPath(string $file): string
     {
         return __DIR__.'/../resources/dist/'.$file;
@@ -688,6 +750,8 @@ final class DocentManager
     /**
      * The group label for the group containing the given page slug — the
      * breadcrumb shown above a page title. Null for ungrouped/home pages.
+     *
+     * @internal
      */
     public function breadcrumb(string $slug, DocumentationContext $context): ?string
     {
@@ -760,7 +824,11 @@ final class DocentManager
             : ((bool) $this->config('content.allow_html', true) ? HtmlPolicy::Trusted : HtmlPolicy::Denied);
     }
 
-    /** The HTML policy database-authored content renders under. */
+    /**
+     * The HTML policy database-authored content renders under.
+     *
+     * @internal
+     */
     public function databaseHtmlPolicy(): HtmlPolicy
     {
         return (bool) $this->config('content.database.sanitize_html', true)

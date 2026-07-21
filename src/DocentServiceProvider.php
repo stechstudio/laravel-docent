@@ -24,6 +24,7 @@ use STS\Docent\Console\CheckCommand;
 use STS\Docent\Console\ClearCommand;
 use STS\Docent\Console\GuideCommand;
 use STS\Docent\Console\InstallCommand;
+use STS\Docent\Console\MakeCommand;
 use STS\Docent\Console\PruneInsightsCommand;
 use STS\Docent\Content\AgentFeed;
 use STS\Docent\Content\Models\DocentPage;
@@ -137,12 +138,21 @@ final class DocentServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/docent.php' => config_path('docent.php')], 'docent-config');
-            $this->publishes([__DIR__.'/../resources/views' => resource_path('views/vendor/docent')], 'docent-views');
+            $this->publishes([
+                __DIR__.'/../resources/views/layout.blade.php' => resource_path('views/vendor/docent/layout.blade.php'),
+                __DIR__.'/../resources/views/page.blade.php' => resource_path('views/vendor/docent/page.blade.php'),
+                __DIR__.'/../resources/views/layouts/landing.blade.php' => resource_path('views/vendor/docent/layouts/landing.blade.php'),
+                __DIR__.'/../resources/views/components/widget.blade.php' => resource_path('views/vendor/docent/components/widget.blade.php'),
+            ], 'docent-views');
+
+            $this->publishes([
+                __DIR__.'/../resources/views' => resource_path('views/vendor/docent'),
+            ], 'docent-views-internal');
             $this->publishes([__DIR__.'/../lang' => lang_path('vendor/docent')], 'docent-lang');
             $this->publishes([__DIR__.'/../resources/dist' => public_path('vendor/docent')], 'docent-assets');
             $this->publishesMigrations([__DIR__.'/../database/migrations' => database_path('migrations')], 'docent-migrations');
 
-            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class, GuideCommand::class, PruneInsightsCommand::class]);
+            $this->commands([InstallCommand::class, ClearCommand::class, CheckCommand::class, GuideCommand::class, MakeCommand::class, PruneInsightsCommand::class]);
         }
 
         $this->registerAboutCommand();
@@ -297,7 +307,7 @@ final class DocentServiceProvider extends ServiceProvider
 
         AboutCommand::add('Docent', function (): array {
             $sites = $this->app->make(SiteRegistry::class);
-            $details = ['Version' => DocentManager::VERSION];
+            $details = ['Version' => DocentManager::version()];
 
             foreach ($sites->keys() as $key) {
                 $site = $sites->siteConfig($key);

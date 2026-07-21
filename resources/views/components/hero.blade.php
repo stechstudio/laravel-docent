@@ -1,3 +1,4 @@
+{{-- @internal Docent component. Not part of the public API; props may change. --}}
 {{--
     The landing-page hero: accent glow, optional eyebrow badge, title,
     description, and an optional prominent search box and/or CTA buttons.

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @property string $site
  */
-final class AiQuestion extends Model
+class AiQuestion extends Model
 {
     public const UPDATED_AT = null;
 

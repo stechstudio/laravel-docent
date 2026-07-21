@@ -1,3 +1,4 @@
+{{-- @internal Docent component. Not part of the public API; props may change. --}}
 {{--
     A search box that opens the search-and-ask dialog. `size="lg"` is the
     hero-scale variant; the default suits inline placement on any page.

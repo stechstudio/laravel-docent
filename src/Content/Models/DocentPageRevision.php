@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $created_by
  * @property Carbon|null $created_at
  */
-final class DocentPageRevision extends Model
+class DocentPageRevision extends Model
 {
     const UPDATED_AT = null;
 

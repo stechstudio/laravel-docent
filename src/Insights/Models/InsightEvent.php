@@ -29,7 +29,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $feedback
  * @property CarbonImmutable $created_at
  */
-final class InsightEvent extends Model
+class InsightEvent extends Model
 {
     public const UPDATED_AT = null;
 

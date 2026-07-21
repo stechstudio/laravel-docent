@@ -16,6 +16,9 @@ includes, and malformed front matter. Fix everything it reports.
 - One page per `.md` file inside the site's content directory (listed below).
 - The file path is the URL slug: `billing/refunds.md` serves at
   `{prefix}/billing/refunds`. Use lowercase alphanumeric segments with hyphens.
+- A slug segment must not begin with `_`. Paths like `/_search` and `/_assets`
+  are reserved for Docent's internal routes; a page slug starting with `_` is
+  unreachable.
 - `index.md` in a directory is that directory's landing page; the root
   `index.md` is the site home.
 - Directories become sidebar groups. An optional `_group.yml` in a directory

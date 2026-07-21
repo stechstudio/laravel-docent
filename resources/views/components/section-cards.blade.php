@@ -1,3 +1,4 @@
+{{-- @internal Docent component. Not part of the public API; props may change. --}}
 {{--
     A card grid generated from the navigation tree, for custom layouts and
     Blade views: `<x-docent::section-cards />` for top-level directories, or

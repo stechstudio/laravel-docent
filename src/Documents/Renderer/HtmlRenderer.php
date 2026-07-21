@@ -56,6 +56,7 @@ use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\Icon;
 use STS\Docent\Support\InternalLink;
+use STS\Docent\Support\SafeUrl;
 use STS\Docent\Support\VideoSource;
 
 /**
@@ -262,8 +263,8 @@ final class HtmlRenderer
             $inner .= '<div class="docent-card-body">'.$body.'</div>';
         }
 
-        if ($href !== null) {
-            return '<a class="docent-card" href="'.e($href).'">'.$inner.'</a>';
+        if ($href !== null && ($safe = SafeUrl::filter($href)) !== null) {
+            return '<a class="docent-card" href="'.e($safe).'">'.$inner.'</a>';
         }
 
         return '<div class="docent-card">'.$inner.'</div>';
@@ -371,9 +372,10 @@ final class HtmlRenderer
 
         if ($source === null) {
             $label = $node->caption !== null && $node->caption !== '' ? $node->caption : 'Video';
+            $safe = SafeUrl::filter($node->url);
+            $link = $safe !== null ? '<a href="'.e($safe).'">'.e($label).'</a>' : e($label);
 
-            return '<figure class="docent-video docent-video-unsupported"><a href="'.e($node->url).'">'
-                .e($label).'</a>'.$caption.'</figure>';
+            return '<figure class="docent-video docent-video-unsupported">'.$link.$caption.'</figure>';
         }
 
         if ($source->isFile()) {
@@ -463,8 +465,8 @@ final class HtmlRenderer
             ? $this->resolveAppLink($node->destination)
             : $this->resolveUrl($node->destination);
 
-        if ($href === null) {
-            // Unresolved app link: still render the label, unlinked.
+        if ($href === null || ($href = SafeUrl::filter($href)) === null) {
+            // Unresolved app link OR unsafe scheme: render the label, unlinked.
             return $this->renderChildren($node);
         }
 

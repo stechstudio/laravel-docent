@@ -10,6 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use STS\Docent\Content\Events\PageDeleted;
+use STS\Docent\Content\Events\PagePublished;
+use STS\Docent\Content\Events\PageSaved;
+use STS\Docent\Content\Events\PageUnpublished;
 
 /**
  * A database-authored documentation page and its revision history. This model is
@@ -28,11 +32,16 @@ use Illuminate\Support\Str;
  * @property int|null $created_by
  * @property int|null $updated_by
  */
-final class DocentPage extends Model
+class DocentPage extends Model
 {
     use SoftDeletes;
 
     protected $guarded = [];
+
+    /** @var array<string, class-string> */
+    protected $dispatchesEvents = [
+        'deleted' => PageDeleted::class,
+    ];
 
     protected $attributes = [
         'site' => 'docs',
@@ -95,6 +104,8 @@ final class DocentPage extends Model
             $page->unsetRelation('revisions');
         }
 
+        PageSaved::dispatch($page, $page->wasRecentlyCreated);
+
         return $page;
     }
 
@@ -109,6 +120,8 @@ final class DocentPage extends Model
         $this->published_revision_id = $revision?->getKey();
         $this->save();
 
+        PagePublished::dispatch($this);
+
         return $this;
     }
 
@@ -116,6 +129,8 @@ final class DocentPage extends Model
     {
         $this->published_revision_id = null;
         $this->save();
+
+        PageUnpublished::dispatch($this);
 
         return $this;
     }

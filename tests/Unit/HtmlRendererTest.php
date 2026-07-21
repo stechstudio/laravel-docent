@@ -117,6 +117,28 @@ it('resolves slug-style internal links through the url resolver', function () {
     expect($html)->toContain('<a href="/docs/getting-started/setup">Setup</a>');
 });
 
+it('strips javascript: scheme from markdown links but keeps the label', function () {
+    $html = renderHtml('[click me](javascript:alert(document.cookie))', docRegistry(), docContext());
+
+    expect($html)->toContain('click me')
+        ->and($html)->not->toContain('javascript:')
+        ->and($html)->not->toContain('<a ');
+});
+
+it('allows safe schemes and relative links through', function () {
+    expect(renderHtml('[x](https://example.com)', docRegistry(), docContext()))->toContain('href="https://example.com"')
+        ->and(renderHtml('[x](mailto:a@b.com)', docRegistry(), docContext()))->toContain('href="mailto:a@b.com"');
+});
+
+it('downgrades a card with a javascript: href to a non-linked card', function () {
+    $md = "::::cards\n:::card title=\"Bad\" href=\"javascript:alert(1)\"\nbody\n:::\n::::";
+    $html = renderHtml($md, docRegistry(), docContext());
+
+    expect($html)->toContain('docent-card')
+        ->and($html)->not->toContain('javascript:')
+        ->and($html)->not->toContain('<a class="docent-card"');
+});
+
 it('renders registered components as trusted html', function () {
     $registry = docRegistry();
     $registry->component('widget', new class implements DocumentationComponent
