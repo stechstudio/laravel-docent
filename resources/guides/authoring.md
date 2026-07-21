@@ -9,7 +9,16 @@ editing pages, always validate with:
     php artisan docent:check
 
 It catches missing titles, broken internal links, unknown integrations, missing
-includes, and malformed front matter. Fix everything it reports.
+includes, and malformed front matter. Fix everything it reports. For a
+machine-readable report to drive an automated fix loop, add `--format=json`.
+
+You can scaffold a new page from a content-type template instead of starting
+blank:
+
+    php artisan docent:make how-to billing/refunds
+
+The type is one of `tutorial`, `how-to`, `reference`, or `concept`; it writes a
+starter page with the right front matter and section outline for that shape.
 
 ## Files and slugs
 

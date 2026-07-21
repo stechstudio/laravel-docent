@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-21
+
+### Changed
+
+- `docent:install` output now points to `docent:make` and `docent:check` (with the `--format=json` option), and the `docent:guide` reference describes `docent:make` — so the scaffolder, JSON diagnostics, and quality rules are discoverable from a cold start instead of only via `artisan list` and command help.
+
 ## [1.0.1] - 2026-07-21
 
 ### Fixed

@@ -39,9 +39,10 @@ final class InstallCommand extends Command
         $this->newLine();
         $this->components->info('Docent installed.');
         $this->components->bulletList([
-            'Write your docs in '.$docs,
-            'Told your coding agent about Docent in AGENTS.md — it will run docent:guide before writing docs',
+            'Write your docs in '.$docs.', or scaffold one with `php artisan docent:make how-to <slug>`',
             'Register app integrations (values, links, components) in a service provider via the Docent facade',
+            'Validate anytime with `php artisan docent:check` (add `--format=json` for tooling)',
+            'Told your coding agent about Docent in AGENTS.md — it will run docent:guide before writing docs',
             'Visit /'.$docent->config('route.prefix', 'docs').' to browse',
             ...$withDatabase ? [
                 'Run `php artisan migrate` to create the docent_pages tables',
