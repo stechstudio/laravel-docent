@@ -114,8 +114,6 @@ final class InstallCommand extends Command
         order: 0
         ---
 
-        # Welcome to your documentation
-
         This site is powered by [Docent](https://github.com/stechstudio/laravel-docent) —
         permission-aware documentation that participates in your Laravel application.
 
@@ -135,8 +133,6 @@ final class InstallCommand extends Command
         description: Learn how to author Docent pages.
         order: 1
         ---
-
-        # Introduction
 
         Docent pages are Markdown with a little extra: front matter, callouts,
         permission-aware blocks, and dynamic values pulled from your app.

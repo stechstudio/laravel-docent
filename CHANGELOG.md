@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-21
+
+### Fixed
+
+- Starter pages scaffolded by `docent:install` no longer open with a body `#` heading. The page title already renders as the `h1`, so the starter content now matches Docent's own authoring guidance and the `docent:make` templates, and a fresh install passes the opt-in `single-h1` quality rule cleanly.
+
+## [1.0.0] - 2026-07-21
+
+### Security
+
+- Filtered `javascript:` and `data:` URL schemes from Markdown link, card, and video hrefs, preventing stored XSS from database-authored pages.
+
 ### Breaking changes (pre-1.0)
 
 - Moved `agentMarkdown`, `llmsText`, `llmsFullText`, and `discoveryLinkHeader` from `DocentManager` to `STS\Docent\Content\AgentFeed`; resolve it from the container, where it is site-scoped like the manager.
@@ -19,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `docent:make` command scaffolding a page from a Diátaxis content-type template (tutorial, how-to, reference, concept).
+- `docent:check --format=json` for machine-readable diagnostics, per-rule severity overrides via `docent.check.rules`, and opt-in authoring-quality rules (`single-h1`, `description-length`).
+- `docent:install` writes an idempotent Docent authoring pointer into the project's `AGENTS.md`/`CLAUDE.md` so coding agents discover `docent:guide`.
+- Page lifecycle events `PageSaved`, `PagePublished`, `PageUnpublished`, and `PageDeleted` for host applications to hook.
+- `COMPATIBILITY.md` documenting the public API surface covered by semantic versioning; internal collaborators are marked `@internal`.
+- The four Eloquent models (`DocentPage`, `DocentPageRevision`, `AiQuestion`, `InsightEvent`) are no longer `final`, so host applications can extend them.
+- Split the `docent-views` publish tag so it exposes only override-intended templates; internal partials publish under `docent-views-internal`.
 - Publishable language files for translating the reader, search, Assistant, and widget interfaces.
 - Configurable Assistant answer language, including the current application's locale.
 - Guest-pruned per-site sitemaps plus canonical URLs, social metadata, and TechArticle JSON-LD on public reader pages.
