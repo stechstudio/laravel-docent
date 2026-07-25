@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Page-backed expanding sidebar groups. A nested directory with an `index.md` now renders its group header as a link to that landing page, with a separate labeled chevron that expands or collapses the group without navigating; a directory without an `index.md` keeps the toggle-only header. The mode is derived entirely from the filesystem — no new `_group.yml` keys.
+
+### Changed
+
+- A group's `index.md` no longer appears as an item inside its own group: nested groups promote it to the header link, and top-level groups pin it as the first entry. The landing page now always reads first within its group (prev/next order and the `llms.txt`/`llms-full.txt` feeds), regardless of its `order:` front matter.
+
 ## [1.0.2] - 2026-07-21
 
 ### Changed
