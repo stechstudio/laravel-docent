@@ -45,8 +45,11 @@ it('uses _group.yml labels and orders groups', function () {
 it('orders pages within a group by front matter order then title', function () {
     $guides = findGroup(docentNav($this), 'Guides');
 
+    // The directory's own index.md is promoted to the group header instead of
+    // being listed among its pages.
     expect(array_map(fn ($i) => $i->title, $guides->items))
-        ->toBe(['Guides Overview', 'Setup', 'Cycle']);
+        ->toBe(['Setup', 'Cycle'])
+        ->and($guides->index?->title)->toBe('Guides Overview');
 });
 
 it('excludes hidden pages from navigation', function () {
@@ -60,7 +63,8 @@ it('filters unauthorized pages and empty groups per viewer', function () {
     expect(findGroup($guestNav, 'Reports'))->toBeNull();
 
     $billing = findGroup($guestNav, 'Billing');
-    expect(array_map(fn ($i) => $i->title, $billing->items))->toBe(['Billing Overview']);
+    expect(array_map(fn ($i) => $i->title, $billing->items))->toBe(['Billing Overview'])
+        ->and($billing->index)->toBeNull();  // billing/ has no index.md
 
     $adminNav = docentNav($this, $this->adminUser());
     expect(findGroup($adminNav, 'Reports'))->not->toBeNull();
@@ -83,4 +87,37 @@ it('computes prev/next from the flattened filtered navigation', function () {
 
     expect($prev->slug)->toBe('guides')
         ->and($next->slug)->toBe('guides/cycle');
+});
+
+it('treats a promoted index page as part of its group', function () {
+    $guides = findGroup(docentNav($this), 'Guides');
+
+    // contains() drives breadcrumbs and sidebar auto-expansion, so landing on
+    // the group's own page must still resolve to the group.
+    expect($guides->contains('guides'))->toBeTrue()
+        ->and($guides->contains('guides/setup'))->toBeTrue()
+        ->and($guides->contains('billing/overview'))->toBeFalse();
+});
+
+it('drops a gated index page from the group it heads', function () {
+    // reports/ holds nothing but an index.md gated behind reports.view, so the
+    // whole group filters away for a guest and the admin sees an index-only
+    // group — the header-link-without-a-chevron case.
+    expect(findGroup(docentNav($this), 'Reports'))->toBeNull();
+
+    $reports = findGroup(docentNav($this, $this->adminUser()), 'Reports');
+
+    expect($reports->index?->slug)->toBe('reports')
+        ->and($reports->items)->toBe([])
+        ->and($reports->groups)->toBe([]);
+});
+
+it('keeps a nested index page out of its own item list', function () {
+    $guides = findGroup(docentNav($this), 'Guides');
+    $nested = collect($guides->groups)->keyBy('label');
+
+    expect($nested->get('Deploy')->index?->slug)->toBe('guides/deploy')
+        ->and(array_map(fn ($i) => $i->title, $nested->get('Deploy')->items))->toBe(['Production'])
+        ->and($nested->get('Troubleshooting')->index)->toBeNull()
+        ->and(array_map(fn ($i) => $i->title, $nested->get('Troubleshooting')->items))->toBe(['FAQ']);
 });

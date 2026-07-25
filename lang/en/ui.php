@@ -6,6 +6,7 @@ return [
         'open_navigation' => 'Open navigation',
         'close_navigation' => 'Close navigation',
         'toggle_dark_mode' => 'Toggle dark mode',
+        'toggle_section' => 'Toggle :section',
         'pagination' => 'Pagination',
         'previous' => 'Previous',
         'next' => 'Next',

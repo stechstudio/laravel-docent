@@ -316,14 +316,7 @@ final class NavigationBuilder
         }
 
         $pages = $this->flatten([$group]);
-        $index = null;
-
-        foreach ($group->items as $item) {
-            if ($item->slug === $node['directory']) {
-                $index = $item;
-                break;
-            }
-        }
+        $index = $group->index;
 
         return new SectionCard(
             $node['directory'],
@@ -447,11 +440,24 @@ final class NavigationBuilder
     private function filterGroup(array $node, DocumentationContext $context): ?NavigationGroup
     {
         $items = [];
+        $index = null;
 
         foreach ($this->sortPages($node['items']) as $page) {
-            if ($this->visible($page, $context)) {
-                $items[] = $this->item($page);
+            if (! $this->visible($page, $context)) {
+                continue;
             }
+
+            // The directory's own index.md describes the group rather than
+            // sitting inside it: the sidebar promotes it to the group header.
+            // Extracting after the visibility filter means a gated index page
+            // simply yields null, and the header falls back to a plain toggle.
+            if ($page->slug === $node['directory']) {
+                $index = $this->item($page);
+
+                continue;
+            }
+
+            $items[] = $this->item($page);
         }
 
         $groups = [];
@@ -464,11 +470,11 @@ final class NavigationBuilder
             }
         }
 
-        if ($items === [] && $groups === []) {
+        if ($index === null && $items === [] && $groups === []) {
             return null;
         }
 
-        return new NavigationGroup($node['label'], $node['icon'], $items, $groups);
+        return new NavigationGroup($node['label'], $node['icon'], $items, $groups, $index);
     }
 
     private function visible(PageReference $page, DocumentationContext $context): bool
@@ -584,6 +590,13 @@ final class NavigationBuilder
             if ($node instanceof NavigationItem) {
                 $items[] = $node;
             } else {
+                // A group's landing page reads first, ahead of its own
+                // `order:`, so prev/next and the agent feeds open the section
+                // with the page that introduces it.
+                if ($node->index !== null) {
+                    $items[] = $node->index;
+                }
+
                 array_push($items, ...$node->items, ...$this->flatten($node->groups));
             }
         }

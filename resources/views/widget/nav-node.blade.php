@@ -9,6 +9,11 @@
             <span>{{ $node->label }}</span>
         </p>
         <ul class="space-y-1{{ $depth > 0 ? ' ml-3 border-l border-slate-200 pl-3 dark:border-slate-800' : '' }}">
+            {{-- The widget sidebar does not collapse, so the group's landing
+                 page is listed as its first leaf rather than as the header. --}}
+            @if($node->index)
+                @include('docent::widget.nav-node', ['node' => $node->index, 'depth' => $depth + 1])
+            @endif
             @foreach($node->items as $item)
                 @include('docent::widget.nav-node', ['node' => $item, 'depth' => $depth + 1])
             @endforeach
