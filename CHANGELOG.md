@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- New `token-in-code` check. Token syntax inside a code span or fenced code block renders verbatim by design — it is how the dialect documents itself — which also means such a token never becomes an AST node for the reference checks to inspect. A page could ship `` `{{ value:account.plan }}` `` where a real value belonged, render 200, and pass every other check. The new check reads code literals directly and warns when the token names a value, link, or route this application actually resolves. Generic examples naming nothing registered stay silent. Silence it entirely with `'token-in-code' => 'off'` in `docent.check.rules`.
+
 ## [1.2.0] - 2026-08-05
 
 ### Added
