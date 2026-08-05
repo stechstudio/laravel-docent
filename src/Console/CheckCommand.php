@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace STS\Docent\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use LogicException;
 use STS\Docent\Content\Repositories\DocumentationRepository;
@@ -67,7 +66,7 @@ final class CheckCommand extends Command
                     publicPath: public_path(),
                     routePrefix: (string) $docent->config('route.prefix', 'docs'),
                     routeExists: static fn (string $name): bool => Route::has($name),
-                    abilityExists: static fn (string $ability): bool => Gate::has($ability),
+                    abilityExists: $docent->abilityChecker(),
                     docent: $docent,
                 );
 

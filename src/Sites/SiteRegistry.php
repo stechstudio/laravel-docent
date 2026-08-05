@@ -145,6 +145,19 @@ final class SiteRegistry
         return $this;
     }
 
+    /**
+     * Declare the abilities `authorize:` keys may name across every site. Scope
+     * it to one site with `Docent::site('key')->abilities(...)`.
+     *
+     * @param  Closure(): mixed|class-string|list<string>  $abilities
+     */
+    public function abilities(Closure|string|array $abilities): self
+    {
+        $this->global->abilities($abilities);
+
+        return $this;
+    }
+
     /** @param list<string> $slugs */
     public function suggest(string $pattern, array $slugs): self
     {

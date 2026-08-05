@@ -93,6 +93,22 @@ return [
         'rules' => [
             // 'unknown-icon' => 'warning',
         ],
+
+        // The abilities an `authorize:` key (or `:::can` block) may name, so the
+        // checker and the admin's autocompletion can tell a real permission from
+        // a typo. Leave null to use Gate::has(), which only sees abilities passed
+        // to Gate::define() — an application that bridges permissions with a
+        // single Gate::before callback defines no gates, so Gate::has() answers
+        // false for every real permission it has. Declare the surface instead:
+        // a list of strings, or a backed-enum class-string as shorthand.
+        //
+        //     'abilities' => App\Enums\Permission::class,
+        //
+        // A closure belongs in a service provider, not here — config files must
+        // stay serializable for `config:cache`:
+        //
+        //     Docent::abilities(fn () => Permission::query()->pluck('name')->all());
+        'abilities' => null,
     ],
 
     /*

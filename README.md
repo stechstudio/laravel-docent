@@ -184,6 +184,36 @@ Site-scoped registrations win over global ones; all other identifiers fall back
 to the global registry. Your internals can refactor freely, the identifiers your
 docs reference stay stable, and `docent:check` catches any drift.
 
+### Declaring your ability surface
+
+To validate `authorize:` front matter and `:::can` blocks, `docent:check` needs
+to know which abilities exist. By default it asks `Gate::has()`, which only sees
+abilities passed to `Gate::define()`. If your application bridges permissions
+with a single `Gate::before` callback — the natural shape when the permission
+list is data rather than hand-written closures — you define no gates at all, and
+every `authorize:` key in your content reads as unknown.
+
+Declare the surface instead. A backed enum is the common case:
+
+```php
+// config/docent.php
+'check' => [
+    'abilities' => App\Enums\Permission::class,
+],
+```
+
+A plain list of strings works too. When the list is dynamic, register a closure
+from a service provider rather than putting it in config, since a closure in a
+config file breaks `config:cache`:
+
+```php
+Docent::abilities(fn () => Permission::query()->pluck('name')->all());
+```
+
+A declared surface replaces `Gate::has()` rather than adding to it, so it should
+name every ability your docs may reference. The admin editor offers the same
+list when completing an `authorize:` key.
+
 ## Permission-safe by design
 
 Authorization isn't a rendering detail. It's enforced at every surface:

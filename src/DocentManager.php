@@ -129,6 +129,63 @@ final class DocentManager
         return $this;
     }
 
+    /**
+     * Declare the abilities `authorize:` keys may name. See
+     * {@see IntegrationRegistry::abilities()} — a closure belongs here, in a
+     * service provider, rather than in `docent.check.abilities`, because a
+     * closure in a config file breaks `config:cache`.
+     *
+     * @param  Closure(): mixed|class-string|list<string>  $abilities
+     */
+    public function abilities(Closure|string|array $abilities): self
+    {
+        $this->registry->abilities($abilities);
+
+        return $this;
+    }
+
+    /**
+     * The abilities this application says an `authorize:` key may name, or null
+     * when it says nothing. A runtime registration wins over `check.abilities`
+     * in config; a site's own declaration wins over the global one.
+     *
+     * @return ?list<string>
+     */
+    public function declaredAbilities(): ?array
+    {
+        $declared = $this->registry->declaredAbilities();
+
+        if ($declared !== null) {
+            return $declared;
+        }
+
+        $configured = $this->config('check.abilities');
+
+        return $configured === null ? null : IntegrationRegistry::normalizeAbilities($configured);
+    }
+
+    /**
+     * A predicate for validating `authorize:` front matter and `:::can` blocks,
+     * resolved once per check run rather than once per ability — a declared
+     * surface may be a closure querying the database.
+     *
+     * Absent a declared surface this falls back to `Gate::has()`, which only
+     * sees abilities passed to `Gate::define()`. An application that bridges its
+     * permissions through a single `Gate::before` callback defines no gates at
+     * all, so `Gate::has()` answers false for every real permission it has —
+     * which is exactly what declaring a surface fixes.
+     *
+     * @return Closure(string): bool
+     */
+    public function abilityChecker(): Closure
+    {
+        $declared = $this->declaredAbilities();
+
+        return $declared === null
+            ? static fn (string $ability): bool => Gate::has($ability)
+            : static fn (string $ability): bool => in_array($ability, $declared, true);
+    }
+
     public function registry(): IntegrationRegistry
     {
         return $this->registry;

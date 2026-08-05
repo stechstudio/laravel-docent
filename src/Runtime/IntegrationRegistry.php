@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Runtime;
 
+use BackedEnum;
 use Closure;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -41,6 +42,9 @@ final class IntegrationRegistry
 
     /** @var array<string, list<string>> */
     private array $suggestions = [];
+
+    /** @var null|Closure(): mixed|class-string|list<string> */
+    private mixed $abilities = null;
 
     /** @var Closure(class-string): object */
     private Closure $classResolver;
@@ -157,6 +161,75 @@ final class IntegrationRegistry
     public function suggestions(): array
     {
         return $this->suggestions;
+    }
+
+    /**
+     * Declare the abilities this application can authorize against, so
+     * `docent:check` and the admin's `authorize:` autocompletion can tell a real
+     * permission from a typo.
+     *
+     * Docent never invokes these — authorization still runs through the Gate.
+     * This is only the introspectable list, which `Gate::has()` cannot supply
+     * for an application that bridges permissions with a single `Gate::before`
+     * callback and therefore defines no gates at all.
+     *
+     * Accepts a list of strings, a backed-enum class-string, or a closure
+     * returning either.
+     *
+     * @param  Closure(): mixed|class-string|list<string>  $abilities
+     */
+    public function abilities(Closure|string|array $abilities): self
+    {
+        $this->abilities = $abilities;
+
+        return $this;
+    }
+
+    /**
+     * The declared ability surface, or null when this application (and any
+     * parent registry) declared none — in which case callers fall back to
+     * `Gate::has()`. Site-local declarations replace the global one rather than
+     * merging: a site that names its surface means that surface.
+     *
+     * @return ?list<string>
+     */
+    public function declaredAbilities(): ?array
+    {
+        if ($this->abilities === null) {
+            return $this->parent?->declaredAbilities();
+        }
+
+        return self::normalizeAbilities(
+            $this->abilities instanceof Closure ? ($this->abilities)() : $this->abilities,
+        );
+    }
+
+    /**
+     * Coerce a declared surface into a plain list of ability strings. A
+     * class-string is read as a backed enum, which is where the permission list
+     * lives in most applications.
+     *
+     * @return list<string>
+     */
+    public static function normalizeAbilities(mixed $abilities): array
+    {
+        if (is_string($abilities)) {
+            if (! enum_exists($abilities) || ! is_subclass_of($abilities, BackedEnum::class)) {
+                throw new InvalidArgumentException(
+                    'A Docent ability surface given as a class-string must be a backed enum; got ['.$abilities.'].',
+                );
+            }
+
+            $abilities = array_column($abilities::cases(), 'value');
+        }
+
+        if (! is_array($abilities)) {
+            throw new InvalidArgumentException(
+                'A Docent ability surface must be a list of strings, a backed-enum class-string, or a closure returning either.',
+            );
+        }
+
+        return array_values(array_map(strval(...), $abilities));
     }
 
     public function hasCondition(string $name): bool

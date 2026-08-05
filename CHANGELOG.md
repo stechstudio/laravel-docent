@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Applications can declare their ability surface for `docent:check` and the admin's `authorize:` completion, instead of relying on `Gate::has()`. `Gate::has()` only sees abilities passed to `Gate::define()`, so an application that bridges permissions through a single `Gate::before` callback defines no gates and had every `authorize:` key in its content reported as unknown. Set `check.abilities` to a list of strings or a backed-enum class-string, or register a closure with `Docent::abilities(...)` from a service provider when the list is dynamic. Unset, the behavior is unchanged: `Gate::has()` remains the fallback.
+
 ## [1.2.0] - 2026-08-05
 
 ### Added
