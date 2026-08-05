@@ -10,6 +10,7 @@ use STS\Docent\Validation\Checks\ContentComponentCheck;
 use STS\Docent\Validation\Checks\DescriptionLengthCheck;
 use STS\Docent\Validation\Checks\DuplicateSlugCheck;
 use STS\Docent\Validation\Checks\FrontMatterCheck;
+use STS\Docent\Validation\Checks\GatedLinkCheck;
 use STS\Docent\Validation\Checks\HeadingHierarchyCheck;
 use STS\Docent\Validation\Checks\IncludeCycleCheck;
 use STS\Docent\Validation\Checks\LockedPageShadowedCheck;
@@ -21,6 +22,7 @@ use STS\Docent\Validation\Checks\RedirectCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
 use STS\Docent\Validation\Checks\SingleH1Check;
 use STS\Docent\Validation\Checks\SiteDefinitionCheck;
+use STS\Docent\Validation\Checks\TokenInCodeCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
 use STS\Docent\Validation\Checks\UnknownComponentCheck;
@@ -52,6 +54,7 @@ final class DocsChecker
             new AiCorpusSizeCheck,
             new DuplicateSlugCheck,
             new BrokenLinkCheck,
+            new GatedLinkCheck,
             new UnknownConditionCheck,
             new UnknownValueCheck,
             new UnknownLinkCheck,
@@ -59,6 +62,7 @@ final class DocsChecker
             new UnknownComponentCheck,
             new UnknownAudienceCheck,
             new UnknownAbilityCheck,
+            new TokenInCodeCheck,
             new MissingIncludeCheck,
             new IncludeCycleCheck,
             new MissingImageCheck,
@@ -87,6 +91,7 @@ final class DocsChecker
         return new self([
             new RedirectCheck,
             new BrokenLinkCheck,
+            new GatedLinkCheck,
             new UnknownConditionCheck,
             new UnknownValueCheck,
             new UnknownLinkCheck,
@@ -94,6 +99,7 @@ final class DocsChecker
             new UnknownComponentCheck,
             new UnknownAudienceCheck,
             new UnknownAbilityCheck,
+            new TokenInCodeCheck,
             new MissingIncludeCheck,
             new ContentComponentCheck,
             new UnknownIconCheck,

@@ -218,6 +218,36 @@ Site-scoped registrations win over global ones; all other identifiers fall back
 to the global registry. Your internals can refactor freely, the identifiers your
 docs reference stay stable, and `docent:check` catches any drift.
 
+### Declaring your ability surface
+
+To validate `authorize:` front matter and `:::can` blocks, `docent:check` needs
+to know which abilities exist. By default it asks `Gate::has()`, which only sees
+abilities passed to `Gate::define()`. If your application bridges permissions
+with a single `Gate::before` callback — the natural shape when the permission
+list is data rather than hand-written closures — you define no gates at all, and
+every `authorize:` key in your content reads as unknown.
+
+Declare the surface instead. A backed enum is the common case:
+
+```php
+// config/docent.php
+'check' => [
+    'abilities' => App\Enums\Permission::class,
+],
+```
+
+A plain list of strings works too. When the list is dynamic, register a closure
+from a service provider rather than putting it in config, since a closure in a
+config file breaks `config:cache`:
+
+```php
+Docent::abilities(fn () => Permission::query()->pluck('name')->all());
+```
+
+A declared surface replaces `Gate::has()` rather than adding to it, so it should
+name every ability your docs may reference. The admin editor offers the same
+list when completing an `authorize:` key.
+
 ## Permission-safe by design
 
 Authorization isn't a rendering detail. It's enforced at every surface:
@@ -227,6 +257,52 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 - Search: server-side, filtered through the same authorization before results are returned; conditional block content is never indexed, so a snippet can never leak gated text
 - Table of contents: headings inside conditional blocks only appear for viewers who'd see them
 
+A link whose readers aren't guaranteed to pass the target's gate is a dead end
+for everyone it turns away, and it surfaces late — you can see both pages, so CI
+stays green. Turn on the `gated-link` rule to catch it:
+
+```php
+'check' => [
+    'rules' => ['gated-link' => 'warning'],
+],
+```
+
+Each link carries the requirements its readers provably satisfy — the page's own
+`authorize`/`audience`, plus any enclosing `:::can`/`:::audience` block. Anything
+the target requires beyond that is reported, since Docent can't know whether one
+of your abilities implies another.
+
+That makes the escape hatch a statement rather than a trick: naming the target's
+own requirement declares the guarantee, and the rule believes it.
+
+```markdown
+:::can ability="billing.manage"
+Configure it in the [billing guide](billing).
+:::
+```
+
+## When a token's closure fails
+
+Your registered closures run against real application state, and some reader
+states are odd — a freshly invited user with no tenant selected, a session
+mid-account-switch. A value or link closure that throws for one of those
+substitutes nothing, is handed to `report()`, and the rest of the page renders
+normally. A help center is where someone goes when something is already wrong for
+them, so one broken token shouldn't take down every paragraph around it.
+
+This covers your closure failing, not Docent failing to call it: a resolver class
+that doesn't exist, a resolver returning something that isn't a string, or a
+`{{ route: }}` token missing a parameter all still raise, because those break for
+every reader alike and are defects to fix rather than states to render around.
+
+The exception still reaches your tracking, so the closure gets fixed rather than
+quietly papered over. If you'd rather see the failure directly:
+
+```php
+'render' => [
+    'strict_tokens' => true,
+],
+```
 ## Optional grounded answers
 
 Docent can add an **Assistant** that answers from the help the current viewer
@@ -404,6 +480,28 @@ $this->docs()->page('billing/payment-methods')->as($admin)
 
 $this->docs()->search('payroll', as: $member)
     ->assertMissing('Payroll Reports');
+```
+
+Per-page assertions cover intent; the sweep covers the whole tree. "Does my
+entire docs site still return 200 for this role" is the single most useful
+assertion in a permission-aware docs package:
+
+```php
+$this->docs()->as($member)->assertAllPagesRender();
+```
+
+Pages the viewer can't see are skipped rather than failed, and a failure names
+every slug that broke along with its error. A sweep that reached no pages at all
+fails too — otherwise a gate misconfigured to deny everything would report green.
+
+For invariants of your own, `pages()` hands you the real slug list — Docent's own
+derivation, including the `index.md` conventions — so you never have to
+reconstruct it with a `Finder` loop:
+
+```php
+foreach ($this->docs()->pages() as $slug) {
+    // every page is in navigation, has a description, whatever you need
+}
 ```
 
 ## The UI

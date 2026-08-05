@@ -76,6 +76,13 @@ Start the body at `##`; the `title` already renders as the page's `#` heading.
 Only use names that are registered in this application (inventory below) or
 routes that exist; `docent:check` flags unknown ones.
 
+Tokens do not resolve inside backticks or fenced code blocks — that is what lets
+this guide show the syntax. Never wrap a token in backticks when you want its
+value: `` `{{ value:account.plan }}` `` prints the mustache syntax to the reader.
+`docent:check` warns (`token-in-code`) when a token naming something this
+application actually resolves is trapped in an inline code span. Fenced blocks
+are left alone, since an example is meant to be read literally.
+
 ## Gated and conditional blocks
 
 Container directives open with three or more colons and close with a line of
@@ -101,6 +108,12 @@ Shown while a registered condition is true. `:::unless` inverts it.
 
 Gated content disappears everywhere at once: the page, navigation, search,
 and AI answers.
+
+Because of that, a link whose readers are not guaranteed to pass the target's
+gate is a dead end for everyone it turns away. When such a link is intended, put
+it inside a `:::can` or `:::audience` block naming *that target's own*
+requirement, so only readers who can follow it ever see it. A block naming a
+different ability is not a guarantee about this one.
 
 ## Content components
 

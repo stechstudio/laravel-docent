@@ -100,7 +100,11 @@ final class DocentCache
      * @param  Closure(): T  $callback
      * @return T
      */
-    public function remember(string $key, Closure $callback): mixed
+    /**
+     * @param  ?Closure(): bool  $shouldStore  Evaluated after a miss; false returns the
+     *                                         freshly computed value without caching it.
+     */
+    public function remember(string $key, Closure $callback, ?Closure $shouldStore = null): mixed
     {
         $qualified = $this->key($key);
         $cached = $this->store->get($qualified);
@@ -115,7 +119,9 @@ final class DocentCache
 
         $value = $callback();
 
-        $this->store->forever($qualified, serialize($value));
+        if ($shouldStore === null || $shouldStore()) {
+            $this->store->forever($qualified, serialize($value));
+        }
 
         return $value;
     }
