@@ -77,48 +77,42 @@ final class MissingImageCheck implements Check
      */
     private function issuesFor(Image $node, PageReference $page, CheckContext $context): iterable
     {
-        $url = $node->url;
+        $problem = $this->problemWith($node->url, $page->directory, $context);
 
+        if ($problem !== null) {
+            yield Issue::error('missing-image', $page->slug, 'Image "'.$node->url.'" '.$problem, $node->line);
+        }
+    }
+
+    /**
+     * Why this source cannot be served, phrased to follow the image's URL, or
+     * null when it is fine. Deciding here keeps the reporting above to one
+     * place, so every outcome reads the same way in the report.
+     */
+    private function problemWith(string $url, string $directory, CheckContext $context): ?string
+    {
         if ($url === '' || preg_match('/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i', $url) === 1) {
-            return;
+            return null;
         }
 
         if (str_starts_with($url, '/')) {
             $path = rtrim($context->publicPath(), '/').(preg_replace('/[#?].*$/', '', $url) ?? $url);
 
-            if (! is_file($path)) {
-                yield Issue::error('missing-image', $page->slug, 'Image "'.$url.'" was not found on disk.', $node->line);
-            }
-
-            return;
+            return is_file($path) ? null : 'was not found on disk.';
         }
 
-        $relative = DocsImagePath::relative($url, $page->directory);
+        $relative = DocsImagePath::relative($url, $directory);
 
         if ($relative === null) {
-            yield Issue::error(
-                'missing-image',
-                $page->slug,
-                'Image "'.$url.'" resolves outside the documentation directory, so it cannot be served.',
-                $node->line,
-            );
-
-            return;
+            return 'resolves outside the documentation directory, so it cannot be served.';
         }
 
         if (! DocsImagePath::servable($relative)) {
-            yield Issue::error(
-                'missing-image',
-                $page->slug,
-                'Image "'.$url.'" is not a file type Docent serves ('.implode(', ', DocsImagePath::extensions()).').',
-                $node->line,
-            );
-
-            return;
+            return 'is not a file type Docent serves ('.implode(', ', DocsImagePath::extensions()).').';
         }
 
-        if (DocsImagePath::file($context->docsPath(), $relative) === null) {
-            yield Issue::error('missing-image', $page->slug, 'Image "'.$url.'" was not found on disk.', $node->line);
-        }
+        return DocsImagePath::file($context->docsPath(), $relative) === null
+            ? 'was not found on disk.'
+            : null;
     }
 }

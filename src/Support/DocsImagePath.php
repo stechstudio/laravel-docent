@@ -58,8 +58,8 @@ final class DocsImagePath
                 continue;
             }
 
-            // A segment is never null, so an exhausted stack means the
-            // reference climbed above the docs root.
+            // A segment is never null, so popping null means the stack was
+            // already empty — the reference climbed above the docs root.
             if (array_pop($segments) === null) {
                 return null;
             }
