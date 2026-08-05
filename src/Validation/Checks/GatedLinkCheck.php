@@ -9,8 +9,10 @@ use STS\Docent\Documents\Ast\AudienceBlock;
 use STS\Docent\Documents\Ast\AuthorizationBlock;
 use STS\Docent\Documents\Ast\AuthorizationMode;
 use STS\Docent\Documents\Ast\Card;
+use STS\Docent\Documents\Ast\IncludeNode;
 use STS\Docent\Documents\Ast\Link;
 use STS\Docent\Documents\Ast\Node;
+use STS\Docent\Documents\Document;
 use STS\Docent\Support\InternalLink;
 use STS\Docent\Validation\Check;
 use STS\Docent\Validation\CheckContext;
@@ -18,32 +20,36 @@ use STS\Docent\Validation\Issue;
 use STS\Docent\Validation\OptInCheck;
 
 /**
- * Flags links from an ungated page to a gated one — a dead end for every reader
- * whose role lacks the target's requirement.
+ * Flags links whose readers are not guaranteed to be able to open the target —
+ * a dead end for everyone the target's gate turns away.
  *
  * {@see BrokenLinkCheck} validates that a target exists; this asks whether the
- * readers of the linking page can actually open it. The failure surfaces late,
+ * readers who can see the link can follow it. The failure surfaces late,
  * because the author can see both pages and CI is green: the only signal is a
  * user with a narrower role reporting a link that goes nowhere. The worst case
  * is a deliberately ungated "roles and permissions" page, where the tooling
  * hands a 404 to precisely the audience least equipped to interpret it.
  *
- * The rule is deliberately narrow. Abilities are not a lattice, so a page gated
- * on `manage_billing` linking to one gated on `manage_users` says nothing about
- * whether a reader holds both — that is a legitimate cross-link as often as not.
- * Only a source with no requirement at all is provably reaching a wider audience
- * than a gated target, so only that case is reported.
+ * What makes this decidable without inventing a permission lattice is exact
+ * containment. Each link carries the set of requirements its readers provably
+ * satisfy: the source page's own `authorize`/`audience`, plus any enclosing
+ * `:::can` / `:::audience` block. A target requirement absent from that set is
+ * reported — Docent cannot know whether holding `manage_billing` implies
+ * `manage_users`, and guessing either way would be wrong.
  *
- * A link nested inside a `:::can` or `:::audience` block is already gated in
- * context — its readers passed that check to see it — and is exempt. That is
- * also the escape hatch for a deliberate "here's the page you'll need an
- * administrator for". A `:::cannot` block widens rather than narrows, so links
- * inside one are still reported.
+ * That makes the escape hatch a statement rather than a trick: wrapping a
+ * deliberate link in a block naming the target's own requirement declares the
+ * guarantee, and the check believes it. `:::cannot` widens rather than narrows,
+ * and `:::when` / `:::unless` gate on conditions rather than authorization, so
+ * neither contributes a guarantee.
  *
  * Opt in with `'gated-link' => 'warning'` in `docent.check.rules`.
  */
 final class GatedLinkCheck implements OptInCheck
 {
+    /** @var array<string, PageReference> */
+    private array $pages = [];
+
     public function rule(): string
     {
         return 'gated-link';
@@ -51,96 +57,133 @@ final class GatedLinkCheck implements OptInCheck
 
     public function run(CheckContext $context): iterable
     {
-        $pages = $context->pageMap();
+        $this->pages = $context->pageMap();
 
         foreach ($context->pages() as $page) {
-            // A gated source has requirements of its own, and comparing two
-            // different requirements is not statically decidable.
-            if ($page->authorize !== null || $page->audience !== null) {
-                continue;
-            }
-
             $document = $context->document($page->slug);
 
             if ($document === null) {
                 continue;
             }
 
-            yield from $this->scan($document, $page, $pages, $context, gated: false);
+            // A page's own gate is a guarantee about everyone reading it.
+            $guaranteed = [
+                'abilities' => $page->authorize !== null ? [$page->authorize] : [],
+                'audiences' => $page->audience !== null ? [$page->audience] : [],
+            ];
+
+            yield from $this->scan($document, $page, $context, $guaranteed, []);
 
             foreach ($document->frontMatter()->heroCta() as $cta) {
-                yield from $this->issuesFor($cta['href'], null, $page, $pages, $context);
+                yield from $this->issuesFor(
+                    $cta['href'],
+                    null,
+                    'Hero CTA "'.$cta['label'].'" links',
+                    $page,
+                    $context,
+                    $guaranteed,
+                );
             }
         }
     }
 
     /**
-     * Walk the tree carrying whether the current subtree already sits behind a
-     * narrowing gate.
-     *
-     * @param  array<string, PageReference>  $pages
+     * @param  array{abilities: list<string>, audiences: list<string>}  $guaranteed
+     * @param  list<string>  $includes  Partial names already open, so a cycle terminates.
      * @return iterable<Issue>
      */
-    private function scan(Node $node, PageReference $page, array $pages, CheckContext $context, bool $gated): iterable
+    private function scan(Node $node, PageReference $page, CheckContext $context, array $guaranteed, array $includes, ?int $includeLine = null, string $via = ''): iterable
     {
-        $gated = $gated || $this->narrows($node);
+        $guaranteed = $this->withGuarantee($node, $guaranteed);
 
-        if (! $gated) {
-            $destination = match (true) {
-                $node instanceof Link && is_string($node->destination) => $node->destination,
-                $node instanceof Card => $node->href,
-                default => null,
-            };
+        $destination = match (true) {
+            $node instanceof Link && is_string($node->destination) => $node->destination,
+            $node instanceof Card => $node->href,
+            default => null,
+        };
 
-            yield from $this->issuesFor($destination, $node->line, $page, $pages, $context);
+        yield from $this->issuesFor(
+            $destination,
+            $includeLine ?? $node->line,
+            $via === '' ? 'Link' : 'Link in partial "'.$via.'"',
+            $page,
+            $context,
+            $guaranteed,
+        );
+
+        // A partial is rendered into this page, so its links are this page's
+        // dead ends — reported against the including line, since a line number
+        // inside the partial would point at the wrong file.
+        if ($node instanceof IncludeNode && ! in_array($node->name, $includes, true)) {
+            $partial = $context->partial($node->name);
+
+            if ($partial instanceof Document) {
+                yield from $this->scan($partial, $page, $context, $guaranteed, [...$includes, $node->name], $node->line, $node->name);
+            }
         }
 
         foreach ($node->children as $child) {
-            yield from $this->scan($child, $page, $pages, $context, $gated);
+            yield from $this->scan($child, $page, $context, $guaranteed, $includes, $includeLine, $via);
         }
     }
 
     /**
-     * Whether this block narrows its readership. `:::cannot` shows content to
-     * viewers who FAIL the gate, so it widens and does not count.
+     * Add what this block guarantees about its readers. Only `:::can` and
+     * `:::audience` narrow readership to a stated requirement.
+     *
+     * @param  array{abilities: list<string>, audiences: list<string>}  $guaranteed
+     * @return array{abilities: list<string>, audiences: list<string>}
      */
-    private function narrows(Node $node): bool
+    private function withGuarantee(Node $node, array $guaranteed): array
     {
-        return $node instanceof AudienceBlock
-            || ($node instanceof AuthorizationBlock && $node->mode === AuthorizationMode::Can);
+        if ($node instanceof AuthorizationBlock && $node->mode === AuthorizationMode::Can && $node->ability !== '') {
+            $guaranteed['abilities'][] = $node->ability;
+        }
+
+        if ($node instanceof AudienceBlock && $node->audience !== '') {
+            $guaranteed['audiences'][] = $node->audience;
+        }
+
+        return $guaranteed;
     }
 
     /**
-     * @param  array<string, PageReference>  $pages
+     * @param  array{abilities: list<string>, audiences: list<string>}  $guaranteed
      * @return iterable<Issue>
      */
-    private function issuesFor(?string $destination, ?int $line, PageReference $page, array $pages, CheckContext $context): iterable
+    private function issuesFor(?string $destination, ?int $line, string $subject, PageReference $page, CheckContext $context, array $guaranteed): iterable
     {
         if ($destination === null || $destination === '') {
             return;
         }
 
         $target = InternalLink::resolve($destination, $page->directory, $context->routePrefix());
-        $reference = $target === null ? null : ($pages[$target['slug']] ?? null);
+        $reference = $target === null ? null : ($this->pages[$target['slug']] ?? null);
 
         if ($reference === null) {
             return;
         }
 
-        $requirement = match (true) {
-            $reference->authorize !== null => 'the ability "'.$reference->authorize.'"',
-            $reference->audience !== null => 'the audience "'.$reference->audience.'"',
-            default => null,
-        };
+        $missing = [];
 
-        if ($requirement === null) {
+        if ($reference->authorize !== null && ! in_array($reference->authorize, $guaranteed['abilities'], true)) {
+            $missing[] = 'the ability "'.$reference->authorize.'"';
+        }
+
+        if ($reference->audience !== null && ! in_array($reference->audience, $guaranteed['audiences'], true)) {
+            $missing[] = 'the audience "'.$reference->audience.'"';
+        }
+
+        if ($missing === []) {
             return;
         }
 
         yield Issue::warning(
             $this->rule(),
             $page->slug,
-            'Link to "'.$destination.'" requires '.$requirement.', which readers of this ungated page may not have.',
+            $subject.' to "'.$destination.'" requires '.implode(' and ', $missing)
+            .', which readers here are not guaranteed to have. '
+            .'Wrap it in a block naming that requirement when the link is deliberate.',
             $line,
         );
     }

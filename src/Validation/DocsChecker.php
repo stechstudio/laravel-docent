@@ -89,6 +89,7 @@ final class DocsChecker
         return new self([
             new RedirectCheck,
             new BrokenLinkCheck,
+            new GatedLinkCheck,
             new UnknownConditionCheck,
             new UnknownValueCheck,
             new UnknownLinkCheck,

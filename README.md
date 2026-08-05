@@ -193,8 +193,8 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 - Search: server-side, filtered through the same authorization before results are returned; conditional block content is never indexed, so a snippet can never leak gated text
 - Table of contents: headings inside conditional blocks only appear for viewers who'd see them
 
-An ungated page linking to a gated one is a dead end for anyone whose role lacks
-the target's requirement, and it surfaces late — you can see both pages, so CI
+A link whose readers aren't guaranteed to pass the target's gate is a dead end
+for everyone it turns away, and it surfaces late — you can see both pages, so CI
 stays green. Turn on the `gated-link` rule to catch it:
 
 ```php
@@ -203,7 +203,13 @@ stays green. Turn on the `gated-link` rule to catch it:
 ],
 ```
 
-When the link is deliberate, gate it in context and the rule steps aside:
+Each link carries the requirements its readers provably satisfy — the page's own
+`authorize`/`audience`, plus any enclosing `:::can`/`:::audience` block. Anything
+the target requires beyond that is reported, since Docent can't know whether one
+of your abilities implies another.
+
+That makes the escape hatch a statement rather than a trick: naming the target's
+own requirement declares the guarantee, and the rule believes it.
 
 ```markdown
 :::can ability="billing.manage"
