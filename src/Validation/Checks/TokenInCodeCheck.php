@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace STS\Docent\Validation\Checks;
 
 use STS\Docent\Documents\Ast\AppLink;
-use STS\Docent\Documents\Ast\CodeBlock;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\InlineCode;
-use STS\Docent\Documents\Ast\Node;
 use STS\Docent\Documents\Parser\Markdown\TokenSyntax;
 use STS\Docent\Validation\AstWalker;
 use STS\Docent\Validation\Check;
@@ -16,7 +14,7 @@ use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\Issue;
 
 /**
- * Flags token syntax sitting inside code spans and code blocks, where it renders
+ * Flags token syntax sitting inside an inline code span, where it renders
  * verbatim rather than resolving.
  *
  * Leaving tokens untouched inside code is deliberate — {@see TokenSyntax::restore()}
@@ -30,6 +28,13 @@ use STS\Docent\Validation\Issue;
  * (`{{ value:some.key }}`) names nothing real and is ignored, while a token
  * naming a value, link, or route this application actually resolves is almost
  * always a mistake rather than an illustration.
+ *
+ * Fenced code blocks are deliberately out of scope. A block showing what to
+ * write is *supposed* to contain literal dialect syntax, and naming a real
+ * registered key is what makes such an example useful rather than suspicious —
+ * so warning there would fire on correct documentation with no way to keep the
+ * valuable inline case. An inline span in running prose has no such defense:
+ * nobody writes `{{ value:account.plan }}` mid-sentence meaning the characters.
  */
 final class TokenInCodeCheck implements Check
 {
@@ -43,16 +48,9 @@ final class TokenInCodeCheck implements Check
             }
 
             foreach (AstWalker::walk($document) as $node) {
-                $code = match (true) {
-                    $node instanceof InlineCode, $node instanceof CodeBlock => $node->code,
-                    default => null,
-                };
-
-                if ($code === null) {
-                    continue;
+                if ($node instanceof InlineCode) {
+                    yield from $this->issues($node, $page->slug, $context);
                 }
-
-                yield from $this->issues($code, $node, $page->slug, $context);
             }
         }
     }
@@ -60,25 +58,24 @@ final class TokenInCodeCheck implements Check
     /**
      * @return iterable<Issue>
      */
-    private function issues(string $code, Node $node, string $slug, CheckContext $context): iterable
+    private function issues(InlineCode $node, string $slug, CheckContext $context): iterable
     {
-        if (preg_match_all('/'.TokenSyntax::PARTIAL.'/', $code, $matches, PREG_OFFSET_CAPTURE) === 0) {
+        if (preg_match_all('/'.TokenSyntax::PARTIAL.'/', $node->code, $matches, PREG_SET_ORDER) === 0) {
             return;
         }
 
-        foreach ($matches[0] as $index => [$token, $offset]) {
-            $kind = strtolower($matches[1][$index][0]);
-            $key = $matches[2][$index][0];
+        foreach ($matches as $match) {
+            $kind = strtolower($match[1]);
 
-            if (! $this->registered($kind, $key, $context)) {
+            if (! $this->registered($kind, $match[2], $context)) {
                 continue;
             }
 
             yield Issue::warning(
                 'token-in-code',
                 $slug,
-                'Registered token "{{ '.$kind.':'.$key.' }}" sits inside code and will render verbatim.',
-                $this->line($node, $code, $offset),
+                'Registered token "'.$this->readable($match[0]).'" sits inside a code span and will render verbatim.',
+                $node->line,
             );
         }
     }
@@ -94,15 +91,12 @@ final class TokenInCodeCheck implements Check
     }
 
     /**
-     * A code block spans many lines, so point at the line the token is actually
-     * on rather than at the opening fence.
+     * The token as written, with the parser's separator sentinel and any runs of
+     * whitespace collapsed — so two occurrences differing only in their
+     * arguments stay distinguishable in the report.
      */
-    private function line(Node $node, string $code, int $offset): ?int
+    private function readable(string $token): string
     {
-        if ($node->line === null || ! $node instanceof CodeBlock) {
-            return $node->line;
-        }
-
-        return $node->line + substr_count(substr($code, 0, $offset), "\n");
+        return trim(preg_replace('/[\s'.TokenSyntax::SEP.']+/', ' ', $token) ?? $token);
     }
 }
