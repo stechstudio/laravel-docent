@@ -13,6 +13,7 @@ use STS\Docent\Runtime\Registered\RegisteredComponent;
 use STS\Docent\Runtime\Registered\RegisteredCondition;
 use STS\Docent\Runtime\Registered\RegisteredLink;
 use STS\Docent\Runtime\Registered\RegisteredValue;
+use Throwable;
 
 /**
  * Central registry of everything an application teaches Docent about itself:
@@ -44,6 +45,11 @@ final class IntegrationRegistry
 
     /** @var Closure(class-string): object */
     private Closure $classResolver;
+
+    /** @var ?Closure(Throwable, string, string): void */
+    private ?Closure $resolutionFailureHandler = null;
+
+    private int $resolutionFailures = 0;
 
     /**
      * @param  ?Closure(class-string): object  $classResolver
@@ -213,19 +219,93 @@ final class IntegrationRegistry
     }
 
     /**
-     * Resolve a dynamic value to a string. Returns null when not registered.
+     * How a throwing value/link resolver is handled. Without a handler the
+     * exception propagates, which is what keeps this class usable outside a
+     * Laravel container. Docent installs one that reports the throwable and
+     * lets the rest of the page render — a help center is where someone goes
+     * when something is already wrong for them, so a closure that breaks for a
+     * half-initialized session should cost that reader one token, not the whole
+     * document.
+     *
+     * @param  ?Closure(Throwable, string, string): void  $handler  Receives the throwable, token kind, and key.
+     */
+    public function handleResolutionFailures(?Closure $handler): self
+    {
+        $this->resolutionFailureHandler = $handler;
+
+        return $this;
+    }
+
+    /**
+     * How many tokens this registry has degraded rather than resolved. Callers
+     * that cache rendered output compare this across a render: a cache key
+     * cannot see the session state that made a resolver throw, so storing a
+     * degraded render would serve the missing value to every later reader.
+     *
+     * @internal
+     */
+    public function resolutionFailures(): int
+    {
+        return $this->resolutionFailures;
+    }
+
+    /**
+     * Invoke a host-registered resolver under this registry's failure policy,
+     * returning null when it failed and was handled.
+     *
+     * Only the invocation itself is guarded. Instantiating a class-string
+     * resolver and converting its result are the package's own work against its
+     * own contract — a resolver class that does not exist, or one returning an
+     * array, is a deterministic defect that every reader hits, and it must fail
+     * loudly rather than render as a quietly missing value.
+     *
+     * @param  Closure|class-string  $resolver
+     * @param  array<int, mixed>  $arguments
+     */
+    private function attempt(Closure|string $resolver, array $arguments, string $kind, string $name): ?string
+    {
+        $callable = is_string($resolver) ? ($this->classResolver)($resolver) : $resolver;
+
+        if ($this->resolutionFailureHandler === null) {
+            return (string) $callable(...$arguments);
+        }
+
+        try {
+            $result = $callable(...$arguments);
+        } catch (Throwable $e) {
+            $this->resolutionFailures++;
+            ($this->resolutionFailureHandler)($e, $kind, $name);
+
+            return null;
+        }
+
+        return (string) $result;
+    }
+
+    /**
+     * Resolve a dynamic value to a string. Returns null when not registered, or
+     * when the resolver failed under a non-strict failure policy.
      *
      * @param  list<string>  $arguments
      */
     public function resolveValue(string $name, DocumentationContext $context, array $arguments = []): ?string
     {
-        $registered = $this->values[$name] ?? null;
+        $registered = $this->registeredValue($name);
 
-        if ($registered === null) {
-            return $this->parent?->resolveValue($name, $context, $arguments);
-        }
+        return $registered === null
+            ? null
+            : $this->attempt($registered->resolver, [$context, ...$arguments], 'value', $name);
+    }
 
-        return (string) $this->invoke($registered->resolver, [$context, ...$arguments]);
+    /**
+     * Find a registration anywhere in the chain, so a globally registered
+     * resolver is still invoked under *this* registry's failure policy. Handing
+     * the whole resolution to the parent would run it under the parent's policy
+     * — and the global registry deliberately has none.
+     */
+    private function registeredValue(string $name): ?RegisteredValue
+    {
+        return $this->values[$name] ?? $this->parent?->registeredValue($name);
     }
 
     /**
@@ -242,19 +322,24 @@ final class IntegrationRegistry
     }
 
     /**
-     * Resolve an application link to a URL string. Returns null when not registered.
+     * Resolve an application link to a URL string. Returns null when not
+     * registered, or when the resolver failed under a non-strict failure policy.
      *
      * @param  list<string>  $parameters
      */
     public function resolveLink(string $name, DocumentationContext $context, array $parameters = []): ?string
     {
-        $registered = $this->links[$name] ?? null;
+        $registered = $this->registeredLink($name);
 
-        if ($registered === null) {
-            return $this->parent?->resolveLink($name, $context, $parameters);
-        }
+        return $registered === null
+            ? null
+            : $this->attempt($registered->resolver, [$context, ...$parameters], 'link', $name);
+    }
 
-        return (string) $this->invoke($registered->resolver, [$context, ...$parameters]);
+    /** @see RegisteredValue() */
+    private function registeredLink(string $name): ?RegisteredLink
+    {
+        return $this->links[$name] ?? $this->parent?->registeredLink($name);
     }
 
     /**

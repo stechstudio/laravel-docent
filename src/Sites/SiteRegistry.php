@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use STS\Docent\DocentManager;
 use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\IntegrationRegistry;
+use Throwable;
 
 /**
  * Durable facade root for configured Docent sites and their integrations.
@@ -99,10 +100,34 @@ final class SiteRegistry
     {
         $this->ensureKnown($key);
 
-        return $this->registries[$key] ??= new IntegrationRegistry(
+        return $this->registries[$key] ??= (new IntegrationRegistry(
             fn (string $class): object => $this->app->make($class),
             $this->global,
-        );
+        ))->handleResolutionFailures(fn (Throwable $e): null => $this->onTokenFailure($key, $e));
+    }
+
+    /**
+     * A registered value or link threw while rendering. Report it and let the
+     * page finish: a token that breaks for one reader's session state should
+     * not take down every paragraph around it, and a help center is precisely
+     * where a reader in a broken session ends up.
+     *
+     * The throwable still reaches exception tracking, so this defers the fix
+     * rather than swallowing it. Sites that would rather see the failure can set
+     * `render.strict_tokens`.
+     *
+     * Only the site registry carries this policy; the global registry it falls
+     * back to stays pure and lets exceptions reach this handler.
+     */
+    private function onTokenFailure(string $key, Throwable $e): null
+    {
+        if ((bool) $this->siteConfig($key)->get('render.strict_tokens', false)) {
+            throw $e;
+        }
+
+        report($e);
+
+        return null;
     }
 
     /** @param Closure|class-string $resolver */
