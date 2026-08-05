@@ -11,6 +11,7 @@ use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\Documents\Parser\DocumentParser;
 use STS\Docent\Sites\SiteRegistry;
 use STS\Docent\Validation\CheckContext;
+use STS\Docent\Validation\CheckRules;
 use STS\Docent\Validation\DocsChecker;
 use STS\Docent\Validation\Issue;
 use STS\Docent\Validation\Severity;
@@ -37,11 +38,8 @@ final class CheckCommand extends Command
         $config = (array) $this->laravel['config']->get('docent', []);
         $issues = DocsChecker::siteDefinitions($config);
         $keys = $this->selectedSites($config);
-        $overrides = is_array($config['check']['rules'] ?? null) ? $config['check']['rules'] : [];
-        $enabled = array_keys(array_filter(
-            $overrides,
-            static fn (mixed $severity): bool => is_string($severity) && $severity !== 'off',
-        ));
+        $rules = CheckRules::from($config['check']['rules'] ?? null);
+        $enabled = $rules->enabled();
 
         if ($keys === null) {
             return self::FAILURE;
@@ -75,7 +73,7 @@ final class CheckCommand extends Command
             }
         }
 
-        $issues = $this->applyOverrides($issues, $overrides);
+        $issues = $rules->apply($issues);
         $errors = $this->count($issues, Severity::Error);
         $warnings = $this->count($issues, Severity::Warning);
         $strict = (bool) $this->option('strict');
@@ -108,34 +106,6 @@ final class CheckCommand extends Command
         $this->summary($errors, $warnings);
 
         return $errors > 0 || ($strict && $warnings > 0) ? self::FAILURE : self::SUCCESS;
-    }
-
-    /**
-     * @param  list<Issue>  $issues
-     * @param  array<string, mixed>  $overrides
-     * @return list<Issue>
-     */
-    private function applyOverrides(array $issues, array $overrides): array
-    {
-        $result = [];
-
-        foreach ($issues as $issue) {
-            $override = $overrides[$issue->check] ?? null;
-
-            if ($override === 'off') {
-                continue;
-            }
-
-            $severity = match ($override) {
-                'error' => Severity::Error,
-                'warning', 'warn' => Severity::Warning,
-                default => $issue->severity,
-            };
-
-            $result[] = $issue->severity === $severity ? $issue : $issue->withSeverity($severity);
-        }
-
-        return $result;
     }
 
     /**

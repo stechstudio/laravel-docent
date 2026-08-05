@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Content;
 
+use Closure;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Document;
@@ -39,19 +40,41 @@ final class AgentFeed
             sha1($page->slug),
         ]);
 
-        return $this->cache->remember($key, function () use ($page, $context): string {
-            $renderer = new AgentMarkdownRenderer(
-                registry: $this->registry,
-                context: $context,
-                baseDir: $page->baseDir(),
-                routePrefix: (string) $this->docent->config('route.prefix', 'docs'),
-                includeResolver: fn (string $name): ?Document => $this->docent->partialDocument($name),
-                markdownUrlResolver: fn (string $slug): string => $this->docent->markdownUrl($slug),
-                sectionCardsResolver: fn (string $section): array => $this->docent->sectionCards($section, $context),
-            );
+        $failuresBefore = $this->registry->resolutionFailures();
 
-            return $renderer->render($page->document(), $page->title(), $page->description());
-        });
+        return $this->cache->remember(
+            $key,
+            fn (): string => $this->renderer($page, $context)
+                ->render($page->document(), $page->title(), $page->description()),
+            $this->undegraded($failuresBefore),
+        );
+    }
+
+    private function renderer(Page $page, DocumentationContext $context): AgentMarkdownRenderer
+    {
+        return new AgentMarkdownRenderer(
+            registry: $this->registry,
+            context: $context,
+            baseDir: $page->baseDir(),
+            routePrefix: (string) $this->docent->config('route.prefix', 'docs'),
+            includeResolver: fn (string $name): ?Document => $this->docent->partialDocument($name),
+            markdownUrlResolver: fn (string $slug): string => $this->docent->markdownUrl($slug),
+            sectionCardsResolver: fn (string $section): array => $this->docent->sectionCards($section, $context),
+        );
+    }
+
+    /**
+     * A render in which a token was degraded must not be cached. The viewer
+     * fingerprint cannot see the session state that made the resolver throw —
+     * every guest shares one, and one user moving between tenants keeps theirs —
+     * so a stored degraded render would keep serving the missing value long
+     * after the underlying condition cleared.
+     *
+     * @return Closure(): bool
+     */
+    private function undegraded(int $failuresBefore): Closure
+    {
+        return fn (): bool => $this->registry->resolutionFailures() === $failuresBefore;
     }
 
     public function discoveryLinkHeader(): string
@@ -99,6 +122,7 @@ final class AgentFeed
     {
         $navigationSections = $this->docent->navigationSections($context);
         $key = 'llms-full:'.$this->repository->directoryHash().':'.$this->docent->viewerFingerprint($context);
+        $failuresBefore = $this->registry->resolutionFailures();
 
         return $this->cache->remember($key, function () use ($navigationSections, $context): string {
             $pages = [];
@@ -118,7 +142,7 @@ final class AgentFeed
             }
 
             return $pages === [] ? '' : implode("\n\n---\n\n", $pages)."\n";
-        });
+        }, $this->undegraded($failuresBefore));
     }
 
     /** @param list<NavigationItem> $items */

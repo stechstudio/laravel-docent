@@ -27,6 +27,7 @@ use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Support\Icon;
 use STS\Docent\Validation\CheckContext;
+use STS\Docent\Validation\CheckRules;
 use STS\Docent\Validation\DocsChecker;
 use STS\Docent\Validation\Issue;
 use Symfony\Component\Yaml\Yaml;
@@ -400,6 +401,10 @@ final class Editor
             docent: $this->docent,
         );
 
+        // The same `check.rules` the command honors: a rule silenced with 'off'
+        // must be silent here too, or the editor contradicts CI.
+        $rules = CheckRules::from($this->docent->config('check.rules'));
+
         return array_map(
             static fn (Issue $issue): array => [
                 'severity' => $issue->severity->value,
@@ -407,7 +412,7 @@ final class Editor
                 'message' => $issue->message,
                 'line' => $issue->line,
             ],
-            DocsChecker::references()->run($context),
+            $rules->apply(DocsChecker::references()->run($context, $rules->enabled())),
         );
     }
 

@@ -21,6 +21,7 @@ use STS\Docent\Validation\Checks\RedirectCheck;
 use STS\Docent\Validation\Checks\ShadowedPageCheck;
 use STS\Docent\Validation\Checks\SingleH1Check;
 use STS\Docent\Validation\Checks\SiteDefinitionCheck;
+use STS\Docent\Validation\Checks\TokenInCodeCheck;
 use STS\Docent\Validation\Checks\UnknownAbilityCheck;
 use STS\Docent\Validation\Checks\UnknownAudienceCheck;
 use STS\Docent\Validation\Checks\UnknownComponentCheck;
@@ -59,6 +60,7 @@ final class DocsChecker
             new UnknownComponentCheck,
             new UnknownAudienceCheck,
             new UnknownAbilityCheck,
+            new TokenInCodeCheck,
             new MissingIncludeCheck,
             new IncludeCycleCheck,
             new MissingImageCheck,
@@ -94,6 +96,7 @@ final class DocsChecker
             new UnknownComponentCheck,
             new UnknownAudienceCheck,
             new UnknownAbilityCheck,
+            new TokenInCodeCheck,
             new MissingIncludeCheck,
             new ContentComponentCheck,
             new UnknownIconCheck,

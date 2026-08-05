@@ -70,6 +70,13 @@ Start the body at `##`; the `title` already renders as the page's `#` heading.
 Only use names that are registered in this application (inventory below) or
 routes that exist; `docent:check` flags unknown ones.
 
+Tokens do not resolve inside backticks or fenced code blocks — that is what lets
+this guide show the syntax. Never wrap a token in backticks when you want its
+value: `` `{{ value:account.plan }}` `` prints the mustache syntax to the reader.
+`docent:check` warns (`token-in-code`) when a token naming something this
+application actually resolves is trapped in an inline code span. Fenced blocks
+are left alone, since an example is meant to be read literally.
+
 ## Gated and conditional blocks
 
 Container directives open with three or more colons and close with a line of

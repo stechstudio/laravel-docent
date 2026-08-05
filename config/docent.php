@@ -85,6 +85,27 @@ return [
         'image' => null,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Rendering
+    |--------------------------------------------------------------------------
+    |
+    | A registered value or link closure that throws — a tenant-scoped lookup
+    | for a reader with no tenant selected, say — substitutes nothing, reports
+    | the exception, and lets the rest of the page render. A help center is
+    | where someone goes when something is already wrong for them, so one
+    | broken token should not take down every paragraph around it.
+    |
+    | The throwable still reaches exception tracking, so this defers the fix
+    | rather than hiding it. Set `strict_tokens` to true to get the exception
+    | instead.
+    |
+    */
+
+    'render' => [
+        'strict_tokens' => false,
+    ],
+
     'check' => [
         // Override a rule's severity by its stable id, or silence it with 'off'.
         // Opt-in quality rules run only when listed here as error/warning/warn.

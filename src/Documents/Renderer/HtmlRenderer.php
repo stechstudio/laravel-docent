@@ -518,6 +518,10 @@ final class HtmlRenderer
      */
     private function resolveRoute(string $name, array $parameters): ?string
     {
+        // Deliberately not under the registry's token failure policy: a route
+        // token missing a bound parameter fails for every reader alike, so it is
+        // an authoring defect to surface, not reader-specific session state to
+        // degrade around.
         $resolver = $this->options['route_resolver'] ?? static fn (string $name, array $parameters): string => route($name, $parameters);
 
         return $resolver($name, $parameters);

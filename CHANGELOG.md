@@ -9,7 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Applications can declare their ability surface for `docent:check` and the admin's `authorize:` completion, instead of relying on `Gate::has()`. `Gate::has()` only sees abilities passed to `Gate::define()`, so an application that bridges permissions through a single `Gate::before` callback defines no gates and had every `authorize:` key in its content reported as unknown. Set `check.abilities` to a list of strings or a backed-enum class-string, or register a closure with `Docent::abilities(...)` from a service provider when the list is dynamic. Unset, the behavior is unchanged: `Gate::has()` remains the fallback.
+### Changed
+
+- A registered value or link closure that throws no longer takes down the page. The token substitutes nothing, the throwable is passed to `report()` so it still reaches exception tracking, and the rest of the document renders. Previously one closure failing for one reader state — a tenant-scoped lookup with no tenant selected, a route helper with nothing bound — returned a 500 for a page whose other content was perfectly renderable, on every page that token appeared on. Set `render.strict_tokens` to true to get the exception instead.
+
+  Only invocation of the application's own closure is covered. Instantiating a class-string resolver, converting its result to a string, and resolving a `{{ route:… }}` token all still fail loudly: those break identically for every reader, so they are defects to surface rather than session state to render around. A render that did degrade a token is never written to the agent-Markdown or `llms-full.txt` caches, since a cache key cannot see the session state that caused the failure and the missing value would otherwise be served to every later reader.
+
+### Fixed
+
+- `docent.check.rules` now applies to the admin editor's per-draft validation, not only to `docent:check`. A rule silenced with `'off'` was still reported on every save and preview, and a promoted severity was still shown as its original one — so the editor could contradict what CI was configured to accept.
 
 ## [1.2.0] - 2026-08-05
 
