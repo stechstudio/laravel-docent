@@ -9,7 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `token-in-code` check. Token syntax inside a code span renders verbatim by design — it is how the dialect documents itself — which also means such a token never becomes an AST node for the reference checks to inspect. A page could ship `` `{{ value:account.plan }}` `` where a real value belonged, render 200, and pass every other check. The new check reads inline code literals directly and warns when the token names a value, link, or route this application actually resolves. Generic examples naming nothing registered stay silent, and fenced code blocks are out of scope: a block showing what to write is supposed to contain literal dialect syntax. Silence it with `'token-in-code' => 'off'` in `docent.check.rules`.
+
+- Applications can declare their ability surface for `docent:check` and the admin's `authorize:` completion, instead of relying on `Gate::has()`. `Gate::has()` only sees abilities passed to `Gate::define()`, so an application that bridges permissions through a single `Gate::before` callback defines no gates and had every `authorize:` key in its content reported as unknown. Set `check.abilities` to a list of strings or a backed-enum class-string, or register a closure with `Docent::abilities(...)` from a service provider when the list is dynamic. Unset, the behavior is unchanged: `Gate::has()` remains the fallback.
+
 - Page enumeration and a whole-tree smoke assertion in the testing helpers. `$this->docs()->pages()` returns every content page slug using Docent's own derivation (root `index.md` is the empty slug, `foo/index.md` collapses to `foo`, partials and redirect stubs are excluded), so suite-wide invariants no longer require reconstructing that logic with a `Finder` loop that drifts the day the conventions change. `$this->docs()->as($user)->assertAllPagesRender()` renders every page the viewer may open, continues past a failure so a broken corpus reports at once, and names every slug that broke along with its error. Pages the viewer cannot see are skipped rather than failed, but a sweep that reached none of them fails rather than passing vacuously. `DocsTester` also gained `as()` and `forAudience()`, which now scope `page()` as well as `search()`.
+
+### Changed
+
+- A registered value or link closure that throws no longer takes down the page. The token substitutes nothing, the throwable is passed to `report()` so it still reaches exception tracking, and the rest of the document renders. Previously one closure failing for one reader state — a tenant-scoped lookup with no tenant selected, a route helper with nothing bound — returned a 500 for a page whose other content was perfectly renderable, on every page that token appeared on. Set `render.strict_tokens` to true to get the exception instead.
+
+  Only invocation of the application's own closure is covered. Instantiating a class-string resolver, converting its result to a string, and resolving a `{{ route:… }}` token all still fail loudly: those break identically for every reader, so they are defects to surface rather than session state to render around. A render that did degrade a token is never written to the agent-Markdown or `llms-full.txt` caches, since a cache key cannot see the session state that caused the failure and the missing value would otherwise be served to every later reader.
+
+### Fixed
+
+- `docent.check.rules` now applies to the admin editor's per-draft validation, not only to `docent:check`. A rule silenced with `'off'` was still reported on every save and preview, and a promoted severity was still shown as its original one — so the editor could contradict what CI was configured to accept.
 
 ## [1.2.0] - 2026-08-05
 

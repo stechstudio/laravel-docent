@@ -184,6 +184,36 @@ Site-scoped registrations win over global ones; all other identifiers fall back
 to the global registry. Your internals can refactor freely, the identifiers your
 docs reference stay stable, and `docent:check` catches any drift.
 
+### Declaring your ability surface
+
+To validate `authorize:` front matter and `:::can` blocks, `docent:check` needs
+to know which abilities exist. By default it asks `Gate::has()`, which only sees
+abilities passed to `Gate::define()`. If your application bridges permissions
+with a single `Gate::before` callback — the natural shape when the permission
+list is data rather than hand-written closures — you define no gates at all, and
+every `authorize:` key in your content reads as unknown.
+
+Declare the surface instead. A backed enum is the common case:
+
+```php
+// config/docent.php
+'check' => [
+    'abilities' => App\Enums\Permission::class,
+],
+```
+
+A plain list of strings works too. When the list is dynamic, register a closure
+from a service provider rather than putting it in config, since a closure in a
+config file breaks `config:cache`:
+
+```php
+Docent::abilities(fn () => Permission::query()->pluck('name')->all());
+```
+
+A declared surface replaces `Gate::has()` rather than adding to it, so it should
+name every ability your docs may reference. The admin editor offers the same
+list when completing an `authorize:` key.
+
 ## Permission-safe by design
 
 Authorization isn't a rendering detail. It's enforced at every surface:
@@ -192,6 +222,29 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 - Navigation: unauthorized pages simply don't appear
 - Search: server-side, filtered through the same authorization before results are returned; conditional block content is never indexed, so a snippet can never leak gated text
 - Table of contents: headings inside conditional blocks only appear for viewers who'd see them
+
+## When a token's closure fails
+
+Your registered closures run against real application state, and some reader
+states are odd — a freshly invited user with no tenant selected, a session
+mid-account-switch. A value or link closure that throws for one of those
+substitutes nothing, is handed to `report()`, and the rest of the page renders
+normally. A help center is where someone goes when something is already wrong for
+them, so one broken token shouldn't take down every paragraph around it.
+
+This covers your closure failing, not Docent failing to call it: a resolver class
+that doesn't exist, a resolver returning something that isn't a string, or a
+`{{ route: }}` token missing a parameter all still raise, because those break for
+every reader alike and are defects to fix rather than states to render around.
+
+The exception still reaches your tracking, so the closure gets fixed rather than
+quietly papered over. If you'd rather see the failure directly:
+
+```php
+'render' => [
+    'strict_tokens' => true,
+],
+```
 
 ## Optional grounded answers
 
