@@ -15,6 +15,7 @@ use STS\Docent\Sites\SiteRegistry;
  * @method static SiteRegistry component(string $name, \Closure|string|\STS\Docent\Runtime\Contracts\DocumentationComponent $resolver, ?string $label = null, ?string $description = null)
  * @method static SiteRegistry audience(string $name, \Closure|string $resolver, ?string $label = null, ?string $description = null)
  * @method static SiteRegistry suggest(string $pattern, list<string> $slugs)
+ * @method static SiteRegistry abilities(\Closure|string|list<string> $abilities)
  * @method static DocentManager site(?string $key = null)
  * @method static \STS\Docent\Page|null page(string $slug)
  * @method static list<\STS\Docent\Navigation\NavigationItem|\STS\Docent\Navigation\NavigationGroup> navigation(\STS\Docent\Runtime\DocumentationContext $context)
