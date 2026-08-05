@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Content;
 
+use Closure;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Document;
@@ -39,6 +40,8 @@ final class AgentFeed
             sha1($page->slug),
         ]);
 
+        $failuresBefore = $this->registry->resolutionFailures();
+
         return $this->cache->remember($key, function () use ($page, $context): string {
             $renderer = new AgentMarkdownRenderer(
                 registry: $this->registry,
@@ -51,7 +54,21 @@ final class AgentFeed
             );
 
             return $renderer->render($page->document(), $page->title(), $page->description());
-        });
+        }, $this->undegraded($failuresBefore));
+    }
+
+    /**
+     * A render in which a token was degraded must not be cached. The viewer
+     * fingerprint cannot see the session state that made the resolver throw —
+     * every guest shares one, and one user moving between tenants keeps theirs —
+     * so a stored degraded render would keep serving the missing value long
+     * after the underlying condition cleared.
+     *
+     * @return Closure(): bool
+     */
+    private function undegraded(int $failuresBefore): Closure
+    {
+        return fn (): bool => $this->registry->resolutionFailures() === $failuresBefore;
     }
 
     public function discoveryLinkHeader(): string
@@ -99,6 +116,7 @@ final class AgentFeed
     {
         $navigationSections = $this->docent->navigationSections($context);
         $key = 'llms-full:'.$this->repository->directoryHash().':'.$this->docent->viewerFingerprint($context);
+        $failuresBefore = $this->registry->resolutionFailures();
 
         return $this->cache->remember($key, function () use ($navigationSections, $context): string {
             $pages = [];
@@ -118,7 +136,7 @@ final class AgentFeed
             }
 
             return $pages === [] ? '' : implode("\n\n---\n\n", $pages)."\n";
-        });
+        }, $this->undegraded($failuresBefore));
     }
 
     /** @param list<NavigationItem> $items */

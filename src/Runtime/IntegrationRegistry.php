@@ -49,6 +49,8 @@ final class IntegrationRegistry
     /** @var ?Closure(Throwable, string, string): void */
     private ?Closure $resolutionFailureHandler = null;
 
+    private int $resolutionFailures = 0;
+
     /**
      * @param  ?Closure(class-string): object  $classResolver
      */
@@ -235,25 +237,49 @@ final class IntegrationRegistry
     }
 
     /**
-     * Run a token resolver under this registry's failure policy. Exposed so the
-     * renderers can put `{{ route:… }}` — resolved through Laravel's `route()`
-     * rather than through the registry — under the identical policy.
+     * How many tokens this registry has degraded rather than resolved. Callers
+     * that cache rendered output compare this across a render: a cache key
+     * cannot see the session state that made a resolver throw, so storing a
+     * degraded render would serve the missing value to every later reader.
      *
-     * @param  Closure(): ?string  $resolve
+     * @internal
      */
-    public function attempt(Closure $resolve, string $kind, string $name): ?string
+    public function resolutionFailures(): int
     {
+        return $this->resolutionFailures;
+    }
+
+    /**
+     * Invoke a host-registered resolver under this registry's failure policy,
+     * returning null when it failed and was handled.
+     *
+     * Only the invocation itself is guarded. Instantiating a class-string
+     * resolver and converting its result are the package's own work against its
+     * own contract — a resolver class that does not exist, or one returning an
+     * array, is a deterministic defect that every reader hits, and it must fail
+     * loudly rather than render as a quietly missing value.
+     *
+     * @param  Closure|class-string  $resolver
+     * @param  array<int, mixed>  $arguments
+     */
+    private function attempt(Closure|string $resolver, array $arguments, string $kind, string $name): ?string
+    {
+        $callable = is_string($resolver) ? ($this->classResolver)($resolver) : $resolver;
+
         if ($this->resolutionFailureHandler === null) {
-            return $resolve();
+            return (string) $callable(...$arguments);
         }
 
         try {
-            return $resolve();
+            $result = $callable(...$arguments);
         } catch (Throwable $e) {
+            $this->resolutionFailures++;
             ($this->resolutionFailureHandler)($e, $kind, $name);
 
             return null;
         }
+
+        return (string) $result;
     }
 
     /**
@@ -264,13 +290,22 @@ final class IntegrationRegistry
      */
     public function resolveValue(string $name, DocumentationContext $context, array $arguments = []): ?string
     {
-        return $this->attempt(function () use ($name, $context, $arguments): ?string {
-            $registered = $this->values[$name] ?? null;
+        $registered = $this->registeredValue($name);
 
-            return $registered === null
-                ? $this->parent?->resolveValue($name, $context, $arguments)
-                : (string) $this->invoke($registered->resolver, [$context, ...$arguments]);
-        }, 'value', $name);
+        return $registered === null
+            ? null
+            : $this->attempt($registered->resolver, [$context, ...$arguments], 'value', $name);
+    }
+
+    /**
+     * Find a registration anywhere in the chain, so a globally registered
+     * resolver is still invoked under *this* registry's failure policy. Handing
+     * the whole resolution to the parent would run it under the parent's policy
+     * — and the global registry deliberately has none.
+     */
+    private function registeredValue(string $name): ?RegisteredValue
+    {
+        return $this->values[$name] ?? $this->parent?->registeredValue($name);
     }
 
     /**
@@ -294,13 +329,17 @@ final class IntegrationRegistry
      */
     public function resolveLink(string $name, DocumentationContext $context, array $parameters = []): ?string
     {
-        return $this->attempt(function () use ($name, $context, $parameters): ?string {
-            $registered = $this->links[$name] ?? null;
+        $registered = $this->registeredLink($name);
 
-            return $registered === null
-                ? $this->parent?->resolveLink($name, $context, $parameters)
-                : (string) $this->invoke($registered->resolver, [$context, ...$parameters]);
-        }, 'link', $name);
+        return $registered === null
+            ? null
+            : $this->attempt($registered->resolver, [$context, ...$parameters], 'link', $name);
+    }
+
+    /** @see RegisteredValue() */
+    private function registeredLink(string $name): ?RegisteredLink
+    {
+        return $this->links[$name] ?? $this->parent?->registeredLink($name);
     }
 
     /**

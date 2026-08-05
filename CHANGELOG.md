@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- A registered value or link closure that throws no longer takes down the page. The token substitutes nothing, the throwable is passed to `report()` so it still reaches exception tracking, and the rest of the document renders. Previously one closure failing for one reader state — a tenant-scoped lookup with no tenant selected, a route helper with nothing bound — returned a 500 for a page whose other content was perfectly renderable, on every page that token appeared on. `{{ route:… }}` tokens missing a bound parameter are covered by the same policy. Set `render.strict_tokens` to true to get the exception instead.
+- A registered value or link closure that throws no longer takes down the page. The token substitutes nothing, the throwable is passed to `report()` so it still reaches exception tracking, and the rest of the document renders. Previously one closure failing for one reader state — a tenant-scoped lookup with no tenant selected, a route helper with nothing bound — returned a 500 for a page whose other content was perfectly renderable, on every page that token appeared on. Set `render.strict_tokens` to true to get the exception instead.
+
+  Only invocation of the application's own closure is covered. Instantiating a class-string resolver, converting its result to a string, and resolving a `{{ route:… }}` token all still fail loudly: those break identically for every reader, so they are defects to surface rather than session state to render around. A render that did degrade a token is never written to the agent-Markdown or `llms-full.txt` caches, since a cache key cannot see the session state that caused the failure and the missing value would otherwise be served to every later reader.
 
 ## [1.2.0] - 2026-08-05
 

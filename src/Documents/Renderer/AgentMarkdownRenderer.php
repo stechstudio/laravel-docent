@@ -425,11 +425,7 @@ final class AgentMarkdownRenderer
     {
         $url = match ($node->kind) {
             AppLinkKind::Link => $this->registry->resolveLink($node->key, $this->context, $node->parameters),
-            AppLinkKind::Route => $this->registry->attempt(
-                fn (): string => route($node->key, $node->parameters),
-                'route',
-                $node->key,
-            ),
+            AppLinkKind::Route => route($node->key, $node->parameters),
         };
 
         return $url === null ? null : $this->absoluteUrl($url);

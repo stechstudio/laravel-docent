@@ -202,6 +202,11 @@ substitutes nothing, is handed to `report()`, and the rest of the page renders
 normally. A help center is where someone goes when something is already wrong for
 them, so one broken token shouldn't take down every paragraph around it.
 
+This covers your closure failing, not Docent failing to call it: a resolver class
+that doesn't exist, a resolver returning something that isn't a string, or a
+`{{ route: }}` token missing a parameter all still raise, because those break for
+every reader alike and are defects to fix rather than states to render around.
+
 The exception still reaches your tracking, so the closure gets fixed rather than
 quietly papered over. If you'd rather see the failure directly:
 
