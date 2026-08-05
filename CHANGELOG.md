@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Page enumeration and a whole-tree smoke assertion in the testing helpers. `$this->docs()->pages()` returns every slug using Docent's own derivation (root `index.md` is the empty slug, `foo/index.md` collapses to `foo`, partials are excluded), so suite-wide invariants no longer require reconstructing that logic with a `Finder` loop that drifts the day the conventions change. `$this->docs()->as($user)->assertAllPagesRender()` renders every page the viewer may open and reports the slug and underlying error for any that fail; pages the viewer cannot see are skipped rather than failed. `DocsTester` also gained `as()` and `forAudience()` for scoping tree-wide assertions.
+- Page enumeration and a whole-tree smoke assertion in the testing helpers. `$this->docs()->pages()` returns every content page slug using Docent's own derivation (root `index.md` is the empty slug, `foo/index.md` collapses to `foo`, partials and redirect stubs are excluded), so suite-wide invariants no longer require reconstructing that logic with a `Finder` loop that drifts the day the conventions change. `$this->docs()->as($user)->assertAllPagesRender()` renders every page the viewer may open, continues past a failure so a broken corpus reports at once, and names every slug that broke along with its error. Pages the viewer cannot see are skipped rather than failed, but a sweep that reached none of them fails rather than passing vacuously. `DocsTester` also gained `as()` and `forAudience()`, which now scope `page()` as well as `search()`.
 
 ## [1.2.0] - 2026-08-05
 

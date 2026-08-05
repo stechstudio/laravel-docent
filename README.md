@@ -381,9 +381,12 @@ $this->docs()->as($member)->assertAllPagesRender();
 ```
 
 Pages the viewer can't see are skipped rather than failed, and a failure names
-the slug and the underlying error. For invariants of your own, `pages()` hands
-you the real slug list — Docent's own derivation, including the `index.md`
-conventions — so you never have to reconstruct it with a `Finder` loop:
+every slug that broke along with its error. A sweep that reached no pages at all
+fails too — otherwise a gate misconfigured to deny everything would report green.
+
+For invariants of your own, `pages()` hands you the real slug list — Docent's own
+derivation, including the `index.md` conventions — so you never have to
+reconstruct it with a `Finder` loop:
 
 ```php
 foreach ($this->docs()->pages() as $slug) {
