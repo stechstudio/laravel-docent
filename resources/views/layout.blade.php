@@ -111,6 +111,9 @@
             <aside class="docent-sidebar docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto py-8 pr-6 lg:block">
                 @include('docent::partials.navigation')
             </aside>
+            {{-- Inline and directly after the aside so the scroll restore runs before first paint. --}}
+            @php($sidebarScrollKey = 'docent:'.$docent->key().':'.(collect($sections ?? [])->firstWhere('active', true)?->directory ?? '').':nav-scroll')
+            <script>(function(){var n=document.currentScript.previousElementSibling,k=@js($sidebarScrollKey);try{var s=sessionStorage.getItem(k);if(s!==null)n.scrollTop=parseInt(s,10)||0;var a=n.querySelector('[aria-current="page"]');if(a){var r=a.getBoundingClientRect(),c=n.getBoundingClientRect();if(r.top<c.top||r.bottom>c.bottom)a.scrollIntoView({block:'nearest'});}addEventListener('pagehide',function(){sessionStorage.setItem(k,String(Math.round(n.scrollTop)));});}catch(e){}})();</script>
 
             {{-- Mobile sidebar drawer --}}
             <div x-show="sidebar" x-cloak class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">

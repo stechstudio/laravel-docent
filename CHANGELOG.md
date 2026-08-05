@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The sidebar keeps its scroll position while clicking between pages. Position is held per tab (and per site and section), restored before first paint so there's no jump, and if the remembered position would hide the current page's link, the sidebar nudges it into view instead.
 - Page-backed expanding sidebar groups. A nested directory with an `index.md` now renders its group header as a link to that landing page, with a separate labeled chevron that expands or collapses the group without navigating; a directory without an `index.md` keeps the toggle-only header. The mode is derived entirely from the filesystem — no new `_group.yml` keys.
 
 ### Changed

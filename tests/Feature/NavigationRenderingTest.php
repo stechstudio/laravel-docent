@@ -41,6 +41,21 @@ it('marks the active landing page and expands the group it heads', function () {
         ->toContain('href="http://localhost/docs/guides/deploy/production"');
 });
 
+it('preserves sidebar scroll with a store scoped to the site and section', function () {
+    $html = $this->get('/docs/guides/setup')->assertOk()->getContent();
+
+    // The default section has no directory, so its segment is empty.
+    expect($html)
+        ->toContain('sessionStorage')
+        ->toContain('docent:docs::nav-scroll');
+});
+
+it('scopes the sidebar scroll store to the active section', function () {
+    $html = $this->actingAs($this->adminUser())->get('/docs/reports')->assertOk()->getContent();
+
+    expect($html)->toContain('docent:docs:reports:nav-scroll');
+});
+
 it('pins a top-level group index as its first sidebar item', function () {
     $nav = docentNavHtml($this, '/docs/guides/setup');
 
