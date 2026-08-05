@@ -14,6 +14,10 @@ is internal and may change at any time.
   keys keep their meaning within a major version.
 - **Artisan commands** and their options: `docent:install`, `docent:clear`,
   `docent:check`, `docent:guide`, `docent:insights:prune`.
+- **The `InteractsWithDocs` testing helpers**: `docs()`, and on the returned
+  tester `page()`, `search()`, `pages()`, `as()`, `forAudience()`, and
+  `assertAllPagesRender()`, plus the `assert*` methods on page and search
+  assertions.
 - **URL shapes** under a site's route prefix: `/{slug}`, `/{slug}.md`,
   `/llms.txt`, `/llms-full.txt`, `/sitemap.xml`. The `_`-prefixed paths
   (`/_search`, `/_ask`, `/_widget`, `/_assets`, `/_uploads`, `/_insights`) are
