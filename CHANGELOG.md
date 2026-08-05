@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- A registered value or link closure that throws no longer takes down the page. The token substitutes nothing, the throwable is passed to `report()` so it still reaches exception tracking, and the rest of the document renders. Previously one closure failing for one reader state — a tenant-scoped lookup with no tenant selected, a route helper with nothing bound — returned a 500 for a page whose other content was perfectly renderable, on every page that token appeared on. `{{ route:… }}` tokens missing a bound parameter are covered by the same policy. Set `render.strict_tokens` to true to get the exception instead.
+
 ## [1.2.0] - 2026-08-05
 
 ### Added

@@ -13,6 +13,7 @@ use STS\Docent\Runtime\Registered\RegisteredComponent;
 use STS\Docent\Runtime\Registered\RegisteredCondition;
 use STS\Docent\Runtime\Registered\RegisteredLink;
 use STS\Docent\Runtime\Registered\RegisteredValue;
+use Throwable;
 
 /**
  * Central registry of everything an application teaches Docent about itself:
@@ -44,6 +45,9 @@ final class IntegrationRegistry
 
     /** @var Closure(class-string): object */
     private Closure $classResolver;
+
+    /** @var ?Closure(Throwable, string, string): void */
+    private ?Closure $resolutionFailureHandler = null;
 
     /**
      * @param  ?Closure(class-string): object  $classResolver
@@ -213,19 +217,60 @@ final class IntegrationRegistry
     }
 
     /**
-     * Resolve a dynamic value to a string. Returns null when not registered.
+     * How a throwing value/link resolver is handled. Without a handler the
+     * exception propagates, which is what keeps this class usable outside a
+     * Laravel container. Docent installs one that reports the throwable and
+     * lets the rest of the page render — a help center is where someone goes
+     * when something is already wrong for them, so a closure that breaks for a
+     * half-initialized session should cost that reader one token, not the whole
+     * document.
+     *
+     * @param  ?Closure(Throwable, string, string): void  $handler  Receives the throwable, token kind, and key.
+     */
+    public function handleResolutionFailures(?Closure $handler): self
+    {
+        $this->resolutionFailureHandler = $handler;
+
+        return $this;
+    }
+
+    /**
+     * Run a token resolver under this registry's failure policy. Exposed so the
+     * renderers can put `{{ route:… }}` — resolved through Laravel's `route()`
+     * rather than through the registry — under the identical policy.
+     *
+     * @param  Closure(): ?string  $resolve
+     */
+    public function attempt(Closure $resolve, string $kind, string $name): ?string
+    {
+        if ($this->resolutionFailureHandler === null) {
+            return $resolve();
+        }
+
+        try {
+            return $resolve();
+        } catch (Throwable $e) {
+            ($this->resolutionFailureHandler)($e, $kind, $name);
+
+            return null;
+        }
+    }
+
+    /**
+     * Resolve a dynamic value to a string. Returns null when not registered, or
+     * when the resolver failed under a non-strict failure policy.
      *
      * @param  list<string>  $arguments
      */
     public function resolveValue(string $name, DocumentationContext $context, array $arguments = []): ?string
     {
-        $registered = $this->values[$name] ?? null;
+        return $this->attempt(function () use ($name, $context, $arguments): ?string {
+            $registered = $this->values[$name] ?? null;
 
-        if ($registered === null) {
-            return $this->parent?->resolveValue($name, $context, $arguments);
-        }
-
-        return (string) $this->invoke($registered->resolver, [$context, ...$arguments]);
+            return $registered === null
+                ? $this->parent?->resolveValue($name, $context, $arguments)
+                : (string) $this->invoke($registered->resolver, [$context, ...$arguments]);
+        }, 'value', $name);
     }
 
     /**
@@ -242,19 +287,20 @@ final class IntegrationRegistry
     }
 
     /**
-     * Resolve an application link to a URL string. Returns null when not registered.
+     * Resolve an application link to a URL string. Returns null when not
+     * registered, or when the resolver failed under a non-strict failure policy.
      *
      * @param  list<string>  $parameters
      */
     public function resolveLink(string $name, DocumentationContext $context, array $parameters = []): ?string
     {
-        $registered = $this->links[$name] ?? null;
+        return $this->attempt(function () use ($name, $context, $parameters): ?string {
+            $registered = $this->links[$name] ?? null;
 
-        if ($registered === null) {
-            return $this->parent?->resolveLink($name, $context, $parameters);
-        }
-
-        return (string) $this->invoke($registered->resolver, [$context, ...$parameters]);
+            return $registered === null
+                ? $this->parent?->resolveLink($name, $context, $parameters)
+                : (string) $this->invoke($registered->resolver, [$context, ...$parameters]);
+        }, 'link', $name);
     }
 
     /**

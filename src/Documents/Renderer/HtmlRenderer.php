@@ -520,7 +520,9 @@ final class HtmlRenderer
     {
         $resolver = $this->options['route_resolver'] ?? static fn (string $name, array $parameters): string => route($name, $parameters);
 
-        return $resolver($name, $parameters);
+        // Under the registry's failure policy, so a route token missing a bound
+        // parameter costs the reader that link rather than the whole page.
+        return $this->registry->attempt(static fn (): ?string => $resolver($name, $parameters), 'route', $name);
     }
 
     private function resolveUrl(string $destination): string
