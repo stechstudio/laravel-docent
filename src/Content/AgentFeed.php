@@ -42,19 +42,25 @@ final class AgentFeed
 
         $failuresBefore = $this->registry->resolutionFailures();
 
-        return $this->cache->remember($key, function () use ($page, $context): string {
-            $renderer = new AgentMarkdownRenderer(
-                registry: $this->registry,
-                context: $context,
-                baseDir: $page->baseDir(),
-                routePrefix: (string) $this->docent->config('route.prefix', 'docs'),
-                includeResolver: fn (string $name): ?Document => $this->docent->partialDocument($name),
-                markdownUrlResolver: fn (string $slug): string => $this->docent->markdownUrl($slug),
-                sectionCardsResolver: fn (string $section): array => $this->docent->sectionCards($section, $context),
-            );
+        return $this->cache->remember(
+            $key,
+            fn (): string => $this->renderer($page, $context)
+                ->render($page->document(), $page->title(), $page->description()),
+            $this->undegraded($failuresBefore),
+        );
+    }
 
-            return $renderer->render($page->document(), $page->title(), $page->description());
-        }, $this->undegraded($failuresBefore));
+    private function renderer(Page $page, DocumentationContext $context): AgentMarkdownRenderer
+    {
+        return new AgentMarkdownRenderer(
+            registry: $this->registry,
+            context: $context,
+            baseDir: $page->baseDir(),
+            routePrefix: (string) $this->docent->config('route.prefix', 'docs'),
+            includeResolver: fn (string $name): ?Document => $this->docent->partialDocument($name),
+            markdownUrlResolver: fn (string $slug): string => $this->docent->markdownUrl($slug),
+            sectionCardsResolver: fn (string $section): array => $this->docent->sectionCards($section, $context),
+        );
     }
 
     /**
