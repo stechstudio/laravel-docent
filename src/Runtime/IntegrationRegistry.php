@@ -226,8 +226,10 @@ final class IntegrationRegistry
         }
 
         if (! is_array($abilities)) {
+            $type = get_debug_type($abilities);
+
             throw new InvalidArgumentException(
-                'A Docent ability surface must be a list of strings, a backed-enum class-string, or a closure returning either; got '.get_debug_type($abilities).'.',
+                "A Docent ability surface must be a list of strings, a backed-enum class-string, or a closure returning either; got {$type}.",
             );
         }
 
@@ -238,7 +240,7 @@ final class IntegrationRegistry
                 $ability instanceof BackedEnum => (string) $ability->value,
                 is_string($ability) && trim($ability) !== '' => $ability,
                 default => throw new InvalidArgumentException(
-                    'A Docent ability surface may contain only non-empty strings or backed-enum cases; entry ['.$index.'] is '.get_debug_type($ability).'.',
+                    "A Docent ability surface may contain only non-empty strings or backed-enum cases; entry [{$index}] is ".get_debug_type($ability).'.',
                 ),
             };
         }
@@ -252,15 +254,16 @@ final class IntegrationRegistry
     private static function abilitiesFromEnum(string $class): array
     {
         if (! enum_exists($class)) {
+            $reason = class_exists($class) || interface_exists($class) ? 'is not an enum' : 'does not exist';
+
             throw new InvalidArgumentException(
-                'A Docent ability surface given as a class-string must be a backed enum; ['.$class.'] '
-                .(class_exists($class) || interface_exists($class) ? 'is not an enum' : 'does not exist').'.',
+                "A Docent ability surface given as a class-string must be a backed enum; [{$class}] {$reason}.",
             );
         }
 
         if (! is_subclass_of($class, BackedEnum::class)) {
             throw new InvalidArgumentException(
-                'A Docent ability surface given as a class-string must be a BACKED enum; ['.$class.'] is a pure enum, whose cases have no values.',
+                "A Docent ability surface given as a class-string must be a BACKED enum; [{$class}] is a pure enum, whose cases have no values.",
             );
         }
 
