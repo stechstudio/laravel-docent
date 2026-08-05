@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace STS\Docent\Validation\Checks;
 
 use STS\Docent\Content\PageReference;
-use STS\Docent\Documents\Ast\AudienceBlock;
-use STS\Docent\Documents\Ast\AuthorizationBlock;
-use STS\Docent\Documents\Ast\AuthorizationMode;
 use STS\Docent\Documents\Ast\Card;
 use STS\Docent\Documents\Ast\IncludeNode;
 use STS\Docent\Documents\Ast\Link;
@@ -18,6 +15,7 @@ use STS\Docent\Validation\Check;
 use STS\Docent\Validation\CheckContext;
 use STS\Docent\Validation\Issue;
 use STS\Docent\Validation\OptInCheck;
+use STS\Docent\Validation\ReaderGuarantees;
 
 /**
  * Flags links whose readers are not guaranteed to be able to open the target —
@@ -50,6 +48,8 @@ final class GatedLinkCheck implements OptInCheck
     /** @var array<string, PageReference> */
     private array $pages = [];
 
+    private CheckContext $context;
+
     public function rule(): string
     {
         return 'gated-link';
@@ -57,6 +57,7 @@ final class GatedLinkCheck implements OptInCheck
 
     public function run(CheckContext $context): iterable
     {
+        $this->context = $context;
         $this->pages = $context->pageMap();
 
         foreach ($context->pages() as $page) {
@@ -66,35 +67,23 @@ final class GatedLinkCheck implements OptInCheck
                 continue;
             }
 
-            // A page's own gate is a guarantee about everyone reading it.
-            $guaranteed = [
-                'abilities' => $page->authorize !== null ? [$page->authorize] : [],
-                'audiences' => $page->audience !== null ? [$page->audience] : [],
-            ];
+            $guaranteed = ReaderGuarantees::forPage($page);
 
-            yield from $this->scan($document, $page, $context, $guaranteed, []);
+            yield from $this->scan($document, $page, $guaranteed, []);
 
             foreach ($document->frontMatter()->heroCta() as $cta) {
-                yield from $this->issuesFor(
-                    $cta['href'],
-                    null,
-                    'Hero CTA "'.$cta['label'].'" links',
-                    $page,
-                    $context,
-                    $guaranteed,
-                );
+                yield from $this->issuesFor($cta['href'], null, 'Hero CTA "'.$cta['label'].'" links', $page, $guaranteed);
             }
         }
     }
 
     /**
-     * @param  array{abilities: list<string>, audiences: list<string>}  $guaranteed
      * @param  list<string>  $includes  Partial names already open, so a cycle terminates.
      * @return iterable<Issue>
      */
-    private function scan(Node $node, PageReference $page, CheckContext $context, array $guaranteed, array $includes, ?int $includeLine = null, string $via = ''): iterable
+    private function scan(Node $node, PageReference $page, ReaderGuarantees $guaranteed, array $includes, ?int $includeLine = null): iterable
     {
-        $guaranteed = $this->withGuarantee($node, $guaranteed);
+        $guaranteed = $guaranteed->within($node);
 
         $destination = match (true) {
             $node instanceof Link && is_string($node->destination) => $node->destination,
@@ -102,77 +91,54 @@ final class GatedLinkCheck implements OptInCheck
             default => null,
         };
 
-        yield from $this->issuesFor(
-            $destination,
-            $includeLine ?? $node->line,
-            $via === '' ? 'Link' : 'Link in partial "'.$via.'"',
-            $page,
-            $context,
-            $guaranteed,
-        );
+        yield from $this->issuesFor($destination, $includeLine ?? $node->line, $this->subject($includes), $page, $guaranteed);
 
         // A partial is rendered into this page, so its links are this page's
         // dead ends — reported against the including line, since a line number
         // inside the partial would point at the wrong file.
         if ($node instanceof IncludeNode && ! in_array($node->name, $includes, true)) {
-            $partial = $context->partial($node->name);
+            $partial = $this->context->partial($node->name);
 
             if ($partial instanceof Document) {
-                yield from $this->scan($partial, $page, $context, $guaranteed, [...$includes, $node->name], $node->line, $node->name);
+                yield from $this->scan($partial, $page, $guaranteed, [...$includes, $node->name], $node->line);
             }
         }
 
         foreach ($node->children as $child) {
-            yield from $this->scan($child, $page, $context, $guaranteed, $includes, $includeLine, $via);
+            yield from $this->scan($child, $page, $guaranteed, $includes, $includeLine);
         }
     }
 
     /**
-     * Add what this block guarantees about its readers. Only `:::can` and
-     * `:::audience` narrow readership to a stated requirement.
+     * How to name the thing carrying the link, so a reader of the report knows
+     * which file to open.
      *
-     * @param  array{abilities: list<string>, audiences: list<string>}  $guaranteed
-     * @return array{abilities: list<string>, audiences: list<string>}
+     * @param  list<string>  $includes
      */
-    private function withGuarantee(Node $node, array $guaranteed): array
+    private function subject(array $includes): string
     {
-        if ($node instanceof AuthorizationBlock && $node->mode === AuthorizationMode::Can && $node->ability !== '') {
-            $guaranteed['abilities'][] = $node->ability;
-        }
-
-        if ($node instanceof AudienceBlock && $node->audience !== '') {
-            $guaranteed['audiences'][] = $node->audience;
-        }
-
-        return $guaranteed;
+        return $includes === []
+            ? 'Link'
+            : 'Link in partial "'.$includes[array_key_last($includes)].'"';
     }
 
     /**
-     * @param  array{abilities: list<string>, audiences: list<string>}  $guaranteed
      * @return iterable<Issue>
      */
-    private function issuesFor(?string $destination, ?int $line, string $subject, PageReference $page, CheckContext $context, array $guaranteed): iterable
+    private function issuesFor(?string $destination, ?int $line, string $subject, PageReference $page, ReaderGuarantees $guaranteed): iterable
     {
         if ($destination === null || $destination === '') {
             return;
         }
 
-        $target = InternalLink::resolve($destination, $page->directory, $context->routePrefix());
+        $target = InternalLink::resolve($destination, $page->directory, $this->context->routePrefix());
         $reference = $target === null ? null : ($this->pages[$target['slug']] ?? null);
 
         if ($reference === null) {
             return;
         }
 
-        $missing = [];
-
-        if ($reference->authorize !== null && ! in_array($reference->authorize, $guaranteed['abilities'], true)) {
-            $missing[] = 'the ability "'.$reference->authorize.'"';
-        }
-
-        if ($reference->audience !== null && ! in_array($reference->audience, $guaranteed['audiences'], true)) {
-            $missing[] = 'the audience "'.$reference->audience.'"';
-        }
+        $missing = $guaranteed->shortfallFor($reference);
 
         if ($missing === []) {
             return;
