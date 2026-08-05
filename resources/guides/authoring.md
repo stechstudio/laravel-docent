@@ -96,6 +96,11 @@ Shown while a registered condition is true. `:::unless` inverts it.
 Gated content disappears everywhere at once: the page, navigation, search,
 and AI answers.
 
+Because of that, linking from an ungated page to a gated one is a dead end for
+readers whose role lacks the requirement. When such a link is intended, put it
+inside a `:::can` or `:::audience` block matching the target's gate, so only
+readers who can follow it ever see it.
+
 ## Content components
 
 Same fence rules; nest by giving the OUTER container more colons:

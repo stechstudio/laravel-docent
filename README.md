@@ -193,6 +193,24 @@ Authorization isn't a rendering detail. It's enforced at every surface:
 - Search: server-side, filtered through the same authorization before results are returned; conditional block content is never indexed, so a snippet can never leak gated text
 - Table of contents: headings inside conditional blocks only appear for viewers who'd see them
 
+An ungated page linking to a gated one is a dead end for anyone whose role lacks
+the target's requirement, and it surfaces late — you can see both pages, so CI
+stays green. Turn on the `gated-link` rule to catch it:
+
+```php
+'check' => [
+    'rules' => ['gated-link' => 'warning'],
+],
+```
+
+When the link is deliberate, gate it in context and the rule steps aside:
+
+```markdown
+:::can ability="billing.manage"
+Configure it in the [billing guide](billing).
+:::
+```
+
 ## Optional grounded answers
 
 Docent can add an **Assistant** that answers from the help the current viewer
