@@ -60,6 +60,7 @@ final class AgentFeed
             includeResolver: fn (string $name): ?Document => $this->docent->partialDocument($name),
             markdownUrlResolver: fn (string $slug): string => $this->docent->markdownUrl($slug),
             sectionCardsResolver: fn (string $section): array => $this->docent->sectionCards($section, $context),
+            imageUrlResolver: fn (string $path): string => $this->docent->route('image', ['path' => $path]),
         );
     }
 

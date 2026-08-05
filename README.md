@@ -54,6 +54,40 @@ Your account is on the **{{ value:account.plan }}** plan.
 
 Directories become navigation groups (customize with a `_group.yml`), `_partials/` holds reusable fragments for `:::include`, and callouts use the same fence syntax: `:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`.
 
+### Screenshots live next to the page
+
+Reference an image with a path relative to the Markdown file, and Docent serves
+it for you:
+
+```
+resources/docs/
+  billing/
+    payment-methods.md    ![The billing screen](images/billing.png)
+    images/billing.png
+```
+
+The screenshot moves with the page it illustrates, and no file needs copying
+into `public/`. Docent streams it through the docs route, so it inherits the
+same middleware — a documentation site behind auth keeps its screenshots behind
+auth. `/`-rooted paths still resolve against `public/` as before, and external
+URLs are left alone.
+
+PNG, JPEG, GIF, WebP, AVIF, and SVG are served; anything else `docent:check`
+reports rather than silently accepting. That allowlist is a filename check, not
+content inspection — documentation files are reviewed repository code under the
+same trust model as raw HTML in Markdown, so a file named `.png` is served as
+one.
+
+Protection is at the route group, not per page: an image referenced from a gated
+page is reachable by anyone who can reach the docs site at all, so treat a
+screenshot as visible to every reader of that site. Responses are marked private
+and revalidated, so a shared cache never holds one.
+
+Inside a `:::include`d partial, relative paths resolve against the *including*
+page's directory, not the partial's — the same partial included from two places
+resolves differently. Use a `/`-rooted path for an image a partial always needs;
+`docent:check` reports the cases that don't resolve.
+
 ### Move a page without breaking saved links
 
 Leave a small redirect stub at the old slug after moving its content:

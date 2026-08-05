@@ -105,6 +105,45 @@ final class SiteDefinitionCheck implements Check
                 );
             }
         }
+
+        yield from $this->nestedContentRoots($validSites);
+    }
+
+    /**
+     * One site's content directory sitting inside another's is a
+     * cross-contamination bug, not a layout choice: the outer site enumerates
+     * the inner site's pages as its own and serves its images, under the outer
+     * site's middleware rather than the inner one's. An error rather than a
+     * warning, because the two sites are then not isolated at all.
+     *
+     * @param  array<string, array<string, mixed>>  $sites
+     * @return iterable<Issue>
+     */
+    private function nestedContentRoots(array $sites): iterable
+    {
+        $roots = [];
+
+        foreach ($sites as $key => $definition) {
+            $path = $definition['filesystem']['path'] ?? null;
+
+            if (is_string($path) && $path !== '') {
+                $roots[$key] = rtrim(str_replace('\\', '/', $path), '/').'/';
+            }
+        }
+
+        foreach ($roots as $outerKey => $outer) {
+            foreach ($roots as $innerKey => $inner) {
+                if ($outerKey !== $innerKey && $inner !== $outer && str_starts_with($inner, $outer)) {
+                    yield Issue::error(
+                        'nested-site-content',
+                        'docent.sites.'.$innerKey.'.filesystem',
+                        "Docent site [{$innerKey}] stores its content inside site [{$outerKey}]'s directory, "
+                        ."so [{$outerKey}] would serve [{$innerKey}]'s pages and images under its own middleware. "
+                        .'Give each site a directory of its own.',
+                    );
+                }
+            }
+        }
     }
 
     /** @param array<string, mixed> $definition */

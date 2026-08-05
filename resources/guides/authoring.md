@@ -33,6 +33,12 @@ starter page with the right front matter and section outline for that shape.
 - Directories become sidebar groups. An optional `_group.yml` in a directory
   sets `label`, `order`, `icon`, and `locked`.
 - Partials live under `_partials/` and never render as pages.
+- Images may live in the content directory beside the page that uses them, and
+  are referenced with a path relative to that page: `![Alt](images/billing.png)`
+  from `billing/refunds.md` reads `billing/images/billing.png`. Docent serves
+  these. `png`, `jpg`, `jpeg`, `gif`, `webp`, `avif`, and `svg` only. A path
+  starting with `/` resolves against the application's `public/` directory
+  instead. Never reference an image outside the content directory with `../`.
 
 ## Front matter
 

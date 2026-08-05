@@ -20,8 +20,9 @@ is internal and may change at any time.
   assertions.
 - **URL shapes** under a site's route prefix: `/{slug}`, `/{slug}.md`,
   `/llms.txt`, `/llms-full.txt`, `/sitemap.xml`. The `_`-prefixed paths
-  (`/_search`, `/_ask`, `/_widget`, `/_assets`, `/_uploads`, `/_insights`) are
-  reserved internal routes — stable as endpoints, but not user-authored.
+  (`/_search`, `/_ask`, `/_widget`, `/_assets`, `/_uploads`, `/_images`,
+  `/_insights`) are reserved internal routes — stable as endpoints, but not
+  user-authored.
 - **The authoring dialect**: front-matter keys, dynamic tokens
   (`{{ value:… }}`, `{{ link:… }}`, `{{ route:… }}`), directives, and content
   components, as documented in the authoring guide and `docent:guide`.

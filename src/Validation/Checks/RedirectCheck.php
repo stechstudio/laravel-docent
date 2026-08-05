@@ -16,7 +16,7 @@ final class RedirectCheck implements Check
     private const MAX_VALIDATION_HOPS = 20;
 
     private const RESERVED_PREFIXES = [
-        '_search', '_ask', '_widget', '_uploads', '_insights', 'admin', 'llms.txt',
+        '_search', '_ask', '_widget', '_uploads', '_images', '_insights', 'admin', 'llms.txt',
     ];
 
     public function run(CheckContext $context): iterable
