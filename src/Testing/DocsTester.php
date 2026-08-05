@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Testing;
 
+use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use PHPUnit\Framework\Assert;
 use STS\Docent\DocentManager;
@@ -99,38 +100,9 @@ final class DocsTester
      */
     public function assertAllPagesRender(): self
     {
-        $context = $this->testContext($this->user, $this->audience);
         $slugs = $this->pages();
-        $failures = [];
-        $rendered = 0;
 
-        $strict = config('docent.render.strict_tokens');
-        config()->set('docent.render.strict_tokens', true);
-
-        try {
-            foreach ($slugs as $slug) {
-                try {
-                    $page = $this->manager->page($slug);
-
-                    if ($page === null) {
-                        $failures[] = $this->label($slug).': enumerated, but the repository no longer resolves it.';
-
-                        continue;
-                    }
-
-                    if (! $page->authorize($context)) {
-                        continue;
-                    }
-
-                    $rendered++;
-                    $page->render($context);
-                } catch (Throwable $e) {
-                    $failures[] = $this->label($slug).': '.$e::class.' — '.$e->getMessage();
-                }
-            }
-        } finally {
-            config()->set('docent.render.strict_tokens', $strict);
-        }
+        [$rendered, $failures] = $this->withStrictTokens(fn (): array => $this->sweep($slugs));
 
         if ($failures !== []) {
             Assert::fail(sprintf(
@@ -148,6 +120,58 @@ final class DocsTester
         ));
 
         return $this;
+    }
+
+    /**
+     * Render each page the viewer may open, collecting failures instead of
+     * stopping at the first.
+     *
+     * @param  list<string>  $slugs
+     * @return array{0: int, 1: list<string>} How many rendered, and one line per failure.
+     */
+    private function sweep(array $slugs): array
+    {
+        $context = $this->testContext($this->user, $this->audience);
+        $rendered = 0;
+        $failures = [];
+
+        foreach ($slugs as $slug) {
+            try {
+                $page = $this->manager->page($slug);
+
+                if ($page === null) {
+                    $failures[] = $this->label($slug).': enumerated, but the repository no longer resolves it.';
+                } elseif ($page->authorize($context)) {
+                    $rendered++;
+                    $page->render($context);
+                }
+            } catch (Throwable $e) {
+                $failures[] = $this->label($slug).': '.$e::class.' — '.$e->getMessage();
+            }
+        }
+
+        return [$rendered, $failures];
+    }
+
+    /**
+     * Run the sweep with token failures made strict, restoring whatever the
+     * application had configured afterward.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $sweep
+     * @return TReturn
+     */
+    private function withStrictTokens(Closure $sweep): mixed
+    {
+        $previous = config('docent.render.strict_tokens');
+        config()->set('docent.render.strict_tokens', true);
+
+        try {
+            return $sweep();
+        } finally {
+            config()->set('docent.render.strict_tokens', $previous);
+        }
     }
 
     public function search(string $query, ?Authenticatable $as = null, ?string $audience = null, int $limit = 20): SearchAssertions
