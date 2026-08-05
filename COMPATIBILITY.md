@@ -7,7 +7,7 @@ is internal and may change at any time.
 ## Covered by semver (safe to rely on)
 
 - **The `Docent` facade registration DSL**: `value()`, `link()`, `condition()`,
-  `audience()`, `component()`, `suggest()`, and `site()`.
+  `audience()`, `component()`, `suggest()`, `abilities()`, and `site()`.
 - **The `Docent` facade read methods** documented on the facade:
   `page()`, `url()`, `siteName()`, `navigation()`, `contextFor()`, `registry()`.
 - **Configuration keys** in `config/docent.php`. New keys may be added; existing
