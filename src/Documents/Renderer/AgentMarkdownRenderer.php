@@ -44,6 +44,7 @@ use STS\Docent\Documents\Serializer\MarkdownExporter;
 use STS\Docent\Navigation\SectionCard;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Support\DocsImagePath;
 use STS\Docent\Support\InternalLink;
 
 /**
@@ -64,6 +65,7 @@ final class AgentMarkdownRenderer
      * @param  ?Closure(string): ?Document  $includeResolver
      * @param  ?Closure(string): string  $markdownUrlResolver
      * @param  ?Closure(string): list<SectionCard>  $sectionCardsResolver
+     * @param  ?Closure(string): string  $imageUrlResolver  Maps a docs-root-relative image path to a servable URL.
      */
     public function __construct(
         private readonly IntegrationRegistry $registry,
@@ -73,6 +75,7 @@ final class AgentMarkdownRenderer
         private readonly ?Closure $includeResolver = null,
         private readonly ?Closure $markdownUrlResolver = null,
         private readonly ?Closure $sectionCardsResolver = null,
+        private readonly ?Closure $imageUrlResolver = null,
     ) {}
 
     public function render(Document $document, string $title, ?string $description = null): string
@@ -198,8 +201,8 @@ final class AgentMarkdownRenderer
                 : $this->absoluteDestination($copy->destination);
         }
 
-        if ($copy instanceof Image && str_starts_with($copy->url, '/')) {
-            $copy->url = url($copy->url);
+        if ($copy instanceof Image) {
+            $copy->url = $this->absoluteImageUrl($copy->url);
         }
 
         $copy->setChildren($this->transformChildren($node));
@@ -429,6 +432,22 @@ final class AgentMarkdownRenderer
         };
 
         return $url === null ? null : $this->absoluteUrl($url);
+    }
+
+    /**
+     * An agent consumer has no page URL to resolve a relative source against,
+     * so every local image is emitted absolute: `/`-rooted public paths through
+     * the app URL, page-relative ones through the docs image route.
+     */
+    private function absoluteImageUrl(string $url): string
+    {
+        if (str_starts_with($url, '/')) {
+            return url($url);
+        }
+
+        $path = $this->imageUrlResolver === null ? null : DocsImagePath::relative($url, $this->baseDir);
+
+        return $path === null ? $url : ($this->imageUrlResolver)($path);
     }
 
     private function absoluteDestination(string $destination): string

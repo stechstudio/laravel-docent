@@ -50,6 +50,7 @@ use STS\Docent\Http\Controllers\AskController;
 use STS\Docent\Http\Controllers\AskConversationController;
 use STS\Docent\Http\Controllers\AskFeedbackController;
 use STS\Docent\Http\Controllers\AssetController;
+use STS\Docent\Http\Controllers\DocsImageController;
 use STS\Docent\Http\Controllers\InsightsController;
 use STS\Docent\Http\Controllers\LlmsController;
 use STS\Docent\Http\Controllers\PageController;
@@ -178,6 +179,10 @@ final class DocentServiceProvider extends ServiceProvider
                 Route::get('/_uploads/{path}', UploadsController::class)
                     ->where('path', '.*')
                     ->name('upload');
+
+                Route::get('/_images/{path}', DocsImageController::class)
+                    ->where('path', '.*')
+                    ->name('image');
 
                 if ($site->get('search.enabled', true)) {
                     Route::get('/_search', SearchController::class)->name('search');

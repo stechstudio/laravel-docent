@@ -301,6 +301,7 @@ final class DocentManager
             sectionCardsRenderer: fn (SectionCards $node): string => $this->sectionCardsHtml($node->section, $node->columns, $context),
             codeBlockRenderer: $this->codeBlockRenderer,
             htmlSanitizer: $this->htmlSanitizer,
+            imageResolver: fn (string $path): string => $this->route('image', ['path' => $path]),
         );
 
         return $renderer->render($document);

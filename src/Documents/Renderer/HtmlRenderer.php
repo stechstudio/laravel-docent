@@ -54,6 +54,7 @@ use STS\Docent\Documents\Document;
 use STS\Docent\Documents\HtmlPolicy;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Support\DocsImagePath;
 use STS\Docent\Support\Icon;
 use STS\Docent\Support\InternalLink;
 use STS\Docent\Support\SafeUrl;
@@ -84,6 +85,7 @@ final class HtmlRenderer
      * @param  array<string, mixed>  $options  allow_html (bool), debug (bool), route_resolver (Closure)
      * @param  ?Closure(string): ?Document  $includeResolver
      * @param  ?Closure(string): ?string  $urlResolver  Resolver for slug-style internal links.
+     * @param  ?Closure(string): string  $imageResolver  Maps a docs-root-relative image path to a servable URL.
      */
     public function __construct(
         private readonly IntegrationRegistry $registry,
@@ -94,6 +96,7 @@ final class HtmlRenderer
         private readonly ?Closure $sectionCardsRenderer = null,
         ?CodeBlockRenderer $codeBlockRenderer = null,
         ?ContentHtmlSanitizer $htmlSanitizer = null,
+        private readonly ?Closure $imageResolver = null,
     ) {
         $this->codeBlockRenderer = $codeBlockRenderer ?? new DefaultCodeBlockRenderer;
         $this->htmlSanitizer = $htmlSanitizer ?? new ContentHtmlSanitizer;
@@ -479,7 +482,24 @@ final class HtmlRenderer
     {
         $title = $node->title !== null && $node->title !== '' ? ' title="'.e($node->title).'"' : '';
 
-        return '<img src="'.e($node->url).'" alt="'.e($node->alt).'"'.$title.' />';
+        return '<img src="'.e($this->imageUrl($node->url)).'" alt="'.e($node->alt).'"'.$title.' />';
+    }
+
+    /**
+     * A page-relative image source names a file next to the Markdown, which a
+     * browser cannot fetch: it would resolve the path against the page's URL,
+     * and that is a Docent route rather than a directory. Rewrite it onto the
+     * docs image route. Absolute and external sources pass through untouched.
+     */
+    private function imageUrl(string $url): string
+    {
+        if ($this->imageResolver === null) {
+            return $url;
+        }
+
+        $path = DocsImagePath::relative($url, (string) ($this->options['base_dir'] ?? ''));
+
+        return $path === null ? $url : ($this->imageResolver)($path);
     }
 
     private function renderDynamicValue(DynamicValue $node): string

@@ -5,6 +5,16 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Images stored in the documentation directory are now served, so a screenshot can live next to the page it illustrates and move with it. A page-relative `![](images/foo.png)` is rewritten onto a new `{prefix}/_images/{path}` route, which inherits the docs route group's middleware — a documentation site behind auth keeps its screenshots behind auth, and each site serves only its own content directory. PNG, JPEG, GIF, WebP, AVIF, and SVG are streamed, with `..` traversal and symlinks out of the tree refused, SVGs served under a restrictive document policy, and conditional requests answered with a 304. `/`-rooted public paths and external URLs are unchanged. Relative images are also emitted absolute in the agent Markdown and `llms.txt` feeds, which previously left them unresolvable.
+
+### Fixed
+
+- `missing-image` no longer confirms a relative image path that could never be served. It previously validated against the page's source directory — which nothing serves — so an image stored next to its Markdown passed the check and rendered broken in the browser: positive confirmation for a definitely-broken page. Relative paths now resolve through exactly the same logic as the serving route, so a passing check means the route will serve the file. References that climb out of the documentation directory, or name a file type Docent does not serve, are reported instead of quietly resolving.
+
 ## [1.2.0] - 2026-08-05
 
 ### Added
