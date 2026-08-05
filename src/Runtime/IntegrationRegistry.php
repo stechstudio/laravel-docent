@@ -207,29 +207,64 @@ final class IntegrationRegistry
     /**
      * Coerce a declared surface into a plain list of ability strings. A
      * class-string is read as a backed enum, which is where the permission list
-     * lives in most applications.
+     * lives in most applications; an array may hold ability strings or the enum
+     * cases themselves.
+     *
+     * Entries are validated rather than cast. A surface is the sole authority on
+     * which abilities exist once declared, so a stray null or nested array must
+     * fail loudly here rather than become an empty ability that silently accepts
+     * `authorize:` with no value.
+     *
+     * @internal
      *
      * @return list<string>
      */
     public static function normalizeAbilities(mixed $abilities): array
     {
         if (is_string($abilities)) {
-            if (! enum_exists($abilities) || ! is_subclass_of($abilities, BackedEnum::class)) {
-                throw new InvalidArgumentException(
-                    'A Docent ability surface given as a class-string must be a backed enum; got ['.$abilities.'].',
-                );
-            }
-
-            $abilities = array_column($abilities::cases(), 'value');
+            return self::abilitiesFromEnum($abilities);
         }
 
         if (! is_array($abilities)) {
             throw new InvalidArgumentException(
-                'A Docent ability surface must be a list of strings, a backed-enum class-string, or a closure returning either.',
+                'A Docent ability surface must be a list of strings, a backed-enum class-string, or a closure returning either; got '.get_debug_type($abilities).'.',
             );
         }
 
-        return array_values(array_map(strval(...), $abilities));
+        $normalized = [];
+
+        foreach ($abilities as $index => $ability) {
+            $normalized[] = match (true) {
+                $ability instanceof BackedEnum => (string) $ability->value,
+                is_string($ability) && trim($ability) !== '' => $ability,
+                default => throw new InvalidArgumentException(
+                    'A Docent ability surface may contain only non-empty strings or backed-enum cases; entry ['.$index.'] is '.get_debug_type($ability).'.',
+                ),
+            };
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function abilitiesFromEnum(string $class): array
+    {
+        if (! enum_exists($class)) {
+            throw new InvalidArgumentException(
+                'A Docent ability surface given as a class-string must be a backed enum; ['.$class.'] '
+                .(class_exists($class) || interface_exists($class) ? 'is not an enum' : 'does not exist').'.',
+            );
+        }
+
+        if (! is_subclass_of($class, BackedEnum::class)) {
+            throw new InvalidArgumentException(
+                'A Docent ability surface given as a class-string must be a BACKED enum; ['.$class.'] is a pure enum, whose cases have no values.',
+            );
+        }
+
+        return array_map(static fn (BackedEnum $case): string => (string) $case->value, $class::cases());
     }
 
     public function hasCondition(string $name): bool

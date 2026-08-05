@@ -102,6 +102,10 @@ return [
         // false for every real permission it has. Declare the surface instead:
         // a list of strings, or a backed-enum class-string as shorthand.
         //
+        // A declared surface REPLACES Gate::has() rather than adding to it, so
+        // it must name every ability the documentation may reference. An empty
+        // array therefore means "no ability is valid here", not "fall back".
+        //
         //     'abilities' => App\Enums\Permission::class,
         //
         // A closure belongs in a service provider, not here — config files must

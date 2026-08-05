@@ -166,8 +166,10 @@ final class DocentManager
 
     /**
      * A predicate for validating `authorize:` front matter and `:::can` blocks,
-     * resolved once per check run rather than once per ability — a declared
-     * surface may be a closure querying the database.
+     * resolved once per site rather than once per ability — a declared surface
+     * may be a closure querying the database. A `docent:check` run covering
+     * several sites builds one checker per site, so a global closure is invoked
+     * once for each.
      *
      * Absent a declared surface this falls back to `Gate::has()`, which only
      * sees abilities passed to `Gate::define()`. An application that bridges its
