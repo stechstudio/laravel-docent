@@ -28,7 +28,7 @@
     {{-- Dynamic theme tokens last so host config always wins the cascade. --}}
     <style>{!! $docent->themeStyles() !!}</style>
 </head>
-<body data-docent-slug="{{ $currentSlug ?? '' }}" class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
+<body data-docent-slug="{{ $currentSlug ?? '' }}" data-docent-base="{{ $docent->url('') }}" class="min-h-screen bg-[var(--docent-bg)] text-[var(--docent-fg)] antialiased">
     @php($aiEnabled = (bool) $docent->config('ai.enabled', false))
     <a href="#docent-content" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-[var(--docent-accent)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white">
         {{ __('docent::ui.common.skip_to_content') }}
@@ -42,7 +42,7 @@
          @keydown.escape.window="escape($event)"
          :class="{ 'docent-assistant-is-open': assistantOpen, 'docent-assistant-is-expanded': assistantOpen && assistantExpanded }">
     @endif
-    <div x-data="{ sidebar: false }" @keydown.escape.window="sidebar = false" class="isolate">
+    <div x-data="{ sidebar: false }" data-docent-shell @keydown.escape.window="sidebar = false" class="isolate">
         {{-- Top bar --}}
         <header class="docent-topbar sticky top-0 z-40 h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80">
             <div class="mx-auto flex h-full max-w-[100rem] items-center gap-3 px-4 sm:px-6">
@@ -108,12 +108,12 @@
         @else
         <div class="mx-auto flex max-w-[100rem] px-4 sm:px-6">
             {{-- Left sidebar (desktop) --}}
-            <aside class="docent-sidebar docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto py-8 pr-6 lg:block">
+            @php($sidebarScrollKey = 'docent:'.$docent->key().':'.(collect($sections ?? [])->firstWhere('active', true)?->directory ?? '').':nav-scroll')
+            <aside class="docent-sidebar docent-scroll sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto py-8 pr-6 lg:block" data-docent-scroll-key="{{ $sidebarScrollKey }}">
                 @include('docent::partials.navigation')
             </aside>
             {{-- Inline and directly after the aside so the scroll restore runs before first paint. --}}
-            @php($sidebarScrollKey = 'docent:'.$docent->key().':'.(collect($sections ?? [])->firstWhere('active', true)?->directory ?? '').':nav-scroll')
-            <script>(function(){var n=document.currentScript.previousElementSibling,k=@js($sidebarScrollKey);try{var s=sessionStorage.getItem(k);if(s!==null)n.scrollTop=parseInt(s,10)||0;var a=n.querySelector('[aria-current="page"]');if(a){var r=a.getBoundingClientRect(),c=n.getBoundingClientRect();if(r.top<c.top||r.bottom>c.bottom)a.scrollIntoView({block:'nearest'});}addEventListener('pagehide',function(){sessionStorage.setItem(k,String(Math.round(n.scrollTop)));});}catch(e){}})();</script>
+            <script>(function(){var n=document.currentScript.previousElementSibling,k=n.dataset.docentScrollKey;try{var s=sessionStorage.getItem(k);if(s!==null)n.scrollTop=parseInt(s,10)||0;var a=n.querySelector('[aria-current="page"]');if(a){var r=a.getBoundingClientRect(),c=n.getBoundingClientRect();if(r.top<c.top||r.bottom>c.bottom)a.scrollIntoView({block:'nearest'});}addEventListener('pagehide',function(){sessionStorage.setItem(n.dataset.docentScrollKey,String(Math.round(n.scrollTop)));});}catch(e){}})();</script>
 
             {{-- Mobile sidebar drawer --}}
             <div x-show="sidebar" x-cloak class="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">

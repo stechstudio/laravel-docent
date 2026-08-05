@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
 import { registerDocentAssistant } from './docent-assistant';
+import { registerDocentNavigate } from './docent-navigate';
 
 const str = (key, fallback) => window.docentUiStrings?.[key] ?? fallback;
 
@@ -600,7 +601,12 @@ function injectAnchors() {
 /* ---------------------------------------------------------------------------
  * Table-of-contents scroll spy.
  * ------------------------------------------------------------------------- */
+let spyObserver = null;
+
 function scrollSpy() {
+    spyObserver?.disconnect();
+    spyObserver = null;
+
     const links = Array.from(document.querySelectorAll('.docent-rail a[href^="#"]'));
     if (links.length === 0) return;
 
@@ -639,6 +645,7 @@ function scrollSpy() {
     );
 
     headings.forEach((h) => observer.observe(h));
+    spyObserver = observer;
 }
 
 function enhance() {
@@ -738,6 +745,13 @@ if (document.readyState === 'loading') {
     bootWidgetFrame();
     emitReaderPageView();
 }
+
+registerDocentNavigate(Alpine, {
+    afterSwap() {
+        enhance();
+        emitReaderPageView();
+    },
+});
 
 window.Alpine = Alpine;
 Alpine.start();

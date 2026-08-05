@@ -47,7 +47,8 @@ it('preserves sidebar scroll with a store scoped to the site and section', funct
     // The default section has no directory, so its segment is empty.
     expect($html)
         ->toContain('sessionStorage')
-        ->toContain('docent:docs::nav-scroll');
+        ->toContain('data-docent-scroll-key="docent:docs::nav-scroll"')
+        ->toContain('data-docent-base=');
 });
 
 it('scopes the sidebar scroll store to the active section', function () {

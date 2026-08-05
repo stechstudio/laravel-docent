@@ -1,6 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { assistantPanel, openSearch } from './helpers.js';
 
+test('mobile drawer closes after a soft navigation', async ({ page }) => {
+    await page.goto('/docs/getting-started/introduction');
+    await page.evaluate(() => { window.__docentMarker = true; });
+
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    const drawer = page.locator('#docent-sidebar');
+    await expect(drawer).toBeVisible();
+
+    await drawer.locator('.docent-nav-sections').getByRole('link', { name: 'Quickstart', exact: true }).click();
+    await expect(page).toHaveURL(/\/docs\/getting-started\/quickstart$/);
+    await expect(drawer).toBeHidden();
+    expect(await page.evaluate(() => window.__docentMarker === true)).toBe(true);
+});
+
 test('mobile reader searches, asks, and reads an answer full-screen', async ({ page }) => {
     await page.goto('/docs/announcements');
     const dialog = await openSearch(page);
