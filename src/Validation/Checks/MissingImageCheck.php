@@ -6,6 +6,8 @@ namespace STS\Docent\Validation\Checks;
 
 use STS\Docent\Content\PageReference;
 use STS\Docent\Documents\Ast\Image;
+use STS\Docent\Documents\Ast\IncludeNode;
+use STS\Docent\Documents\Document;
 use STS\Docent\Support\DocsImagePath;
 use STS\Docent\Validation\AstWalker;
 use STS\Docent\Validation\Check;
@@ -33,10 +35,39 @@ final class MissingImageCheck implements Check
                 continue;
             }
 
-            foreach (AstWalker::walk($document) as $node) {
-                if ($node instanceof Image) {
-                    yield from $this->issuesFor($node, $page, $context);
-                }
+            yield from $this->scan($document, $page, $context, []);
+        }
+    }
+
+    /**
+     * Walk a page and everything it includes.
+     *
+     * A partial is rendered in the *including* page's directory, so its
+     * relative image paths resolve from there — which means the same partial
+     * included from two directories resolves differently. Validating it under
+     * each includer is the only way the check can agree with what the renderer
+     * emits; a partial that wants a stable image should use a `/`-rooted path.
+     *
+     * @param  list<string>  $stack  Include names already open, so a cycle terminates.
+     * @return iterable<Issue>
+     */
+    private function scan(Document $document, PageReference $page, CheckContext $context, array $stack): iterable
+    {
+        foreach (AstWalker::walk($document) as $node) {
+            if ($node instanceof Image) {
+                yield from $this->issuesFor($node, $page, $context);
+
+                continue;
+            }
+
+            if (! $node instanceof IncludeNode || in_array($node->name, $stack, true)) {
+                continue;
+            }
+
+            $partial = $context->partial($node->name);
+
+            if ($partial !== null) {
+                yield from $this->scan($partial, $page, $context, [...$stack, $node->name]);
             }
         }
     }

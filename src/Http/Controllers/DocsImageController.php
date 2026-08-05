@@ -15,13 +15,17 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  *
  * Serving through a route (rather than expecting authors to copy files into
  * `public/`) means the image inherits the docs route group's middleware, so a
- * documentation site behind auth keeps its screenshots behind auth too. That is
- * the same reasoning as the `_uploads` route, and the same caveat applies:
+ * documentation site behind auth keeps its screenshots behind auth. That is the
+ * same reasoning as the `_uploads` route, and the same caveat applies:
  * protection is at the route group, not per page — an image referenced from a
  * gated page is reachable by anyone who can reach the docs site at all.
  *
  * {@see DocsImagePath} enforces the extension allowlist and confines resolution
- * to the docs root, covering `..` traversal and symlinks pointing out of it.
+ * to the docs root, covering `..` traversal and symlinks pointing out of it. The
+ * allowlist is a suffix check, not content inspection: documentation files are
+ * reviewed repository code under the same trust model as raw HTML in Markdown,
+ * so a file named `.png` is served as one.
+ *
  * SVGs are served with a restrictive document policy so opening the raw URL
  * cannot run active content.
  */
@@ -35,23 +39,29 @@ final class DocsImageController
 
     public function __invoke(Request $request, string $path): BinaryFileResponse
     {
-        $root = $this->docent->config('filesystem.path');
-        $file = is_string($root) ? DocsImagePath::file($root, $path) : null;
+        $file = DocsImagePath::file($this->docent->docsPath(), $path);
 
         abort_if($file === null, 404);
 
-        $response = response()->file($file, [
-            // Documentation images change with a deploy, not on their own, but
-            // the docs may be private — so revalidate against Last-Modified
-            // rather than caching shared or long.
-            'Cache-Control' => 'private, max-age=3600',
-            'Content-Type' => (string) DocsImagePath::mimeType($file),
-            'X-Content-Type-Options' => 'nosniff',
-            ...(DocsImagePath::mimeType($file) === 'image/svg+xml'
-                ? ['Content-Security-Policy' => self::SVG_CSP]
-                : []),
-        ])->setAutoLastModified();
+        $mimeType = (string) DocsImagePath::mimeType($file);
 
+        $response = response()->file($file, [
+            'Content-Type' => $mimeType,
+            'X-Content-Type-Options' => 'nosniff',
+            ...($mimeType === 'image/svg+xml' ? ['Content-Security-Policy' => self::SVG_CSP] : []),
+        ]);
+
+        $response->setContentDisposition('inline', basename($file));
+
+        // `response()->file()` builds a *public* BinaryFileResponse, so the
+        // visibility has to be set on the response rather than passed as a
+        // header — otherwise a shared cache could hold a private site's
+        // screenshot and hand it to a request that never reached the auth
+        // middleware. Revalidate rather than hold: these change on deploy, at
+        // the same URL, and Last-Modified makes that a cheap 304.
+        $response->setPrivate();
+        $response->headers->addCacheControlDirective('no-cache');
+        $response->setAutoLastModified();
         $response->isNotModified($request);
 
         return $response;

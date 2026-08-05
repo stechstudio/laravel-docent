@@ -88,11 +88,12 @@ final class DocsImagePath
             return null;
         }
 
-        $file = realpath($realRoot.DIRECTORY_SEPARATOR.$normalized);
+        // Trailing separator trimmed before re-appending, so a root of `/`
+        // compares against `/` rather than the `//` that matches nothing.
+        $prefix = rtrim($realRoot, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+        $file = realpath($prefix.$normalized);
 
-        return $file !== false
-            && is_file($file)
-            && str_starts_with($file, $realRoot.DIRECTORY_SEPARATOR)
+        return $file !== false && is_file($file) && str_starts_with($file, $prefix)
             ? $file
             : null;
     }

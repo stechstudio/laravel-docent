@@ -24,10 +24,13 @@ function imageIssues(): array
     app()->forgetInstance(DocumentationRepository::class);
     Artisan::call('docent:check', ['--format' => 'json']);
 
-    return array_column(array_filter(
-        json_decode(Artisan::output(), true)['issues'],
-        fn (array $i): bool => $i['check'] === 'missing-image',
-    ), 'message');
+    return array_map(
+        fn (array $i): string => $i['slug'].': '.$i['message'],
+        array_values(array_filter(
+            json_decode(Artisan::output(), true)['issues'],
+            fn (array $i): bool => $i['check'] === 'missing-image',
+        )),
+    );
 }
 
 it('rewrites a page-relative image onto the docs image route', function () {
@@ -55,6 +58,26 @@ it('serves the image through the route', function () {
     $this->get('/docs/_images/guides/images/screenshot.png')
         ->assertOk()
         ->assertHeader('Content-Type', 'image/png');
+});
+
+it('never marks a docs image publicly cacheable', function () {
+    // A shared cache holding a private site's screenshot could hand it to a
+    // request that never reached the route group's auth middleware.
+    $cacheControl = $this->get('/docs/_images/guides/images/screenshot.png')
+        ->assertOk()
+        ->headers->get('Cache-Control');
+
+    expect($cacheControl)->toContain('private')->not->toContain('public');
+});
+
+it('serves images when filesystem.path is left at its default', function () {
+    // Null is documented as resource_path('docs'), and the repository honors
+    // that — so the image route has to resolve the same root or a default
+    // install 404s every screenshot.
+    config()->set('docent.sites.docs.filesystem.path', null);
+    app()->forgetScopedInstances();
+
+    expect(app(DocentManager::class)->docsPath())->toBe(resource_path('docs'));
 });
 
 it('sends a restrictive document policy for svg', function () {
@@ -88,8 +111,10 @@ it('answers a conditional request with 304', function () {
 });
 
 it('accepts relative images that now genuinely resolve', function () {
-    expect(implode("\n", imageIssues()))
-        ->not->toContain('screenshot.png')
+    $reported = implode("\n", imageIssues());
+
+    expect($reported)
+        ->not->toContain('guides/setup:')
         ->not->toContain('logo.png')
         ->not->toContain('diagram.svg');
 });
@@ -116,4 +141,27 @@ it('emits absolute image urls in the agent markdown feed', function () {
 it('keeps image slugs out of reach as pages', function () {
     // `_`-prefixed segments are reserved routes, so no page can shadow them.
     $this->get('/docs/_images')->assertNotFound();
+});
+
+it('validates a partial image against the page that includes it', function () {
+    // The renderer resolves a partial's relative paths from the including
+    // page's directory, so the check must judge it the same way — otherwise it
+    // confirms a URL that 404s, which is the whole bug this route fixed.
+    // The same partial included from the docs root resolves `images/screenshot.png`
+    // against the root, where nothing exists — so the check must report it.
+    expect(implode("\n", imageIssues()))->toContain('images/screenshot.png');
+});
+
+it('stays silent when a partial image does resolve from its includer', function () {
+    // guides/includes.md resolves the same partial reference to a real file.
+    $reported = array_filter(imageIssues(), fn (string $m): bool => str_contains($m, 'screenshot'));
+
+    expect($reported)->toHaveCount(1);
+});
+
+it('rewrites a partial image onto the including page directory', function () {
+    // guides/includes.md pulls in _partials/banner.md, so `images/screenshot.png`
+    // becomes guides/images/screenshot.png — matching what the check validated.
+    expect(renderDocsPage('guides/includes'))
+        ->toContain('/docs/_images/guides/images/screenshot.png');
 });

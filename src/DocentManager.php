@@ -140,6 +140,21 @@ final class DocentManager
         return $this->repository;
     }
 
+    /**
+     * The site's content directory. `filesystem.path` is documented as null
+     * meaning `resource_path('docs')`, and the repository is built with that
+     * fallback — anything else resolving the root must apply it identically or
+     * a default installation silently disagrees with itself.
+     *
+     * @internal
+     */
+    public function docsPath(): string
+    {
+        $path = $this->config('filesystem.path');
+
+        return is_string($path) && $path !== '' ? $path : resource_path('docs');
+    }
+
     public function page(string $slug): ?Page
     {
         $source = $this->repository->find($slug);

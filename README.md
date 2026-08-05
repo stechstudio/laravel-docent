@@ -73,10 +73,20 @@ auth. `/`-rooted paths still resolve against `public/` as before, and external
 URLs are left alone.
 
 PNG, JPEG, GIF, WebP, AVIF, and SVG are served; anything else `docent:check`
-reports rather than silently accepting. Protection is at the route group, not
-per page: an image referenced from a gated page is reachable by anyone who can
-reach the docs site at all, so treat a screenshot as visible to every reader of
-that site.
+reports rather than silently accepting. That allowlist is a filename check, not
+content inspection — documentation files are reviewed repository code under the
+same trust model as raw HTML in Markdown, so a file named `.png` is served as
+one.
+
+Protection is at the route group, not per page: an image referenced from a gated
+page is reachable by anyone who can reach the docs site at all, so treat a
+screenshot as visible to every reader of that site. Responses are marked private
+and revalidated, so a shared cache never holds one.
+
+Inside a `:::include`d partial, relative paths resolve against the *including*
+page's directory, not the partial's — the same partial included from two places
+resolves differently. Use a `/`-rooted path for an image a partial always needs;
+`docent:check` reports the cases that don't resolve.
 
 ### Move a page without breaking saved links
 

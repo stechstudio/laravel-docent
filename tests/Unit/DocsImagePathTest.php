@@ -59,3 +59,18 @@ it('maps servable extensions to content types, case-insensitively', function () 
         ->and(DocsImagePath::mimeType('a/b.md'))->toBeNull()
         ->and(DocsImagePath::mimeType('a/b'))->toBeNull();
 });
+
+it('stays contained when the root is the filesystem root', function () {
+    // The containment prefix must not become '//', which matches nothing and
+    // silently fails every lookup closed.
+    expect(DocsImagePath::file('/', 'etc/hosts'))->toBeNull();
+});
+
+it('is not fooled by a sibling directory sharing the root prefix', function () use ($root) {
+    expect(DocsImagePath::file($root(), '../image-docs-secret/x.png'))->toBeNull();
+});
+
+it('treats a trailing slash on the root the same as without', function () use ($root) {
+    expect(DocsImagePath::file($root().'/', 'guides/images/screenshot.png'))
+        ->toBe(realpath($root().'/guides/images/screenshot.png'));
+});

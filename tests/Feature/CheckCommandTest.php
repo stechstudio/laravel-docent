@@ -266,3 +266,16 @@ it('reports invalid and empty content component structures in draft checks', fun
         'invalid-code-group',
     );
 });
+
+it('rejects one site storing its content inside another', function () {
+    // The outer site would enumerate the inner site's pages and serve its
+    // images under its own middleware, so the two are not isolated at all.
+    config()->set('docent.sites', [
+        'docs' => ['filesystem' => ['path' => dirname(__DIR__).'/fixtures/docs'], 'route' => ['prefix' => 'docs']],
+        'inner' => ['filesystem' => ['path' => dirname(__DIR__).'/fixtures/docs/guides'], 'route' => ['prefix' => 'inner']],
+    ]);
+
+    $this->artisan('docent:check')
+        ->expectsOutputToContain('nested-site-content')
+        ->assertFailed();
+});
