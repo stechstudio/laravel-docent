@@ -111,8 +111,13 @@ return [
         // Opt-in quality rules run only when listed here as error/warning/warn.
         // e.g. 'heading-hierarchy' => 'warning', 'search-keywords' => 'off'.
         // Enable one with e.g. 'single-h1' => 'warning'.
+        //
+        // 'gated-link' reports links from an ungated page to a gated one — a
+        // dead end for every reader whose role lacks the target's requirement.
+        // Wrap a deliberate one in a :::can or :::audience block to exempt it.
         'rules' => [
             // 'unknown-icon' => 'warning',
+            // 'gated-link' => 'warning',
         ],
 
         // The abilities an `authorize:` key (or `:::can` block) may name, so the

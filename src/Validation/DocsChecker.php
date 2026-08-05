@@ -10,6 +10,7 @@ use STS\Docent\Validation\Checks\ContentComponentCheck;
 use STS\Docent\Validation\Checks\DescriptionLengthCheck;
 use STS\Docent\Validation\Checks\DuplicateSlugCheck;
 use STS\Docent\Validation\Checks\FrontMatterCheck;
+use STS\Docent\Validation\Checks\GatedLinkCheck;
 use STS\Docent\Validation\Checks\HeadingHierarchyCheck;
 use STS\Docent\Validation\Checks\IncludeCycleCheck;
 use STS\Docent\Validation\Checks\LockedPageShadowedCheck;
@@ -53,6 +54,7 @@ final class DocsChecker
             new AiCorpusSizeCheck,
             new DuplicateSlugCheck,
             new BrokenLinkCheck,
+            new GatedLinkCheck,
             new UnknownConditionCheck,
             new UnknownValueCheck,
             new UnknownLinkCheck,
@@ -89,6 +91,7 @@ final class DocsChecker
         return new self([
             new RedirectCheck,
             new BrokenLinkCheck,
+            new GatedLinkCheck,
             new UnknownConditionCheck,
             new UnknownValueCheck,
             new UnknownLinkCheck,

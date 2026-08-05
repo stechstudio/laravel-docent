@@ -103,6 +103,12 @@ Shown while a registered condition is true. `:::unless` inverts it.
 Gated content disappears everywhere at once: the page, navigation, search,
 and AI answers.
 
+Because of that, a link whose readers are not guaranteed to pass the target's
+gate is a dead end for everyone it turns away. When such a link is intended, put
+it inside a `:::can` or `:::audience` block naming *that target's own*
+requirement, so only readers who can follow it ever see it. A block naming a
+different ability is not a guarantee about this one.
+
 ## Content components
 
 Same fence rules; nest by giving the OUTER container more colons:
