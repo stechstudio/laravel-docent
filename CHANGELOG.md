@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New `token-in-code` check. Token syntax inside a code span renders verbatim by design — it is how the dialect documents itself — which also means such a token never becomes an AST node for the reference checks to inspect. A page could ship `` `{{ value:account.plan }}` `` where a real value belonged, render 200, and pass every other check. The new check reads inline code literals directly and warns when the token names a value, link, or route this application actually resolves. Generic examples naming nothing registered stay silent, and fenced code blocks are out of scope: a block showing what to write is supposed to contain literal dialect syntax. Silence it with `'token-in-code' => 'off'` in `docent.check.rules`.
+
 ### Changed
 
 - A registered value or link closure that throws no longer takes down the page. The token substitutes nothing, the throwable is passed to `report()` so it still reaches exception tracking, and the rest of the document renders. Previously one closure failing for one reader state — a tenant-scoped lookup with no tenant selected, a route helper with nothing bound — returned a 500 for a page whose other content was perfectly renderable, on every page that token appeared on. Set `render.strict_tokens` to true to get the exception instead.
 
   Only invocation of the application's own closure is covered. Instantiating a class-string resolver, converting its result to a string, and resolving a `{{ route:… }}` token all still fail loudly: those break identically for every reader, so they are defects to surface rather than session state to render around. A render that did degrade a token is never written to the agent-Markdown or `llms-full.txt` caches, since a cache key cannot see the session state that caused the failure and the missing value would otherwise be served to every later reader.
+
+### Fixed
+
+- `docent.check.rules` now applies to the admin editor's per-draft validation, not only to `docent:check`. A rule silenced with `'off'` was still reported on every save and preview, and a promoted severity was still shown as its original one — so the editor could contradict what CI was configured to accept.
 
 ## [1.2.0] - 2026-08-05
 
