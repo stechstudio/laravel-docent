@@ -372,6 +372,25 @@ $this->docs()->search('payroll', as: $member)
     ->assertMissing('Payroll Reports');
 ```
 
+Per-page assertions cover intent; the sweep covers the whole tree. "Does my
+entire docs site still return 200 for this role" is the single most useful
+assertion in a permission-aware docs package:
+
+```php
+$this->docs()->as($member)->assertAllPagesRender();
+```
+
+Pages the viewer can't see are skipped rather than failed, and a failure names
+the slug and the underlying error. For invariants of your own, `pages()` hands
+you the real slug list — Docent's own derivation, including the `index.md`
+conventions — so you never have to reconstruct it with a `Finder` loop:
+
+```php
+foreach ($this->docs()->pages() as $slug) {
+    // every page is in navigation, has a description, whatever you need
+}
+```
+
 ## The UI
 
 A polished reading experience out of the box, with no build step in your app:
