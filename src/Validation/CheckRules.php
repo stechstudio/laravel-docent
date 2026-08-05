@@ -39,10 +39,15 @@ final class CheckRules
      */
     public function enabled(): array
     {
-        return array_map(strval(...), array_keys(array_filter(
-            $this->rules,
-            static fn (mixed $severity): bool => is_string($severity) && $severity !== 'off',
-        )));
+        $enabled = [];
+
+        foreach ($this->rules as $rule => $severity) {
+            if (is_string($severity) && $severity !== 'off') {
+                $enabled[] = (string) $rule;
+            }
+        }
+
+        return $enabled;
     }
 
     /**
@@ -56,21 +61,27 @@ final class CheckRules
         $result = [];
 
         foreach ($issues as $issue) {
-            $override = $this->rules[$issue->check] ?? null;
+            $severity = $this->severityFor($issue);
 
-            if ($override === 'off') {
-                continue;
+            if ($severity !== null) {
+                $result[] = $issue->withSeverity($severity);
             }
-
-            $severity = match ($override) {
-                'error' => Severity::Error,
-                'warning', 'warn' => Severity::Warning,
-                default => $issue->severity,
-            };
-
-            $result[] = $issue->severity === $severity ? $issue : $issue->withSeverity($severity);
         }
 
         return $result;
+    }
+
+    /**
+     * The severity an issue should carry once its rule is applied, or null when
+     * the rule silences it entirely.
+     */
+    private function severityFor(Issue $issue): ?Severity
+    {
+        return match ($this->rules[$issue->check] ?? null) {
+            'off' => null,
+            'error' => Severity::Error,
+            'warning', 'warn' => Severity::Warning,
+            default => $issue->severity,
+        };
     }
 }

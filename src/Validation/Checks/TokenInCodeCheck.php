@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace STS\Docent\Validation\Checks;
 
+use Illuminate\Support\Str;
 use STS\Docent\Documents\Ast\AppLink;
 use STS\Docent\Documents\Ast\DynamicValue;
 use STS\Docent\Documents\Ast\InlineCode;
@@ -60,23 +61,17 @@ final class TokenInCodeCheck implements Check
      */
     private function issues(InlineCode $node, string $slug, CheckContext $context): iterable
     {
-        if (preg_match_all('/'.TokenSyntax::PARTIAL.'/', $node->code, $matches, PREG_SET_ORDER) === 0) {
-            return;
-        }
+        preg_match_all('/'.TokenSyntax::PARTIAL.'/', $node->code, $matches, PREG_SET_ORDER);
 
-        foreach ($matches as $match) {
-            $kind = strtolower($match[1]);
-
-            if (! $this->registered($kind, $match[2], $context)) {
-                continue;
+        foreach ($matches as [$token, $kind, $key]) {
+            if ($this->registered(strtolower($kind), $key, $context)) {
+                yield Issue::warning(
+                    'token-in-code',
+                    $slug,
+                    'Registered token "'.$this->readable($token).'" sits inside a code span and will render verbatim.',
+                    $node->line,
+                );
             }
-
-            yield Issue::warning(
-                'token-in-code',
-                $slug,
-                'Registered token "'.$this->readable($match[0]).'" sits inside a code span and will render verbatim.',
-                $node->line,
-            );
         }
     }
 
@@ -91,12 +86,12 @@ final class TokenInCodeCheck implements Check
     }
 
     /**
-     * The token as written, with the parser's separator sentinel and any runs of
+     * The token as written, with the parser's separator sentinel restored and
      * whitespace collapsed — so two occurrences differing only in their
      * arguments stay distinguishable in the report.
      */
     private function readable(string $token): string
     {
-        return trim(preg_replace('/[\s'.TokenSyntax::SEP.']+/', ' ', $token) ?? $token);
+        return Str::squish((string) TokenSyntax::restore($token));
     }
 }
