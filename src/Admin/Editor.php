@@ -395,7 +395,7 @@ final class Editor
             publicPath: public_path(),
             routePrefix: (string) $this->docent->config('route.prefix', 'docs'),
             routeExists: static fn (string $name): bool => Route::has($name),
-            abilityExists: static fn (string $ability): bool => Gate::has($ability),
+            abilityExists: $this->docent->abilityChecker(),
             overrideSlug: $slug,
             overrideDocument: $document,
             docent: $this->docent,
@@ -419,10 +419,15 @@ final class Editor
     /**
      * Registry metadata for the editor's node/reference pickers: conditions,
      * values, links, components, and audiences (name/label/description), plus
-     * the built-in icon names and every registered Gate ability. Abilities
-     * carry a humanized `label` alongside the technical `name` so every picker
-     * shows "View reports", not `reports.view` — the stored value stays the
-     * technical name.
+     * the built-in icon names and the application's abilities. Abilities carry a
+     * humanized `label` alongside the technical `name` so every picker shows
+     * "View reports", not `reports.view` — the stored value stays the technical
+     * name.
+     *
+     * The ability list comes from the application's declared surface when it has
+     * one, falling back to the defined gates. An application bridging its
+     * permissions through `Gate::before` defines no gates, so without a declared
+     * surface this list is empty and the picker has nothing to offer.
      *
      * @return array<string, mixed>
      */
@@ -433,7 +438,7 @@ final class Editor
             'icons' => Icon::names(),
             'abilities' => array_map(
                 fn (string $ability): array => ['name' => $ability, 'label' => $this->abilityLabel($ability)],
-                array_keys(Gate::abilities()),
+                $this->docent->declaredAbilities() ?? array_keys(Gate::abilities()),
             ),
         ];
     }
