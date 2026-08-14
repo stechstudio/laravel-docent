@@ -48,6 +48,17 @@ it('resolves ../ against the page directory', function () {
         ->toContain('/docs/_images/shared/logo.png');
 });
 
+it('rewrites the framed lightbox image the same way as the inline one', function () {
+    // A frame emits the image twice: inline, and again inside the lightbox. The
+    // enlarged copy needs the same rewrite, or clicking a screenshot opens the
+    // overlay onto a src the browser resolves against the page URL — a 404.
+    preg_match_all('/<img src="([^"]*)" alt="Framed screenshot"/', renderDocsPage('guides/setup'), $matches);
+
+    expect($matches[1])->toHaveCount(2)
+        ->and($matches[1][1])->toBe($matches[1][0])
+        ->and($matches[1][1])->toContain('/docs/_images/guides/images/screenshot.png');
+});
+
 it('leaves external image sources untouched', function () {
     expect(renderDocsPage('guides/setup'))
         ->toContain('https://example.com/remote.png')

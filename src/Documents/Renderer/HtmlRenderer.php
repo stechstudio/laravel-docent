@@ -339,7 +339,7 @@ final class HtmlRenderer
                 .'x-show="open" x-on:click.self="close()" x-on:keydown.escape.window="close()" x-ref="dialog" tabindex="-1">'
                 .'<button type="button" class="docent-lightbox-close" aria-label="Close image preview" x-on:click="close()">'
                 .(Icon::svg('x-mark') ?? '&times;').'</button>'
-                .'<img src="'.e($image->url).'" alt="'.e($image->alt).'" /></div>';
+                .'<img src="'.e($this->imageUrl($image->url)).'" alt="'.e($image->alt).'" /></div>';
         }
 
         $caption = $node->caption !== null && $node->caption !== ''
