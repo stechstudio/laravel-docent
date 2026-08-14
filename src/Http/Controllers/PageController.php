@@ -53,6 +53,15 @@ final class PageController
             $markdown = true;
         }
 
+        // A share link resolves to the shared page and nothing else. The agent
+        // feed is a second rendering path with its own rules about what a
+        // viewer may see, and keeping the two in step forever is a worse bet
+        // than declining to negotiate: a shared page is for a person reading
+        // it, and the header that asks for Markdown is never sent by one.
+        if ($this->mode->share()) {
+            $markdown = false;
+        }
+
         $page = $this->docent->page($slug);
 
         if ($page === null) {

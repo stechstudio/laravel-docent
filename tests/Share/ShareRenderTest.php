@@ -123,3 +123,33 @@ it('will not share a page the guest context cannot authorize', function () {
     // the link was minted.
     $this->get($this->shareUrl('billing/secret'))->assertNotFound();
 });
+
+it('does not negotiate a share link into the agent feed', function () {
+    $calls = 0;
+
+    $this->app->make(IntegrationRegistry::class)
+        ->condition('beta-features', function () use (&$calls): bool {
+            $calls++;
+
+            return true;
+        });
+
+    // The agent feed is a second rendering path with its own view of what a
+    // viewer may see. Asking for Markdown used to reach it, which ran host
+    // predicates and rendered a :::when block the share render holds back.
+    $response = $this->get($this->shareUrl('guides/setup'), ['Accept' => 'text/markdown']);
+
+    $response->assertOk()
+        ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
+        ->assertDontSee('Beta features are enabled.');
+
+    expect($calls)->toBe(0);
+});
+
+it('cannot reach the markdown variant of a shared page at all', function () {
+    // The MAC covers the path, so a token for /docs/guides/setup was never
+    // valid for /docs/guides/setup.md.
+    $token = (string) parse_url($this->shareUrl('guides/setup'), PHP_URL_QUERY);
+
+    $this->get('/docs/guides/setup.md?'.$token)->assertRedirect('/login');
+});
