@@ -54,6 +54,43 @@ final class Sharing
         return Gate::forUser($user)->allows((string) $this->config->get('share.gate', 'shareDocentPage'));
     }
 
+    /**
+     * The share URLs to offer this viewer for a page, keyed by lifetime in
+     * days — empty when they may not share, which is what keeps the button
+     * out of the top bar.
+     *
+     * Every option is minted up front rather than fetched when the reader
+     * picks one. Three HMACs cost nothing, and it saves the feature an
+     * endpoint, a CSRF token, and a request that could fail.
+     *
+     * @return array<int, string>
+     */
+    public function linksFor(string $slug, ?Authenticatable $user): array
+    {
+        if (! $this->canShare($user)) {
+            return [];
+        }
+
+        // The ceiling joins the list so a host that lowers it still offers a
+        // "as long as we allow" choice rather than only the short ones.
+        $max = max(1, (int) $this->config->get('share.max_ttl', 90));
+        $offered = array_filter([7, $this->defaultDays(), 30, 90, $max], static fn (int $days): bool => $days <= $max);
+
+        sort($offered);
+
+        return array_reduce(
+            array_unique($offered),
+            fn (array $links, int $days): array => $links + [$days => $this->urlFor($slug, $days)],
+            [],
+        );
+    }
+
+    /** The lifetime pre-selected in the share panel. */
+    public function defaultDays(): int
+    {
+        return $this->lifetime(null);
+    }
+
     /** The share URL for a page, expiring in `$days` (clamped to `share.max_ttl`). */
     public function urlFor(string $slug, ?int $days = null): string
     {

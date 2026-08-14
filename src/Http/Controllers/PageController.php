@@ -142,6 +142,8 @@ final class PageController
             'sections' => $this->docent->navigationSections($context, $slug),
             'topbarLinks' => $this->docent->topbarLinks($context, $slug),
             'currentSlug' => $slug,
+            'shareLinks' => $this->docent->sharing()->linksFor($slug, $context->user),
+            'shareDefaultDays' => $this->docent->sharing()->defaultDays(),
         ];
     }
 
