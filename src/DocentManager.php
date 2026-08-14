@@ -653,6 +653,16 @@ final class DocentManager
             return $context->audience === $audience;
         }
 
+        // A share render never asks the host which audiences its anonymous
+        // reader belongs to — the same footing the renderer puts an inline
+        // `:::audience` block on. This is the front-matter `audience:` key and
+        // the card filtering behind `:::section-cards`, which reach the
+        // registry through here rather than through the renderer, so they
+        // need saying twice.
+        if ($this->mode->share()) {
+            return false;
+        }
+
         return $this->registry->resolveAudience($audience, $context) ?? false;
     }
 

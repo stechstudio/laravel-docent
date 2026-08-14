@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace STS\Docent\Http\Middleware;
 
 use Closure;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Pipeline;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use RuntimeException;
 use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Sharing\Sharing;
@@ -42,6 +46,7 @@ final class ShareCredential
         private readonly SiteRegistry $sites,
         private readonly DocumentationMode $mode,
         private readonly Router $router,
+        private readonly Container $container,
     ) {}
 
     public function handle(Request $request, Closure $next, string $site): Response
@@ -65,9 +70,54 @@ final class ShareCredential
 
         $this->mode->enableShare($day);
 
-        // Run the matched action here rather than continuing down the stack:
-        // the whole point is that the guard below us never sees this request.
-        return $this->router->prepareResponse($request, $request->route()?->run());
+        return $this->withoutGuard($request, $site);
+    }
+
+    /**
+     * Continue down the stack with the host's authentication guard taken out,
+     * and nothing else.
+     *
+     * The obvious shortcut — running the matched action here and returning
+     * its response — skips *every* middleware below this one, not just the
+     * guard: a host's security headers, its response shaping, Laravel's own
+     * `SubstituteBindings`. A share response would quietly differ from every
+     * other response the application serves.
+     *
+     * Excluding the guard from the matched route would be tidier still, but
+     * `Route::withoutMiddleware()` mutates the route object, and under Octane
+     * that object outlives the request — one share link would strip `auth`
+     * from the page for everyone who asked for it afterwards. Rebuilding the
+     * tail of the pipeline touches nothing that survives the request.
+     */
+    private function withoutGuard(Request $request, string $site): Response
+    {
+        return (new Pipeline($this->container))
+            ->send($request)
+            ->through($this->remainingMiddleware($request, $site))
+            ->then(fn (Request $request): Response => $this->router->prepareResponse(
+                $request,
+                $request->route()?->run(),
+            ));
+    }
+
+    /**
+     * Everything the router would still have run after this middleware, less
+     * the guard the token stands in for.
+     *
+     * @return list<string>
+     */
+    private function remainingMiddleware(Request $request, string $site): array
+    {
+        $gathered = $this->router->gatherRouteMiddleware($request->route());
+        $anchor = (string) $this->sites->siteConfig($site)->get('share.before', AuthenticatesRequests::class);
+
+        $position = array_search(self::class.':'.$site, $gathered, strict: true);
+
+        return array_values(array_filter(
+            array_slice($gathered, $position === false ? 0 : $position + 1),
+            fn (mixed $middleware): bool => is_string($middleware)
+                && ! is_a(Str::before($middleware, ':'), $anchor, allow_string: true),
+        ));
     }
 
     /**

@@ -87,3 +87,18 @@ it('produces url-safe characters only', function () {
 
     expect(array_filter($tokens, fn (string $t): bool => preg_match('/^[A-Za-z0-9_-]+$/', $t) !== 1))->toBeEmpty();
 });
+
+it('rejects an expiry segment too wide to convert', function () {
+    // base_convert() overflows to INF past roughly 200 base36 digits and then
+    // throws, so an unbounded segment turns a crafted query string into a 500.
+    $mac = substr(ShareToken::mint('/docs/billing', TODAY + 30, KEY), -11);
+
+    expect(ShareToken::expiryDay('/docs/billing', str_repeat('9', 400).$mac, KEY, TODAY))->toBeNull()
+        ->and(ShareToken::expiryDay('/docs/billing', str_repeat('z', 200).$mac, KEY, TODAY))->toBeNull();
+});
+
+it('rejects an expiry segment one character past the ceiling', function () {
+    $mac = substr(ShareToken::mint('/docs/billing', TODAY + 30, KEY), -11);
+
+    expect(ShareToken::expiryDay('/docs/billing', 'zzzzzzz'.$mac, KEY, TODAY))->toBeNull();
+});

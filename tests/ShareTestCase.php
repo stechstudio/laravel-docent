@@ -5,6 +5,7 @@ namespace STS\Docent\Tests;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use STS\Docent\DocentManager;
+use STS\Docent\Tests\Support\StampsResponse;
 
 /**
  * Share links only mean anything behind a guard, so this suite runs the docs
@@ -19,7 +20,7 @@ abstract class ShareTestCase extends TestCase
 
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
         $app['config']->set('docent.share.enabled', true);
-        $app['config']->set('docent.sites.docs.route.middleware', ['web', 'auth']);
+        $app['config']->set('docent.sites.docs.route.middleware', ['web', 'auth', StampsResponse::class]);
 
         Gate::define('shareDocentPage', fn ($user) => (bool) ($user->is_admin ?? false));
     }

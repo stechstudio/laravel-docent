@@ -91,3 +91,19 @@ it('records a shared read against its own surface', function () {
         'surface' => 'share',
     ]);
 })->uses(RefreshDatabase::class);
+
+it('still runs the host middleware that sits below the guard', function () {
+    // The credential stands in for authentication and nothing else. A host's
+    // security headers, response shaping, and Laravel's own SubstituteBindings
+    // all sit below the guard and must still see a share response.
+    $this->get($this->shareUrl('guides/setup'))
+        ->assertOk()
+        ->assertHeader('X-Host-Middleware', 'ran');
+});
+
+it('runs that same middleware for an ordinary signed-in reader', function () {
+    $this->actingAs($this->adminUser())
+        ->get('/docs/guides/setup')
+        ->assertOk()
+        ->assertHeader('X-Host-Middleware', 'ran');
+});

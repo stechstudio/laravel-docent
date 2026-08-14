@@ -71,3 +71,20 @@ it('refuses a valid credential on every route outside the allowlist', function (
     'llms-full.txt' => '/docs/llms-full.txt',
     'sitemap' => '/docs/sitemap.xml',
 ]);
+
+it('answers a token too long to convert without raising', function () {
+    // Reported as an unauthenticated 500: base_convert() threw a ValueError
+    // before the failure limiter could even count the attempt.
+    $this->get('/docs/guides/setup?s='.str_repeat('9', 400).'abcdefghijk')->assertRedirect('/login');
+});
+
+it('answers assorted malformed tokens with the login wall', function (string $token) {
+    $this->get('/docs/guides/setup?s='.$token)->assertRedirect('/login');
+})->with([
+    'empty' => '',
+    'short' => 'x',
+    'mac only' => 'Q7mPv9LeKd2',
+    'uppercase day' => 'FYEQ7mPv9LeKd2',
+    'punctuation' => '..!Q7mPv9LeKd2',
+    'long alpha' => 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzQ7mPv9LeKd2',
+]);

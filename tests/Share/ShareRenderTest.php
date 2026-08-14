@@ -153,3 +153,29 @@ it('cannot reach the markdown variant of a shared page at all', function () {
 
     $this->get('/docs/guides/setup.md?'.$token)->assertRedirect('/login');
 });
+
+it('never asks the host about the audience of a page it is asked to share', function () {
+    $calls = 0;
+
+    $this->app->make(IntegrationRegistry::class)
+        ->audience('internal', function () use (&$calls): bool {
+            $calls++;
+
+            return true;
+        });
+
+    // Front-matter `audience:` resolves through DocentManager rather than the
+    // renderer, so the renderer's hold-back does not reach it.
+    $this->get($this->shareUrl('internal-notes'))->assertNotFound();
+
+    expect($calls)->toBe(0);
+});
+
+it('shows an audience page to a viewer the host places in that audience', function () {
+    config()->set('docent_test.internal', true);
+
+    $this->actingAs($this->adminUser())
+        ->get('/docs/internal-notes')
+        ->assertOk()
+        ->assertSee('Notes for the internal audience only.');
+});

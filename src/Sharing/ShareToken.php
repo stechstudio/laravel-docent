@@ -29,6 +29,15 @@ final class ShareToken
     /** Width of {@see self::MAC_BYTES} once base64url-encoded and unpadded. */
     private const MAC_CHARS = 11;
 
+    /**
+     * Widest expiry segment worth converting. Six base36 characters reach a
+     * day past the year five million, so nothing we mint comes near it — but
+     * `base_convert()` overflows to INF on a long enough string and then
+     * throws, which without this bound turns any crafted query string into an
+     * unauthenticated 500 raised before the failure limiter can count it.
+     */
+    private const MAX_DAY_CHARS = 6;
+
     public static function mint(string $path, int $day, string $key): string
     {
         return base_convert((string) $day, 10, 36).self::mac($path, $day, $key);
@@ -45,7 +54,7 @@ final class ShareToken
         $mac = substr($token, -self::MAC_CHARS);
         $encodedDay = substr($token, 0, -self::MAC_CHARS);
 
-        if ($encodedDay === '' || preg_match('/^[0-9a-z]+$/', $encodedDay) !== 1) {
+        if (preg_match('/^[0-9a-z]{1,'.self::MAX_DAY_CHARS.'}$/', $encodedDay) !== 1) {
             return null;
         }
 
