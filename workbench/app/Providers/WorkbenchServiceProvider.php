@@ -22,6 +22,10 @@ class WorkbenchServiceProvider extends ServiceProvider
             'docent.sites.docs.filesystem.path' => dirname(__DIR__, 2).'/resources/docs',
             // Demo the admin panel (gated below to the account owner).
             'docent.sites.docs.admin.enabled' => true,
+            // Share links, so the top bar's share panel is there to dogfood.
+            // Add 'auth' to route.middleware below to see the whole flow: a
+            // signed-out visitor is turned away, a share link gets through.
+            'docent.share.enabled' => true,
             'docent.sites.docs.navigation.links' => [
                 ['label' => 'Support', 'icon' => 'lifebuoy', 'url' => 'https://example.com/support'],
                 ['label' => 'Quickstart', 'icon' => 'rocket-launch', 'page' => 'getting-started/quickstart'],
@@ -77,6 +81,9 @@ class WorkbenchServiceProvider extends ServiceProvider
 
         // The admin panel is gated to the account owner; guests are denied.
         Gate::define('viewDocentAdmin', fn (?User $user) => $user?->email === 'admin@acme.test');
+
+        // Share links, so the top bar's share panel is there to dogfood.
+        Gate::define('shareDocentPage', fn (?User $user) => $user?->email === 'admin@acme.test');
 
         // Teach Docent about this application.
         Docent::value('account.plan', fn () => 'Team Plan', label: 'Account plan name')

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Share links: one documentation page, readable by someone who is not signed in. Gated docs create friction at the moment an answer matters most — a support reply links to the page that explains the problem, and the recipient hits a login screen; a sales conversation turns on one feature nobody outside the account can read. A viewer who passes `share.gate` can now copy a link from the reader's top bar, and the URL is the page's own plus a fourteen-character `?s=` token. Off by default; enable with `share.enabled` and define the gate.
+
+  Nothing viewer-specific travels with the link. Authorization blocks resolve as they would for a logged-out visitor, `{{ value: }}` and `{{ link: }}` tokens render their registered label, and no host resolver, condition, audience predicate, or component runs at all — so a share link cannot carry account data, and a resolver written for a signed-in viewer cannot fail on one. A recipient who *is* signed in gets their normal page in their own context instead, because a link is often sent precisely so someone can see something as themselves; the token is inert for them.
+
+  The token is an alternative credential rather than a hole in the guard. Nothing is ungated: it satisfies the host's guard for the page and for that page's images and stylesheet, each signed for its own path, and every other route — search, the assistant, insights, the widget, `llms.txt`, the sitemap, the admin panel — refuses it however valid it is. Links inside a shared page still lead to the login wall, which is the intended nudge, and the page carries `noindex, nofollow` and never appears in the sitemap. Requests presenting a token that fails to verify are rate limited; verified ones are not, so a page full of images still loads.
+
+  Hosts add no middleware and change no existing config. The service provider registers the credential into the kernel's middleware priority map ahead of `AuthenticatesRequests`, so it sorts after the session starts and before the guard wherever `auth` was written. A bespoke guard implementing neither that contract nor `Authenticate` can be named in `share.before`, and is seated into the priority map so the ordering holds. The credential stands in for authentication and nothing else: a host's `can:`, its security headers, and Laravel's own `SubstituteBindings` all still run for a share response, and "signed in" is read from the guards the route itself names, so `auth:admin` behaves like `auth`. Changing `share.salt` invalidates every outstanding link at once.
+
 ## [1.3.1] - 2026-08-13
 
 ### Fixed

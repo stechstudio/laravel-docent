@@ -7,11 +7,13 @@ namespace STS\Docent\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Route;
 use STS\Docent\Content\AgentFeed;
 use STS\Docent\DocentManager;
 use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Page;
 use STS\Docent\Runtime\DocumentationContext;
+use STS\Docent\Runtime\DocumentationMode;
 
 /**
  * Serves documentation pages. Deliberately thin — all resolution, rendering,
@@ -23,6 +25,7 @@ final class PageController
         private readonly DocentManager $docent,
         private readonly AgentFeed $feed,
         private readonly InsightRecorder $insights,
+        private readonly DocumentationMode $mode,
     ) {}
 
     public function home(Request $request): Response|RedirectResponse
@@ -48,6 +51,15 @@ final class PageController
         } elseif (str_contains(strtolower((string) $request->header('Accept')), 'text/markdown')
             && $request->prefers(['text/markdown', 'text/html']) === 'text/markdown') {
             $markdown = true;
+        }
+
+        // A share link resolves to the shared page and nothing else. The agent
+        // feed is a second rendering path with its own rules about what a
+        // viewer may see, and keeping the two in step forever is a worse bet
+        // than declining to negotiate: a shared page is for a person reading
+        // it, and the header that asks for Markdown is never sent by one.
+        if ($this->mode->share()) {
+            $markdown = false;
         }
 
         $page = $this->docent->page($slug);
@@ -82,6 +94,12 @@ final class PageController
                 'X-Robots-Tag' => 'noindex, nofollow',
                 'Vary' => 'Accept',
             ]);
+        }
+
+        if ($this->mode->share()) {
+            $this->insights->pageViewed($slug, 'share');
+
+            return $this->shared($page, $slug, $context);
         }
 
         $this->insights->pageViewed($slug, 'reader');
@@ -133,7 +151,49 @@ final class PageController
             'sections' => $this->docent->navigationSections($context, $slug),
             'topbarLinks' => $this->docent->topbarLinks($context, $slug),
             'currentSlug' => $slug,
+            'shareLinks' => $this->docent->sharing()->linksFor($slug, $context->user),
+            'shareDefaultDays' => $this->docent->sharing()->defaultDays(),
         ];
+    }
+
+    /**
+     * One page, on its own, for a reader the application has never met.
+     *
+     * The page still had to clear `authorize()` above under the guest
+     * context, so a share link can only ever reach content a logged-out
+     * visitor was already allowed to see. No navigation is built and no
+     * neighbouring pages are resolved — there is nowhere else to go from
+     * here, which is the point.
+     */
+    private function shared(Page $page, string $slug, DocumentationContext $context): Response
+    {
+        return response()->view('docent::share', [
+            'docent' => $this->docent,
+            'siteName' => $this->docent->siteName(),
+            'page' => $page,
+            'context' => $context,
+            'title' => $page->title(),
+            'description' => $page->description(),
+            'html' => $page->render($context),
+            'currentSlug' => $slug,
+            'loginUrl' => $this->loginUrl(),
+        ])->header('X-Robots-Tag', 'noindex, nofollow');
+    }
+
+    /**
+     * Where the "sign in to read everything" offer points. A host that has no
+     * `login` route and configures nothing gets no offer rather than a link
+     * into nowhere.
+     */
+    private function loginUrl(): ?string
+    {
+        $configured = $this->docent->config('share.login_url');
+
+        if (is_string($configured) && $configured !== '') {
+            return $configured;
+        }
+
+        return Route::has('login') ? route('login') : null;
     }
 
     private function denied(): RedirectResponse

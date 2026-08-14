@@ -75,6 +75,17 @@
 }
 
 @layer components {
+    /* A dynamic value on a shared page, where no resolver runs. Reads as a
+       stand-in rather than as content the reader is meant to act on, without
+       shouting loudly enough to derail the sentence around it. */
+    .docent-placeholder {
+        border-radius: 0.25rem;
+        background-color: color-mix(in oklab, currentColor 8%, transparent);
+        padding-inline: 0.25rem;
+        font-size: 0.9em;
+        opacity: 0.75;
+    }
+
     /* The search dialog's spinner holds back 150ms so fast responses never
        flicker it — most searches resolve before it ever shows. Spin is
        declared here rather than via animate-spin: both need the animation

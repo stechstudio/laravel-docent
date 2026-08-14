@@ -25,6 +25,13 @@ Route::get('/demo/login/{role}', function (string $role) {
     return redirect('/docs');
 })->name('workbench.demo.login');
 
+// Somewhere for the guard to send a signed-out visitor, and the route the
+// share page's "sign in to read everything" offer looks for.
+Route::get('/login', fn () => <<<'HTML'
+    <p>Sign in to browse the documentation.</p>
+    <p><a href="/demo/login/admin">Account owner</a> &middot; <a href="/demo/login/member">Team member</a></p>
+    HTML)->name('login');
+
 Route::get('/demo/logout', function () {
     Auth::logout();
 

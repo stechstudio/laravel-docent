@@ -17,6 +17,20 @@ use STS\Docent\Runtime\IntegrationRegistry;
  */
 trait ResolvesVisibility
 {
+    /**
+     * Whether host-registered predicates may be consulted for this render.
+     *
+     * A share render says no: its reader is anonymous and unknown to the
+     * application, so every host predicate is treated as unsatisfied — the
+     * same footing `authorizationVisible()` already puts a guest on. Negation
+     * still applies on top, so `:::unless` shows its default branch rather
+     * than vanishing.
+     */
+    protected function hostExtensions(): bool
+    {
+        return true;
+    }
+
     protected function authorizationVisible(AuthorizationBlock $node, DocumentationContext $context): bool
     {
         return $node->mode->grants($context->can($node->ability, $node->arguments));
@@ -24,7 +38,7 @@ trait ResolvesVisibility
 
     protected function conditionVisible(ConditionBlock $node, IntegrationRegistry $registry, DocumentationContext $context): bool
     {
-        $result = $registry->resolveCondition($node->condition, $context);
+        $result = $this->hostExtensions() ? $registry->resolveCondition($node->condition, $context) : false;
 
         // Unknown condition → render nothing.
         if ($result === null) {
@@ -41,6 +55,6 @@ trait ResolvesVisibility
             return $context->audience === $node->audience;
         }
 
-        return $registry->resolveAudience($node->audience, $context) ?? false;
+        return $this->hostExtensions() && ($registry->resolveAudience($node->audience, $context) ?? false);
     }
 }

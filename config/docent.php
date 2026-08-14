@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+
 return [
 
     /*
@@ -104,6 +106,62 @@ return [
 
     'render' => [
         'strict_tokens' => false,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Share Links
+    |--------------------------------------------------------------------------
+    |
+    | A share link makes one page readable by someone who is not signed in —
+    | a support recipient, a sales lead — without opening the rest of the
+    | site. The URL is the page's own, plus a short `?s=` token.
+    |
+    | Nothing viewer-specific ever reaches a share link. Authorization blocks
+    | resolve as they would for a logged-out visitor and dynamic values render
+    | their label instead of resolving, so no host resolver runs and there is
+    | no reader data to leak. A recipient who IS signed in gets their normal
+    | page, their own context intact; the token is simply ignored.
+    |
+    | The token is an alternative credential, not a hole in your guard: it
+    | satisfies the guard for the page and for that page's images and
+    | stylesheet, and for nothing else. Search, the assistant, llms.txt, and
+    | the admin panel refuse it no matter how valid it is.
+    |
+    | `gate` is checked with Gate::allows, so leaving it undefined means
+    | nobody can mint links. Change `salt` to invalidate every outstanding
+    | link at once.
+    |
+    */
+
+    'share' => [
+        'enabled' => false,
+
+        // The ability a viewer needs to mint share links.
+        'gate' => 'shareDocentPage',
+
+        // Rotate to invalidate every outstanding share link.
+        'salt' => env('DOCENT_SHARE_SALT'),
+
+        // Default and maximum link lifetime, in days.
+        'ttl' => 30,
+        'max_ttl' => 90,
+
+        // Rate limit applied only to requests that carry a share token.
+        'throttle' => '60,1',
+
+        // Where the "sign in to read everything" footer link points. Null
+        // uses the host's `login` route when it has one, and omits the offer
+        // when it does not.
+        'login_url' => null,
+
+        // The middleware Docent's share credential must run before, and the
+        // one it stands in for. The default covers Laravel's own `auth`,
+        // `auth:sanctum`, and anything extending Authenticate; name a bespoke
+        // guard here when it implements neither. Docent seats whatever it
+        // finds here into the kernel's middleware priority map, since Laravel
+        // can only order against an anchor already in that map.
+        'before' => AuthenticatesRequests::class,
     ],
 
     'check' => [
