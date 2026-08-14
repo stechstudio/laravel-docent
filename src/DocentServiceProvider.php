@@ -259,10 +259,12 @@ final class DocentServiceProvider extends ServiceProvider
      */
     private function prioritizeShareCredential(): void
     {
+        $anchors = $this->shareAnchors();
+
         // Nothing to order for the vast majority of installs, which never
         // turn share links on — and no reason to touch the kernel outside an
         // HTTP context at all.
-        if (! $this->sharesAnyPage() || ! $this->app->bound(HttpKernel::class)) {
+        if ($anchors === [] || ! $this->app->bound(HttpKernel::class)) {
             return;
         }
 
@@ -270,23 +272,46 @@ final class DocentServiceProvider extends ServiceProvider
         // would otherwise get share links that silently redirect to the login
         // wall, which is a worse outcome than a boot-time failure naming the
         // reason.
-        $this->app->make(HttpKernel::class)->addToMiddlewarePriorityBefore(
-            (string) config('docent.share.before', AuthenticatesRequests::class),
-            ShareCredential::class,
-        );
-    }
+        $kernel = $this->app->make(HttpKernel::class);
 
-    private function sharesAnyPage(): bool
-    {
-        $sites = $this->app->make(SiteRegistry::class);
-
-        foreach ($sites->keys() as $key) {
-            if ($sites->siteConfig($key)->get('share.enabled', false)) {
-                return true;
+        // Laravel can only place a middleware relative to an anchor already in
+        // the priority map, and appends it otherwise. A bespoke guard is not
+        // in that map, so naming one in `share.before` without first seating
+        // it there would land the credential *after* the guard — the exact
+        // arrangement the setting exists to avoid, failing silently.
+        foreach ($anchors as $anchor) {
+            if (! in_array($anchor, $kernel->getMiddlewarePriority(), true)) {
+                $kernel->addToMiddlewarePriorityBefore(AuthenticatesRequests::class, $anchor);
             }
         }
 
-        return false;
+        // Each anchor above was seated immediately before the contract, in
+        // turn, so the first one is the earliest — and going before it goes
+        // before all of them. The priority map is application-wide, so sites
+        // configuring different anchors share this single position.
+        $kernel->addToMiddlewarePriorityBefore($anchors[0], ShareCredential::class);
+    }
+
+    /**
+     * The guard each sharing site wants the credential to precede, in
+     * configuration order and without repeats.
+     *
+     * @return list<string>
+     */
+    private function shareAnchors(): array
+    {
+        $sites = $this->app->make(SiteRegistry::class);
+        $anchors = [];
+
+        foreach ($sites->keys() as $key) {
+            $config = $sites->siteConfig($key);
+
+            if ($config->get('share.enabled', false)) {
+                $anchors[] = (string) $config->get('share.before', AuthenticatesRequests::class);
+            }
+        }
+
+        return array_values(array_unique($anchors));
     }
 
     /**

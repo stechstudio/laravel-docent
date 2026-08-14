@@ -142,25 +142,41 @@ Split out so the format is unit-testable without a request.
 
 ### `ShareCredential` (`src/Http/Middleware/ShareCredential.php`)
 
-```php
-public function handle(Request $request, Closure $next, string $site): Response
-{
-    if ($request->user() !== null) {
-        return $next($request);
-    }
+Four outcomes, in order. Ordinary reading — no `?s=` at all — leaves at the
+first check and does no work.
 
-    return $this->responseFor($request, $site) ?? $next($request);
-}
-```
+1. Sharing off, no token, or a route outside the allowlist → continue.
+2. Reader signed in → continue, token inert.
+3. Token verifies → share mode on, continue with the guard removed.
+4. Token present but invalid → count it against the limiter, continue to the
+   guard, which answers as it would for any anonymous visitor.
+
+"Signed in" means signed in *as this route understands it*. `$request->user()`
+answers for the default guard alone, so a host routing documentation through
+`auth:admin` would have its signed-in admins handed the anonymous render.
+The middleware reads the guards named by the route's own authentication
+middleware and asks those.
+
+"With the guard removed" is not the same as running the matched action.
+Skipping straight to the action would bypass everything below this middleware
+— a host's `can:`, its security headers, Laravel's `SubstituteBindings` — so
+the tail of the pipeline is rebuilt with only the guard filtered out.
+Excluding it from the matched route would read better, but
+`Route::withoutMiddleware()` mutates the route object, and under Octane that
+mutation outlives the request: one share link would strip `auth` from the page
+for everyone afterwards.
 
 Registered by the service provider into the group's middleware array, and into
 the kernel's priority map before `AuthenticatesRequests`, so it sorts after
 `StartSession` and before the host's guard wherever the host wrote `auth`.
 Hosts change nothing.
 
-`share.before` names the priority anchor, defaulting to the
-`AuthenticatesRequests` contract. A host whose guard neither implements that
-contract nor extends `Authenticate` sets its own class there.
+`share.before` names both the priority anchor and the middleware the token
+stands in for, defaulting to the `AuthenticatesRequests` contract. A host whose
+guard neither implements that contract nor extends `Authenticate` sets its own
+class there, and Docent seats that class into the priority map first — Laravel
+can only order against an anchor already in the map, and would otherwise append
+the credential *behind* the guard, failing silently.
 
 ### `DocumentationMode`
 

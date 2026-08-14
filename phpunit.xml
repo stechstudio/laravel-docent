@@ -23,6 +23,9 @@
         <testsuite name="Share">
             <directory>tests/Share</directory>
             <directory>tests/ShareDisabled</directory>
+            <directory>tests/ShareStack</directory>
+            <directory>tests/ShareGuard</directory>
+            <directory>tests/ShareAnchor</directory>
         </testsuite>
         <testsuite name="MultiSite">
             <directory>tests/MultiSite</directory>

@@ -155,9 +155,12 @@ return [
         // when it does not.
         'login_url' => null,
 
-        // The middleware Docent's share credential must run before. The
-        // default covers Laravel's own `auth` and anything extending it; a
-        // bespoke guard that implements neither belongs here instead.
+        // The middleware Docent's share credential must run before, and the
+        // one it stands in for. The default covers Laravel's own `auth`,
+        // `auth:sanctum`, and anything extending Authenticate; name a bespoke
+        // guard here when it implements neither. Docent seats whatever it
+        // finds here into the kernel's middleware priority map, since Laravel
+        // can only order against an anchor already in that map.
         'before' => AuthenticatesRequests::class,
     ],
 

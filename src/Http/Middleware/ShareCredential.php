@@ -10,6 +10,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Pipeline;
 use Illuminate\Routing\Router;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -51,14 +52,17 @@ final class ShareCredential
 
     public function handle(Request $request, Closure $next, string $site): Response
     {
-        // Signed in: their page, their context, token inert.
-        if ($request->user() !== null) {
+        $sharing = $this->sharingFor($site);
+
+        // Ordinary reading never reaches any of the work below.
+        if (! $sharing->enabled() || ! $request->has('s') || ! $this->credentialed($request, $site)) {
             return $next($request);
         }
 
-        $sharing = $this->sharingFor($site);
-
-        if (! $sharing->enabled() || ! $this->credentialed($request, $site)) {
+        // Signed in: their page, their context, token inert — whether the
+        // token verifies or not, and without spending their limiter budget on
+        // a link that merely went stale.
+        if ($this->authenticated($request, $site)) {
             return $next($request);
         }
 
@@ -71,6 +75,50 @@ final class ShareCredential
         $this->mode->enableShare($day);
 
         return $this->withoutGuard($request, $site);
+    }
+
+    /**
+     * Whether the reader is signed in as far as *this route* is concerned.
+     *
+     * `$request->user()` would answer for the default guard alone, so a host
+     * routing its documentation through `auth:admin` would have every one of
+     * its signed-in admins handed the anonymous render instead of their own
+     * page. The guards the route actually names are right there in its own
+     * authentication middleware, so ask those.
+     */
+    private function authenticated(Request $request, string $site): bool
+    {
+        foreach ($this->guards($request, $site) as $guard) {
+            if (Auth::guard($guard)->check()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The guards this route authenticates against. `auth` names the default
+     * one, `auth:admin,web` names two, and a route with no authentication
+     * middleware at all falls back to the default.
+     *
+     * @return list<?string>
+     */
+    private function guards(Request $request, string $site): array
+    {
+        $guards = [];
+
+        foreach ($this->gathered($request) as $middleware) {
+            if (! $this->isGuard($middleware, $site)) {
+                continue;
+            }
+
+            $parameters = Str::after($middleware, ':');
+
+            $guards = [...$guards, ...($parameters === $middleware ? [null] : explode(',', $parameters))];
+        }
+
+        return $guards === [] ? [null] : $guards;
     }
 
     /**
@@ -108,16 +156,35 @@ final class ShareCredential
      */
     private function remainingMiddleware(Request $request, string $site): array
     {
-        $gathered = $this->router->gatherRouteMiddleware($request->route());
-        $anchor = (string) $this->sites->siteConfig($site)->get('share.before', AuthenticatesRequests::class);
-
+        $gathered = $this->gathered($request);
         $position = array_search(self::class.':'.$site, $gathered, strict: true);
 
         return array_values(array_filter(
             array_slice($gathered, $position === false ? 0 : $position + 1),
-            fn (mixed $middleware): bool => is_string($middleware)
-                && ! is_a(Str::before($middleware, ':'), $anchor, allow_string: true),
+            fn (string $middleware): bool => ! $this->isGuard($middleware, $site),
         ));
+    }
+
+    /**
+     * The route's middleware with aliases and groups already resolved to class
+     * names, which is the form both the priority map and this class match on.
+     *
+     * @return list<string>
+     */
+    private function gathered(Request $request): array
+    {
+        return array_values(array_filter(
+            $this->router->gatherRouteMiddleware($request->route()),
+            is_string(...),
+        ));
+    }
+
+    /** Whether this middleware is the authentication the token stands in for. */
+    private function isGuard(string $middleware, string $site): bool
+    {
+        $anchor = (string) $this->sites->siteConfig($site)->get('share.before', AuthenticatesRequests::class);
+
+        return is_a(Str::before($middleware, ':'), $anchor, allow_string: true);
     }
 
     /**
@@ -132,14 +199,12 @@ final class ShareCredential
      */
     private function rejected(Request $request, Closure $next, string $site): Response
     {
-        if (! $request->has('s')) {
-            return $next($request);
-        }
-
         [$attempts, $seconds] = $this->limit($site);
         $key = 'docent-share|'.$site.'|'.$request->ip();
 
-        abort_if(RateLimiter::tooManyAttempts($key, $attempts), 429);
+        if (RateLimiter::tooManyAttempts($key, $attempts)) {
+            abort(429, headers: ['Retry-After' => (string) RateLimiter::availableIn($key)]);
+        }
 
         RateLimiter::hit($key, $seconds);
 
