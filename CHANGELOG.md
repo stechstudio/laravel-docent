@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-08-13
+
 ### Fixed
 
 - A framed image's click-to-enlarge overlay now resolves its source the same way the inline image does. `:::frame` emits the image twice — once in the page, once inside the lightbox — and only the inline copy was rewritten onto the docs image route, so the enlarged copy kept the raw Markdown source. The browser resolved that relative path against the page URL, which is a Docent route rather than a directory, and the overlay opened onto a broken image on every framed screenshot. The page itself looked correct, so nothing surfaced the failure until a reader clicked; `docent:check` stayed silent because the Markdown reference it validates is the one that already worked.
