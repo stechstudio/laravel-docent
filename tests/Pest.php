@@ -7,6 +7,8 @@ use STS\Docent\Tests\InsightsTestCase;
 use STS\Docent\Tests\MultiSiteDomainTestCase;
 use STS\Docent\Tests\MultiSiteTestCase;
 use STS\Docent\Tests\SearchRelevanceTestCase;
+use STS\Docent\Tests\ShareDisabledTestCase;
+use STS\Docent\Tests\ShareTestCase;
 use STS\Docent\Tests\TestCase;
 use STS\Docent\Tests\WidgetTestCase;
 
@@ -17,5 +19,7 @@ uses(AiTestCase::class)->in('Ai');
 uses(InsightsTestCase::class)->in('Insights');
 uses(AiRetrievalTestCase::class)->in('AiRetrieval');
 uses(SearchRelevanceTestCase::class)->in('SearchRelevance');
+uses(ShareTestCase::class)->in('Share');
+uses(ShareDisabledTestCase::class)->in('ShareDisabled');
 uses(MultiSiteTestCase::class)->in('MultiSite');
 uses(MultiSiteDomainTestCase::class)->in('MultiSiteDomains');

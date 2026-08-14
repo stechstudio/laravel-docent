@@ -54,7 +54,6 @@ use STS\Docent\Documents\Document;
 use STS\Docent\Documents\HtmlPolicy;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\IntegrationRegistry;
-use STS\Docent\Support\DocsImagePath;
 use STS\Docent\Support\Icon;
 use STS\Docent\Support\InternalLink;
 use STS\Docent\Support\SafeUrl;
@@ -85,7 +84,12 @@ final class HtmlRenderer
      * @param  array<string, mixed>  $options  allow_html (bool), debug (bool), route_resolver (Closure)
      * @param  ?Closure(string): ?Document  $includeResolver
      * @param  ?Closure(string): ?string  $urlResolver  Resolver for slug-style internal links.
-     * @param  ?Closure(string): string  $imageResolver  Maps a docs-root-relative image path to a servable URL.
+     * @param  ?Closure(string): string  $imageResolver  Maps an image source as authored to a servable URL.
+     *                                                   Given the raw source rather than a resolved path because
+     *                                                   only the caller knows which sources belong to this site —
+     *                                                   a page-relative file, an admin upload, and a third-party
+     *                                                   CDN each need different treatment, and guessing wrong
+     *                                                   means appending a credential to an external URL.
      */
     public function __construct(
         private readonly IntegrationRegistry $registry,
@@ -450,6 +454,10 @@ final class HtmlRenderer
 
     private function renderComponent(ComponentNode $node): string
     {
+        if (! $this->hostExtensions()) {
+            return '';
+        }
+
         $component = $this->registry->resolveComponent($node->name);
 
         if ($component === null) {
@@ -460,6 +468,23 @@ final class HtmlRenderer
 
         // Component output is trusted app-authored HTML.
         return $output instanceof Htmlable ? $output->toHtml() : $output;
+    }
+
+    /**
+     * Whether this render may call into the host application to resolve
+     * viewer-specific content — registered values, application links, and
+     * components.
+     *
+     * A share render says no. Its reader is anonymous and unknown to the
+     * host, so a resolver written for a signed-in viewer has nothing sensible
+     * to answer with, and running one is the only way host data could reach a
+     * link that is, by design, readable without signing in. Values and links
+     * fall back to their registered labels, the way agent markdown already
+     * renders them; components drop out entirely, as they do there too.
+     */
+    protected function hostExtensions(): bool
+    {
+        return (bool) ($this->options['host_extensions'] ?? true);
     }
 
     private function renderLink(Link $node): string
@@ -485,25 +510,17 @@ final class HtmlRenderer
         return '<img src="'.e($this->imageUrl($node->url)).'" alt="'.e($node->alt).'"'.$title.' />';
     }
 
-    /**
-     * A page-relative image source names a file next to the Markdown, which a
-     * browser cannot fetch: it would resolve the path against the page's URL,
-     * and that is a Docent route rather than a directory. Rewrite it onto the
-     * docs image route. Absolute and external sources pass through untouched.
-     */
     private function imageUrl(string $url): string
     {
-        if ($this->imageResolver === null) {
-            return $url;
-        }
-
-        $path = DocsImagePath::relative($url, (string) ($this->options['base_dir'] ?? ''));
-
-        return $path === null ? $url : ($this->imageResolver)($path);
+        return $this->imageResolver === null ? $url : ($this->imageResolver)($url);
     }
 
     private function renderDynamicValue(DynamicValue $node): string
     {
+        if (! $this->hostExtensions()) {
+            return $this->placeholder($this->registry->valueLabel($node->key));
+        }
+
         $value = $this->registry->resolveValue($node->key, $this->context, $node->arguments);
 
         if ($value === null) {
@@ -516,6 +533,13 @@ final class HtmlRenderer
 
     private function renderAppLink(AppLink $node): string
     {
+        // A held-back link resolver still had a registration, so this is a
+        // label rather than a missing token — and an anonymous reader could
+        // not have followed the URL into the application anyway.
+        if ($node->kind === AppLinkKind::Link && ! $this->hostExtensions()) {
+            return $this->placeholder($this->registry->linkLabel($node->key));
+        }
+
         $href = $this->resolveAppLink($node);
 
         if ($href === null) {
@@ -525,12 +549,28 @@ final class HtmlRenderer
         return '<a href="'.e($href).'">'.e($href).'</a>';
     }
 
+    /**
+     * Reached from two directions: a bare `{{ link: }}` token, and a Markdown
+     * link whose destination is one. The host resolver is held back here
+     * rather than at either call site so both are covered — a share render
+     * must not run it, however the author wrote the link.
+     *
+     * A route token is pure framework URL generation with no host closure and
+     * no viewer behind it, so it resolves either way.
+     */
     private function resolveAppLink(AppLink $node): ?string
     {
         return match ($node->kind) {
-            AppLinkKind::Link => $this->registry->resolveLink($node->key, $this->context, $node->parameters),
+            AppLinkKind::Link => $this->hostExtensions()
+                ? $this->registry->resolveLink($node->key, $this->context, $node->parameters)
+                : null,
             AppLinkKind::Route => $this->resolveRoute($node->key, $node->parameters),
         };
+    }
+
+    private function placeholder(string $label): string
+    {
+        return '<span class="docent-placeholder">'.e('{'.$label.'}').'</span>';
     }
 
     /**

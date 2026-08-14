@@ -33,9 +33,11 @@ use STS\Docent\Runtime\Contracts\DocumentationComponent;
 use STS\Docent\Runtime\DocumentationContext;
 use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
+use STS\Docent\Sharing\Sharing;
 use STS\Docent\Sites\SiteConfig;
 use STS\Docent\Sites\SiteRef;
 use STS\Docent\Support\DocentCache;
+use STS\Docent\Support\DocsImagePath;
 use STS\Docent\Support\GrayPalette;
 use STS\Docent\Support\Icon;
 use STS\Docent\Support\InternalLink;
@@ -66,7 +68,14 @@ final class DocentManager
         private readonly DocumentationMode $mode,
         private readonly ContentHtmlSanitizer $htmlSanitizer,
         private readonly SiteConfig $siteConfig,
+        private readonly Sharing $sharing,
     ) {}
+
+    /** Share-link minting and verification for this site. */
+    public function sharing(): Sharing
+    {
+        return $this->sharing;
+    }
 
     /** @var array<string, string> */
     private array $assetVersions = [];
@@ -315,6 +324,16 @@ final class DocentManager
      */
     public function contextFor(?Request $request): DocumentationContext
     {
+        // A share link is read by someone the application does not know, so
+        // every authorization question on that page answers as it would for a
+        // logged-out visitor — whoever minted the link, and whatever they
+        // could see themselves. Answering it here rather than in the
+        // controller means navigation, the table of contents, and the agent
+        // feed all inherit the same footing.
+        if ($this->mode->share()) {
+            return $this->guestContext();
+        }
+
         return new DocumentationContext(
             user: $request?->user() ?? Auth::user(),
             request: $request,
@@ -369,16 +388,43 @@ final class DocentManager
                 'debug' => (bool) config('app.debug', false),
                 'base_dir' => $baseDir,
                 'route_prefix' => (string) $this->config('route.prefix', 'docs'),
+                'host_extensions' => ! $this->mode->share(),
             ],
             includeResolver: fn (string $name): ?Document => $this->partialDocument($name),
             urlResolver: fn (string $slug): string => $this->url($slug),
             sectionCardsRenderer: fn (SectionCards $node): string => $this->sectionCardsHtml($node->section, $node->columns, $context),
             codeBlockRenderer: $this->codeBlockRenderer,
             htmlSanitizer: $this->htmlSanitizer,
-            imageResolver: fn (string $path): string => $this->route('image', ['path' => $path]),
+            imageResolver: fn (string $url): string => $this->imageUrl($url, $baseDir),
         );
 
         return $renderer->render($document);
+    }
+
+    /**
+     * Resolve an image source as authored into one a browser can fetch.
+     *
+     * A page-relative source names a file next to the Markdown, which a
+     * browser cannot follow — it would resolve against the page's URL, and
+     * that is a Docent route rather than a directory — so it moves onto the
+     * docs image route. An admin upload already carries an absolute URL for
+     * this site's streaming route, baked in when it was uploaded. Everything
+     * else is somebody else's URL and is left exactly as written.
+     *
+     * Only the first two are ours to hand a share credential to. Appending
+     * one to a third-party CDN URL would mail the token offsite.
+     */
+    private function imageUrl(string $url, string $baseDir): string
+    {
+        $path = DocsImagePath::relative($url, $baseDir);
+
+        if ($path !== null) {
+            return $this->sharing->decorate($this->route('image', ['path' => $path]));
+        }
+
+        return str_starts_with($url, $this->route('upload', ['path' => 'docent/'.$this->key().'/']))
+            ? $this->sharing->decorate($url)
+            : $url;
     }
 
     /**
@@ -813,7 +859,11 @@ final class DocentManager
             return asset('vendor/docent/'.$file).'?v='.$this->assetVersion($published);
         }
 
-        return $this->route('asset', ['file' => $file]).'?v='.$this->assetVersion($this->assetPath($file));
+        // Only the streamed route needs a share credential; a published asset
+        // is served by the web server and was never behind the guard.
+        return $this->sharing->decorate(
+            $this->route('asset', ['file' => $file]).'?v='.$this->assetVersion($this->assetPath($file)),
+        );
     }
 
     /** @internal */

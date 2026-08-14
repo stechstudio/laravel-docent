@@ -432,6 +432,16 @@ final class IntegrationRegistry
         return $this->parent?->valueLabel($name) ?? $name;
     }
 
+    /** @see self::valueLabel() */
+    public function linkLabel(string $name): string
+    {
+        if (isset($this->links[$name])) {
+            return $this->links[$name]->label ?? $name;
+        }
+
+        return $this->parent?->linkLabel($name) ?? $name;
+    }
+
     /**
      * Resolve an application link to a URL string. Returns null when not
      * registered, or when the resolver failed under a non-strict failure policy.

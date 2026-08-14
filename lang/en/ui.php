@@ -80,6 +80,17 @@ return [
         'empty_error' => 'The documentation did not return an answer. Try another question.',
         'ready_announcement' => 'The Assistant answer is ready.',
     ],
+    'share' => [
+        'button' => 'Share this page',
+        'heading' => 'Share this page',
+        'description' => 'Anyone with this link can read this page without signing in. Nothing specific to you is included.',
+        'expires_label' => 'Link expires',
+        'expires_days' => ':count days',
+        'copy' => 'Copy link',
+        'copied' => 'Link copied',
+        'shared_notice' => 'You are reading a single shared page.',
+        'sign_in' => 'Sign in to read the full documentation',
+    ],
     'widget' => [
         'help' => 'Help',
         'help_center' => 'Help center',

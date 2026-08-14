@@ -282,6 +282,6 @@ final class InsightRecorder
 
     private function surface(string $surface): string
     {
-        return $surface === 'widget' ? 'widget' : 'reader';
+        return in_array($surface, ['widget', 'share'], strict: true) ? $surface : 'reader';
     }
 }

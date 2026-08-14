@@ -32,6 +32,7 @@ use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
 use STS\Docent\Search\SearchQueryAnalyzer;
+use STS\Docent\Sharing\Sharing;
 use STS\Docent\Support\DocentCache;
 
 /** Builds one internally consistent service graph per site and scope. */
@@ -63,6 +64,7 @@ final class SiteServices
         AiConversationStore::class,
         InsightRecorder::class,
         InsightSummary::class,
+        Sharing::class,
     ];
 
     /** @var array<string, array<class-string, object>> */
@@ -157,6 +159,7 @@ final class SiteServices
                 ),
         );
         $codeBlocks = new PhikiCodeBlockRenderer($cache);
+        $sharing = new Sharing($config, $mode, $key);
         $manager = new DocentManager(
             $registry,
             $repository,
@@ -167,6 +170,7 @@ final class SiteServices
             $mode,
             $this->app->make(ContentHtmlSanitizer::class),
             $config,
+            $sharing,
         );
         $agentFeed = new AgentFeed($manager, $repository, $cache, $registry, $navigation);
         $editor = new Editor($manager, $repository, $filesystem, $this->app->make(DocumentParser::class), $registry);
@@ -206,6 +210,7 @@ final class SiteServices
             AiConversationStore::class => $conversations,
             InsightRecorder::class => $insightRecorder,
             InsightSummary::class => $insightSummary,
+            Sharing::class => $sharing,
         ];
 
         if ($database !== null) {

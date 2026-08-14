@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace STS\Docent;
 
 use Illuminate\Container\Container;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\Blade;
@@ -60,6 +62,7 @@ use STS\Docent\Http\Controllers\UploadsController;
 use STS\Docent\Http\Controllers\WidgetController;
 use STS\Docent\Http\Controllers\WidgetSuggestionsController;
 use STS\Docent\Http\Middleware\SetCurrentSite;
+use STS\Docent\Http\Middleware\ShareCredential;
 use STS\Docent\Insights\InsightRecorder;
 use STS\Docent\Insights\InsightSummary;
 use STS\Docent\Navigation\NavigationBuilder;
@@ -67,6 +70,7 @@ use STS\Docent\Runtime\DocumentationMode;
 use STS\Docent\Runtime\IntegrationRegistry;
 use STS\Docent\Search\SearchEngine;
 use STS\Docent\Search\SearchIndexer;
+use STS\Docent\Sharing\Sharing;
 use STS\Docent\Sites\CurrentSite;
 use STS\Docent\Sites\SiteConfig;
 use STS\Docent\Sites\SiteRegistry;
@@ -126,11 +130,13 @@ final class DocentServiceProvider extends ServiceProvider
         $this->app->scoped(AiConversationStore::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(AiConversationStore::class));
         $this->app->scoped(InsightRecorder::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(InsightRecorder::class));
         $this->app->scoped(InsightSummary::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(InsightSummary::class));
+        $this->app->scoped(Sharing::class, static fn (Application $app): object => $app->make(SiteRegistry::class)->service(Sharing::class));
     }
 
     public function boot(): void
     {
         $this->selectMatchedSite();
+        $this->prioritizeShareCredential();
         $this->registerRoutes();
 
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'docent');
@@ -167,7 +173,7 @@ final class DocentServiceProvider extends ServiceProvider
             Route::group([
                 'prefix' => $site->get('route.prefix', 'docs'),
                 'domain' => $site->get('route.domain'),
-                'middleware' => [...(array) $site->get('route.middleware', ['web']), SetCurrentSite::class.':'.$key],
+                'middleware' => $this->siteMiddleware($site, $key),
                 'as' => 'docent.'.$key.'.',
             ], function () use ($site): void {
                 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -216,6 +222,71 @@ final class DocentServiceProvider extends ServiceProvider
                 Route::get('/{slug}', [PageController::class, 'show'])->where('slug', '.*')->name('show');
             });
         }
+    }
+
+    /**
+     * The site group's middleware stack. Position of the share credential in
+     * this array does not matter — {@see self::prioritizeShareCredential()}
+     * sorts it into place — so it simply joins the end.
+     *
+     * @return list<string>
+     */
+    private function siteMiddleware(SiteConfig $site, string $key): array
+    {
+        return [
+            ...(array) $site->get('route.middleware', ['web']),
+            SetCurrentSite::class.':'.$key,
+            ...($site->get('share.enabled', false) ? [ShareCredential::class.':'.$key] : []),
+        ];
+    }
+
+    /**
+     * Teach Laravel that the share credential belongs between the session and
+     * the guard.
+     *
+     * A package cannot splice a middleware into the middle of a host's
+     * configured `route.middleware` array, because it cannot tell which entry
+     * is the guard. The priority map solves exactly this: aliases resolve to
+     * class names before sorting, and the map is matched against each
+     * middleware's interfaces and parents, which is why its default entry is
+     * the `AuthenticatesRequests` contract rather than a class. Anything
+     * implementing it — Laravel's `auth`, `auth:sanctum`, anything extending
+     * `Authenticate` — lands in that slot, and we sort ahead of it.
+     *
+     * A bespoke guard implementing neither would sort ahead of us instead and
+     * turn share links away; `docent.share.before` names a different anchor
+     * for that case.
+     */
+    private function prioritizeShareCredential(): void
+    {
+        // Nothing to order for the vast majority of installs, which never
+        // turn share links on — and no reason to touch the kernel outside an
+        // HTTP context at all.
+        if (! $this->sharesAnyPage() || ! $this->app->bound(HttpKernel::class)) {
+            return;
+        }
+
+        // Deliberately unguarded. A host whose kernel cannot express priority
+        // would otherwise get share links that silently redirect to the login
+        // wall, which is a worse outcome than a boot-time failure naming the
+        // reason.
+        $this->app->make(HttpKernel::class)->addToMiddlewarePriorityBefore(
+            (string) config('docent.share.before', AuthenticatesRequests::class),
+            ShareCredential::class,
+        );
+    }
+
+    private function sharesAnyPage(): bool
+    {
+        $sites = $this->app->make(SiteRegistry::class);
+
+        foreach ($sites->keys() as $key) {
+            if ($sites->siteConfig($key)->get('share.enabled', false)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
