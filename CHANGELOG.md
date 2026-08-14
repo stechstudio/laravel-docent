@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-14
+
 ### Added
 
 - Share links: one documentation page, readable by someone who is not signed in. Gated docs create friction at the moment an answer matters most — a support reply links to the page that explains the problem, and the recipient hits a login screen; a sales conversation turns on one feature nobody outside the account can read. A viewer who passes `share.gate` can now copy a link from the reader's top bar, and the URL is the page's own plus a fourteen-character `?s=` token. Off by default; enable with `share.enabled` and define the gate.
