@@ -843,7 +843,7 @@ a.docent-card:hover .docent-card-title::after {
 .docent-hero-badge {
     display: inline-flex;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     padding: 0.3rem 0.85rem;
     border: 1px solid color-mix(in srgb, var(--docent-accent) 30%, transparent);
     border-radius: 9999px;
@@ -952,12 +952,43 @@ a.docent-card:hover .docent-card-title::after {
     margin-top: 0;
 }
 
+/* Text flows in a centered column at the same readable measure as a doc
+   page, while components (cards, code, callouts) keep the full container.
+   Without this, any paragraph beyond the lead stretches to the landing
+   container's full width and becomes an unreadable wall of text. */
+.docent-landing-body > :is(h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, hr) {
+    max-width: 46rem;
+    margin-inline: auto;
+}
+
+/* A landing h2 renders as an eyebrow section label — quiet structure
+   above a card grid or text block, not a document heading. */
+.docent-landing-body > h2 {
+    max-width: none;
+    margin: 3.5rem 0 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--docent-border);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--docent-muted);
+}
+
+/* Card grids and framed figures read as sections of their own, so they
+   get section-scale breathing room instead of paragraph-scale margins. */
+.docent-landing-body > .docent-cards {
+    margin: 3rem 0;
+}
+
+.docent-landing-body > .docent-frame {
+    margin: 2.5rem 0;
+}
+
 /* A landing body's opening paragraph reads as a lead: centered under the
    hero at a comfortable measure instead of stretching the full container. */
 .docent-landing-body > p:first-child {
     max-width: 42rem;
-    margin-left: auto;
-    margin-right: auto;
     text-align: center;
     font-size: 1.0625rem;
     line-height: 1.7;
@@ -966,7 +997,7 @@ a.docent-card:hover .docent-card-title::after {
 
 /* A trailing paragraph after other landing content is a footer note. */
 .docent-landing-body > p:last-child:not(:first-child) {
-    max-width: 40rem;
+    max-width: 42rem;
     margin: 3.5rem auto 0;
     padding-top: 2rem;
     border-top: 1px solid var(--docent-border);

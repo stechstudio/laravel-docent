@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Landing pages now set body text in a readable centered column. Paragraphs,
+  headings, and lists between the hero and any full-width component are
+  constrained to the same measure as a documentation page instead of
+  stretching across the whole landing container, so a multi-paragraph
+  introduction no longer renders as a wall of text. Card grids and framed
+  figures keep the full width and gain section-scale spacing.
+- A landing page's `##` headings render as eyebrow section labels — small
+  caps over a hairline rule, in the style of help-center section markers —
+  instead of document headings, which looked out of place between
+  marketing-scale sections.
+- The landing hero is more compact: smaller title and description scale with
+  tighter vertical rhythm, so the first row of cards is visible above the
+  fold on a typical desktop viewport.
+
 ## [1.4.0] - 2026-08-14
 
 ### Added

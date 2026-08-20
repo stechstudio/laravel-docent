@@ -9,7 +9,7 @@
         :cta="$heroCta ?? []"
         :search="($heroSearch ?? false) && $searchEnabled" />
 
-    <div class="docent-prose docent-landing-body mx-auto mt-12 max-w-5xl">
+    <div class="docent-prose docent-landing-body mx-auto mt-10 max-w-5xl">
         {!! $html !!}
     </div>
 @endsection
