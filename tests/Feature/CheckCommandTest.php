@@ -5,6 +5,7 @@ use STS\Docent\Admin\Editor;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Parser\MarkdownDocumentParser;
+use STS\Docent\Facades\Docent;
 
 /**
  * Point the repository at a fixture tree and run the check command, returning
@@ -172,6 +173,14 @@ it('flags suggestions that point at nonexistent pages', function () {
 
     $this->artisan('docent:check')
         ->expectsOutputToContain('missing-page')
+        ->assertFailed();
+});
+
+it('flags nonexistent pages in suggestions registered through the facade', function () {
+    Docent::suggest('billing.*', ['missing-global-page']);
+
+    $this->artisan('docent:check')
+        ->expectsOutputToContain('missing-global-page')
         ->assertFailed();
 });
 

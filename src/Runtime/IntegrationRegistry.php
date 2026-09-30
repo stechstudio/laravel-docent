@@ -163,10 +163,22 @@ final class IntegrationRegistry
         return array_slice(array_values(array_unique($slugs)), 0, 5);
     }
 
-    /** @return array<string, list<string>> */
+    /**
+     * Every registered suggestion, this layer's merged over its parent's the
+     * same way suggestionsFor() merges them, so a caller walking the full set
+     * (the unknown-suggestion check) sees what the widget will actually use.
+     *
+     * @return array<string, list<string>>
+     */
     public function suggestions(): array
     {
-        return $this->suggestions;
+        $merged = $this->parent?->suggestions() ?? [];
+
+        foreach ($this->suggestions as $pattern => $slugs) {
+            $merged[$pattern] = array_values(array_unique([...($merged[$pattern] ?? []), ...$slugs]));
+        }
+
+        return $merged;
     }
 
     /**

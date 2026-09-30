@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `docent:check` now validates widget suggestions registered through the `Docent` facade. `Docent::suggest()` files suggestions in the global registry, which the widget reads but the `unknown-suggestion` rule did not, so a suggestion pointing at a renamed or deleted page passed the check and silently stopped appearing. Only suggestions registered directly on a site (`Docent::site()->suggest()`) were checked. In a multi-site app, a global suggestion is now checked against every site's pages, since every site's widget uses it.
+
 ## [1.5.0] - 2026-08-20
 
 ### Changed

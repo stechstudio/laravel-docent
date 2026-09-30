@@ -55,6 +55,20 @@ it('merges suggestions from both layers, local last, capped at five', function (
     expect($site->suggestionsFor('billing.index'))->toBe(['billing/overview', 'billing/admin']);
 });
 
+it('lists suggestions from both layers, merged by pattern', function () {
+    $global = new IntegrationRegistry;
+    $global->suggest('billing.*', ['billing/overview'])
+        ->suggest('settings.*', ['account/profile']);
+
+    $site = new IntegrationRegistry(parent: $global);
+    $site->suggest('billing.*', ['billing/admin', 'billing/overview']);
+
+    expect($site->suggestions())->toBe([
+        'billing.*' => ['billing/overview', 'billing/admin'],
+        'settings.*' => ['account/profile'],
+    ]);
+});
+
 it('describes merged metadata with local winning by name', function () {
     $global = new IntegrationRegistry;
     $global->value('plan', fn () => '', 'Global label');
