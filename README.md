@@ -514,6 +514,7 @@ A polished reading experience out of the box, with no build step in your app:
 - Server-side syntax highlighting (Phiki, dual light/dark themes), copy buttons, filename labels
 - One accent color rebrands everything: `config/docent.php` → `theme.accent`
 - Zero external requests; ~35KB CSS + ~51KB JS, shipped prebuilt
+- An in-app help widget (`<x-docent::widget />`) that survives Livewire's `wire:navigate` and Turbo page changes with no glue code
 
 Publish the views (`--tag=docent-views`) for deeper customization.
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-02
+
+### Added
+
+- The help widget now survives client-side page changes that replace `<body>`, such as Livewire's `wire:navigate` and Turbo. It moves its launcher and panel into the new body, removes the dead copies that a Back or Forward press restores from the page cache, and follows the page context of the new page's `<x-docent::widget />`. A page without the widget hides it until a page with it returns. Host applications no longer need their own glue script; remove any that moves `[data-docent-launcher]` or `[data-docent-panel]`, or calls `Docent('page', …)` after navigation.
+
+## [1.6.0] - 2026-09-30
+
 ### Fixed
 
 - `docent:check` now validates widget suggestions registered through the `Docent` facade. `Docent::suggest()` files suggestions in the global registry, which the widget reads but the `unknown-suggestion` rule did not, so a suggestion pointing at a renamed or deleted page passed the check and silently stopped appearing. Only suggestions registered directly on a site (`Docent::site()->suggest()`) were checked. In a multi-site app, a global suggestion is now checked against every site's pages, since every site's widget uses it.

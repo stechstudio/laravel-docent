@@ -339,6 +339,41 @@
         }
     });
 
+    // Livewire's wire:navigate and Turbo replace <body> on every page change,
+    // taking the launcher and panel with it. Move both into the new body, drop
+    // the dead copies a Back or Forward press restores from the page cache,
+    // and follow the new page's context. A page without the widget leaves
+    // them out until one with it comes back.
+    function adoptBody() {
+        document.querySelectorAll('[data-docent-launcher], [data-docent-panel]').forEach((node) => {
+            if (node !== launcher && node !== panel) node.remove();
+        });
+
+        const next = document.querySelector('[data-docent-widget-config]');
+        if (!next) {
+            close();
+            return;
+        }
+
+        // Moving an iframe reloads it, so leave nodes that are already in place.
+        [launcher, panel].forEach((node) => {
+            if (node && node.parentNode !== document.body) document.body.appendChild(node);
+        });
+
+        try {
+            page(JSON.parse(next.textContent || '{}').page);
+        } catch (error) {
+            // Keep the previous page context.
+        }
+    }
+
+    let body = document.body;
+    new MutationObserver(() => {
+        if (document.body === body) return;
+        body = document.body;
+        adoptBody();
+    }).observe(root, { childList: true });
+
     makeLauncher();
 
     if (config.preload !== false) {
