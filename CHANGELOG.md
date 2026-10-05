@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A page's Markdown copy (`.md` and `Accept: text/markdown`) and `llms-full.txt` now reflect the reader's current `:::when`, `:::unless`, `:::can`, and audience results. Both were cached per viewer until the next deploy or `docent:clear`, under a key that did not include those results, so an agent kept reading a block that was turned off, or missed one that was turned on, after an application flag or a user's role changed. Both now render on every request, as the HTML page always has.
+
 ## [1.7.0] - 2026-10-02
 
 ### Added

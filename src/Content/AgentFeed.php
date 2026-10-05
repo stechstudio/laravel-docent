@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace STS\Docent\Content;
 
-use Closure;
 use STS\Docent\Content\Repositories\DocumentationRepository;
 use STS\Docent\DocentManager;
 use STS\Docent\Documents\Document;
@@ -28,26 +27,15 @@ final class AgentFeed
     ) {}
 
     /**
-     * Render one page for agent-facing HTTP surfaces. The viewer fingerprint
-     * isolates cached output for different navigation scopes and users.
+     * Render one page for agent-facing HTTP surfaces. Like the HTML page, it
+     * renders on every request: its output turns on authorization, condition,
+     * and audience results and on application links, none of which a cache
+     * key can see, so a stored copy would outlive a change to any of them.
      */
     public function agentMarkdown(Page $page, DocumentationContext $context): string
     {
-        $key = implode(':', [
-            'agent-page',
-            $this->repository->directoryHash(),
-            $this->docent->viewerFingerprint($context),
-            sha1($page->slug),
-        ]);
-
-        $failuresBefore = $this->registry->resolutionFailures();
-
-        return $this->cache->remember(
-            $key,
-            fn (): string => $this->renderer($page, $context)
-                ->render($page->document(), $page->title(), $page->description()),
-            $this->undegraded($failuresBefore),
-        );
+        return $this->renderer($page, $context)
+            ->render($page->document(), $page->title(), $page->description());
     }
 
     private function renderer(Page $page, DocumentationContext $context): AgentMarkdownRenderer
@@ -62,20 +50,6 @@ final class AgentFeed
             sectionCardsResolver: fn (string $section): array => $this->docent->sectionCards($section, $context),
             imageUrlResolver: fn (string $path): string => $this->docent->route('image', ['path' => $path]),
         );
-    }
-
-    /**
-     * A render in which a token was degraded must not be cached. The viewer
-     * fingerprint cannot see the session state that made the resolver throw —
-     * every guest shares one, and one user moving between tenants keeps theirs —
-     * so a stored degraded render would keep serving the missing value long
-     * after the underlying condition cleared.
-     *
-     * @return Closure(): bool
-     */
-    private function undegraded(int $failuresBefore): Closure
-    {
-        return fn (): bool => $this->registry->resolutionFailures() === $failuresBefore;
     }
 
     public function discoveryLinkHeader(): string
@@ -121,29 +95,23 @@ final class AgentFeed
 
     public function llmsFullText(DocumentationContext $context): string
     {
-        $navigationSections = $this->docent->navigationSections($context);
-        $key = 'llms-full:'.$this->repository->directoryHash().':'.$this->docent->viewerFingerprint($context);
-        $failuresBefore = $this->registry->resolutionFailures();
+        $pages = [];
 
-        return $this->cache->remember($key, function () use ($navigationSections, $context): string {
-            $pages = [];
+        foreach ($this->docent->navigationSections($context) as $section) {
+            foreach ($this->navigation->flatten($section->navigation) as $item) {
+                if ($item->searchExcluded) {
+                    continue;
+                }
 
-            foreach ($navigationSections as $section) {
-                foreach ($this->navigation->flatten($section->navigation) as $item) {
-                    if ($item->searchExcluded) {
-                        continue;
-                    }
+                $page = $this->docent->page($item->slug);
 
-                    $page = $this->docent->page($item->slug);
-
-                    if ($page !== null && $page->authorize($context)) {
-                        $pages[] = trim($this->agentMarkdown($page, $context));
-                    }
+                if ($page !== null && $page->authorize($context)) {
+                    $pages[] = trim($this->agentMarkdown($page, $context));
                 }
             }
+        }
 
-            return $pages === [] ? '' : implode("\n\n---\n\n", $pages)."\n";
-        }, $this->undegraded($failuresBefore));
+        return $pages === [] ? '' : implode("\n\n---\n\n", $pages)."\n";
     }
 
     /** @param list<NavigationItem> $items */
