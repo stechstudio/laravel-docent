@@ -53,8 +53,6 @@ final class IntegrationRegistry
     /** @var ?Closure(Throwable, string, string): void */
     private ?Closure $resolutionFailureHandler = null;
 
-    private int $resolutionFailures = 0;
-
     /**
      * @param  ?Closure(class-string): object  $classResolver
      */
@@ -360,19 +358,6 @@ final class IntegrationRegistry
     }
 
     /**
-     * How many tokens this registry has degraded rather than resolved. Callers
-     * that cache rendered output compare this across a render: a cache key
-     * cannot see the session state that made a resolver throw, so storing a
-     * degraded render would serve the missing value to every later reader.
-     *
-     * @internal
-     */
-    public function resolutionFailures(): int
-    {
-        return $this->resolutionFailures;
-    }
-
-    /**
      * Invoke a host-registered resolver under this registry's failure policy,
      * returning null when it failed and was handled.
      *
@@ -396,7 +381,6 @@ final class IntegrationRegistry
         try {
             $result = $callable(...$arguments);
         } catch (Throwable $e) {
-            $this->resolutionFailures++;
             ($this->resolutionFailureHandler)($e, $kind, $name);
 
             return null;

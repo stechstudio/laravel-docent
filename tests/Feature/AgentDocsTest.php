@@ -114,3 +114,13 @@ it('advertises both llms files on html pages', function () {
         ->assertHeader('Vary', 'Accept')
         ->assertHeader('Link', '</docs/llms.txt>; rel="llms-txt", </docs/llms-full.txt>; rel="llms-full-txt"');
 });
+
+it('resolves conditions on every agent request', function (string $url) {
+    expect($this->get($url)->assertOk()->getContent())->not->toContain('Beta features are enabled.');
+
+    // Same viewer, same navigation: only the condition changed. A copy
+    // cached under the old result would keep the block hidden.
+    config()->set('docent_test.beta', true);
+
+    expect($this->get($url)->assertOk()->getContent())->toContain('Beta features are enabled.');
+})->with(['/docs/guides/setup.md', '/docs/llms-full.txt']);

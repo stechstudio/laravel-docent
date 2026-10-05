@@ -143,7 +143,7 @@ it('reports a failing global registration exactly once', function () {
     Exceptions::assertReportedCount(1);
 });
 
-it('never caches an agent render that lost a token', function () {
+it('does not keep serving an agent render that lost a token', function () {
     $failing = true;
     app(DocentManager::class)
         ->value('tenant.role', fn (): string => 'Owner')
@@ -161,31 +161,9 @@ it('never caches an agent render that lost a token', function () {
 
     expect($render())->not->toContain('/billing');
 
-    // Same page, same fingerprint, resolver now healthy. A cached degraded
+    // Same page, same viewer, resolver now healthy. A stored degraded
     // render would keep the link missing for every later reader.
     $failing = false;
 
     expect($render())->toContain('/billing');
-});
-
-it('still caches a healthy agent render', function () {
-    $calls = 0;
-    app(DocentManager::class)
-        ->value('tenant.role', fn (): string => 'Owner')
-        ->link('tenant.billing', function () use (&$calls): string {
-            $calls++;
-
-            return '/billing';
-        });
-
-    $feed = app(AgentFeed::class);
-    $docent = app(DocentManager::class);
-    $render = fn (): string => $feed->agentMarkdown($docent->page(''), $docent->guestContext());
-
-    $render();
-    $render();
-
-    // The fixture holds two link occurrences, so one render is two calls. A
-    // second render adding none proves the healthy result was cached.
-    expect($calls)->toBe(2);
 });
