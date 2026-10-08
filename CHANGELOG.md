@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Require `enshrined/svg-sanitize` 1.0. Version 0.22.0, which cleans SVGs uploaded through the admin, is affected by three advisories published 2026-10-08: a stored XSS through DTD entities (GHSA-9rjx-3jch-6vjf), a mixed-case `xlink:href` that skips the `<use>` nesting check (GHSA-m9xh-6747-9r6f), and a crash on DTD attribute declarations (GHSA-v383-3rw5-q8rf). Host applications that run `composer audit` fail until they update.
+
+## [1.7.1] - 2026-10-05
+
 ### Fixed
 
 - A page's Markdown copy (`.md` and `Accept: text/markdown`) and `llms-full.txt` now reflect the reader's current `:::when`, `:::unless`, `:::can`, and audience results. Both were cached per viewer until the next deploy or `docent:clear`, under a key that did not include those results, so an agent kept reading a block that was turned off, or missed one that was turned on, after an application flag or a user's role changed. Both now render on every request, as the HTML page always has.
